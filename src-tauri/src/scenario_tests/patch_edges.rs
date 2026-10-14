@@ -164,9 +164,6 @@ fn a_rename_in_a_patch_lists_both_names() {
     );
 }
 
-
-#[cfg(unix)]
-#[cfg(unix)]
 #[cfg(unix)]
 #[test]
 fn a_tracked_link_that_points_out_of_the_repo_can_be_reverted() {
@@ -194,8 +191,6 @@ fn a_tracked_link_that_points_out_of_the_repo_can_be_reverted() {
     assert!(out.is_ok(), "{out:?}");
 }
 
-#[cfg(unix)]
-
 // ---- submodules, LFS, line endings ---------------------------------------------------------
 
 #[test]
@@ -215,7 +210,6 @@ fn reverting_a_submodule_bump_moves_it_back_or_says_it_cannot() {
         "reported as reverted, yet the submodule is still at the bump: {out:?}"
     );
 }
-
 
 #[test]
 fn a_file_without_a_final_newline_reverts_by_line_and_copies_lines() {
@@ -292,7 +286,6 @@ fn copying_a_merge_commit_as_a_patch_never_copies_another_commit() {
 }
 
 // ---- odd paths -----------------------------------------------------------------------------
-
 
 // ---- unsafe patches ------------------------------------------------------------------------
 

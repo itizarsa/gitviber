@@ -48,5 +48,3 @@ fn a_stash_copies_with_its_untracked_files() {
     let p = patch::stash(&r, &rev(&r, "stash@{0}")).unwrap();
     assert!(p.contains("+b") && p.contains("+++ b/u.txt"));
 }
-
-
