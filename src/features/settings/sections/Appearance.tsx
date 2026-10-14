@@ -115,6 +115,13 @@ export function AppearanceSection() {
             variant="field"
           />
         </Field>
+        <Field label="Repositories" hint="A rail of tiles at the window's edge, one click a repository: plain, with the sidebar, terminal and settings toggles at its foot, or with the open repository's worktrees as dots. Or a list atop the sidebar.">
+          <OptionSelect
+            value={s.repoList}
+            options={{ rail: "Rail", "rail-actions": "Rail with toggles", "rail-worktrees": "Rail with worktrees", list: "List in the sidebar" }}
+            onChange={(v) => updateSettings({ repoList: v as typeof s.repoList })}
+          />
+        </Field>
         <Field label="Interface font" hint="The code font is under Editor, the terminal's under Terminal.">
           <FontPicker
             fonts={uiFontChoices}

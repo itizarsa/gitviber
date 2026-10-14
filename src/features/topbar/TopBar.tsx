@@ -53,6 +53,8 @@ interface Props {
   sidebarOpen: boolean;
   sidebarSide: "left" | "right";
   onToggleSidebar: () => void;
+  /** The rail at the window's edge has the sidebar, terminal and settings toggles instead. */
+  railActions?: boolean;
 }
 
 /** titlebar.rs emits "fullscreen" as each full-screen transition starts. */
@@ -83,7 +85,7 @@ function useFullscreen() {
  * divided by --ui-scale to stay in points (the height only grows: at 150% a 40pt bar can't
  * fit its buttons).
  */
-export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide, onToggleSidebar }: Props) {
+export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide, onToggleSidebar, railActions = false }: Props) {
   const { status, branches, worktrees } = repo;
   const [branchDialog, setBranchDialog] = useState<BranchDialog | null>(null);
   const net = useNetActivity();
@@ -92,6 +94,9 @@ export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide,
   const look = mostUrgent(usePaneLooks().map(([, l]) => l));
   const calling = !terminalOpen && isNews(look);
   const fullscreen = useFullscreen();
+  // Up here, not in the buttons: those go when the repo rail holds the toggles, and hooks can't.
+  const terminalKey = useShortcut("terminal.toggle");
+  const sidebarKey = useShortcut("view.toggleSidebar");
 
   // A branch another worktree holds can't be switched to here, so the pick opens that worktree.
   // Say why, and leave a way back: the window changed folders without being asked to.
@@ -274,18 +279,22 @@ export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide,
       )}
       <div className="mx-1 h-4 w-px bg-border-strong" />
       <AgentsMenu worktrees={worktrees} />
-      <Tip label={terminalOpen ? "Hide terminal" : isNews(look) ? `Show terminal · a terminal: ${LOOK_LABEL[look].toLowerCase()}` : "Show terminal"} shortcut={useShortcut("terminal.toggle")}>
+      {!railActions && (
+        <>
+      <Tip label={terminalOpen ? "Hide terminal" : isNews(look) ? `Show terminal · a terminal: ${LOOK_LABEL[look].toLowerCase()}` : "Show terminal"} shortcut={terminalKey}>
         <Button variant="ghost" size="icon" onClick={() => togglePanel(root)} className={cn("relative", terminalOpen && "text-foreground")}>
           <SquareTerminal />
           {calling && <StatusDot look={look} className="absolute top-1 right-1" />}
         </Button>
       </Tip>
-      <Tip label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} shortcut={useShortcut("view.toggleSidebar")}>
+      <Tip label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} shortcut={sidebarKey}>
         <Button variant="ghost" size="icon" aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} onClick={onToggleSidebar} className={cn(sidebarOpen && "text-foreground")}>
           {sidebarSide === "left" ? sidebarOpen ? <PanelLeft /> : <PanelLeftDashed /> : sidebarOpen ? <PanelRight /> : <PanelRightDashed />}
         </Button>
       </Tip>
       <SettingsButton />
+        </>
+      )}
     </header>
   );
 }

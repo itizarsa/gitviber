@@ -39,6 +39,7 @@ import { useTabs } from "./useTabs";
 import { useViewed } from "./useViewed";
 import { ListTabButton, PanelHeader } from "./PanelHeader";
 import { RepoSection } from "./RepoSection";
+import { RepoRail } from "./RepoRail";
 import { headerWidth } from "./headerWidth";
 import { SearchView } from "@/features/explorer/SearchView";
 import { TerminalPanel, useTerminalSetup } from "@/features/terminal/TerminalPanel";
@@ -423,15 +424,32 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
         sidebarOpen={sidebarOpen}
         sidebarSide={s.sidebarSide}
         onToggleSidebar={toggleSidebar}
+        railActions={s.repoList === "rail-actions"}
       />
-      <div className="relative min-h-0 flex-1">
+      <div className={cn("relative flex min-h-0 flex-1", s.sidebarSide === "right" && "flex-row-reverse")}>
+        {s.repoList !== "list" && (
+          <RepoRail
+            style={s.repoList === "rail-actions" ? "actions" : s.repoList === "rail-worktrees" ? "worktrees" : "plain"}
+            repo={repo}
+            root={root}
+            main={main}
+            recent={recent}
+            side={s.sidebarSide}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={toggleSidebar}
+            onOpenRepo={onOpenRepo}
+            onForgetRepo={onForgetRepo}
+            onLocateRepo={onLocateRepo}
+          />
+        )}
+        <div className="relative min-w-0 flex-1">
         {/* The library finds a divider by where the pointer is: under the maximized terminal, the hidden ones would still drag. */}
         <ResizablePanelGroup {...sidebars.group} disabled={terminalMaximized}>
           {/* Keyed, so docking the sidebar on the other side moves the panels instead of remounting them. */}
           {[
             <ResizablePanel key="side" id="side" {...sidebars.panel("side")} onResize={(size) => setSidebarOpen(size.inPixels > 0)}>
               <div className="relative flex h-full flex-col bg-panel glass-panel">
-                <RepoSection repo={repo} root={root} main={main} recent={recent} onOpenRepo={onOpenRepo} onForgetRepo={onForgetRepo} onReorderRepos={onReorderRepos} onLocateRepo={onLocateRepo} />
+                {s.repoList === "list" && <RepoSection repo={repo} root={root} main={main} recent={recent} onOpenRepo={onOpenRepo} onForgetRepo={onForgetRepo} onReorderRepos={onReorderRepos} onLocateRepo={onLocateRepo} />}
                 <PanelHeader
                   ref={sideHeader}
                   selected={view}
@@ -619,6 +637,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
             </ResizablePanel>,
           ][s.sidebarSide === "left" ? "slice" : "reverse"]()}
         </ResizablePanelGroup>
+        </div>
       </div>
       <StatusBar repo={repo} reviewed={uncommitted.filter(viewed).length} active={active?.sel} />
       <TerminalRestoreOffer />

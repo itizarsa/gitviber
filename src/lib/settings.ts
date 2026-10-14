@@ -218,6 +218,8 @@ export interface Settings {
   markdownPreview: boolean;
   /** Which side of the window the sidebar (repositories, explorer, search, changes, history) docks on. */
   sidebarSide: "left" | "right";
+  /** The repositories as a list atop the sidebar, or a rail of tiles at the window's edge: plain, with the window's toggles at its foot, or with the open repo's worktrees. */
+  repoList: "list" | "rail" | "rail-actions" | "rail-worktrees";
   /** The last Code / Preview choice on an SVG; the next one opens the same way. Set from the viewer, not the dialog. */
   svgPreview: boolean;
   /** The last mode picked on a changed image (an SVG preview's too). Set from the viewer, not the dialog. */
@@ -307,6 +309,7 @@ const DEFAULTS: Settings = {
   terminalScreenReader: false,
   markdownPreview: true,
   sidebarSide: "left",
+  repoList: "rail",
   svgPreview: false,
   imageCompare: "side",
   blame: false,
@@ -394,6 +397,7 @@ function load(): Settings {
     if (typeof s.terminalScreenReader !== "boolean") s.terminalScreenReader = DEFAULTS.terminalScreenReader;
     if (typeof s.markdownPreview !== "boolean") s.markdownPreview = DEFAULTS.markdownPreview;
     if (s.sidebarSide !== "left" && s.sidebarSide !== "right") s.sidebarSide = DEFAULTS.sidebarSide;
+    if (!["list", "rail", "rail-actions", "rail-worktrees"].includes(s.repoList)) s.repoList = DEFAULTS.repoList;
     if (typeof s.svgPreview !== "boolean") s.svgPreview = DEFAULTS.svgPreview;
     if (!["side", "swipe", "onion"].includes(s.imageCompare)) s.imageCompare = DEFAULTS.imageCompare;
     if (typeof s.blame !== "boolean") s.blame = DEFAULTS.blame;
