@@ -4,9 +4,6 @@ import { isRecord, putRecent, readJson, stringList, writeJson } from "../storage
 import { folderName, joinPath } from "../path";
 import { isNote, type ReviewNote } from "../review/notes";
 import { type HueChoice, isHueChoice } from "../git/worktrees";
-import { isPageUrl } from "../browser/url";
-import { isDeviceChoice } from "../browser/devices";
-import { isScheme, isZoom } from "../browser/look";
 
 /** What a worktree's window looked like, so reopening the app picks up where it was. */
 interface WorkspaceSnapshot {
@@ -48,6 +45,9 @@ const all = (key: string) => readJson(key, {}, isRecord);
 /** Stores `value` under `root` (null removes it), keeping the MAX most recently saved roots. */
 const put = (key: string, root: string, value: unknown) => putRecent(key, root, value, MAX);
 
+/** Tabs of features this fork removed: an upstream build's saved window may still hold them. */
+const GONE_KINDS = ["browser", "vault"];
+
 export function loadWorkspace(root: string): WorkspaceSnapshot | null {
   const s = all(KEY)[root] as WorkspaceSnapshot | undefined;
   if (!s || !Array.isArray(s.tabs) || !Array.isArray(s.viewed)) return null;
@@ -57,21 +57,15 @@ export function loadWorkspace(root: string): WorkspaceSnapshot | null {
     try {
       // The key doesn't read a comparison's sides, but its tab and screen do.
       if (sel.kind === "compare" && !(isComparePoint(sel.base) && isComparePoint(sel.head))) return null;
-      // A page loads again as it opens: only a web page's address.
-      if (sel.kind === "browser" && !(typeof sel.id === "string" && isPageUrl(sel.url) && (sel.title === undefined || typeof sel.title === "string"))) return null;
+      // Kinds of tab this build no longer has, saved by an older one.
+      if (GONE_KINDS.includes(sel.kind as string)) return null;
       return selectionKey(sel);
     } catch {
       return null;
     }
   };
-  // A browser tab with a device, zoom or scheme this build can't read shows its page as itself.
-  const clean = (sel: Selection): Selection => {
-    if (sel.kind !== "browser") return sel;
-    const { device, zoom, scheme, ...rest } = sel;
-    return { ...rest, ...(isDeviceChoice(device) && { device }), ...(isZoom(zoom) && { zoom }), ...(isScheme(scheme) && { scheme }) };
-  };
   const tabs = s.tabs.flatMap((t) => {
-    const sel = typeof t?.sel?.kind === "string" ? clean(t.sel) : t?.sel;
+    const sel = t?.sel;
     const key = typeof t?.key === "string" && typeof sel?.kind === "string" ? rekey(sel) : null;
     return key ? [{ ...t, sel, old: t.key, key }] : [];
   });

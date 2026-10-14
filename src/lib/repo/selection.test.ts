@@ -53,28 +53,3 @@ test("a stored comparison with a side missing or misshapen isn't taken for one",
   for (const bad of [undefined, null, "a", {}, { ref: "refs/heads/a" }, { ref: 1, label: "a" }]) assert.equal(isComparePoint(bad), false);
 });
 
-test("a browser tab is one tab wherever its page goes, and no file", () => {
-  const at = (url: string): Selection => ({ kind: "browser", id: "tab-1", url });
-  assert.equal(selectionKey(at("http://localhost:5173/")), selectionKey(at("http://localhost:5173/docs")));
-  assert.notEqual(selectionKey(at("http://localhost:5173/")), selectionKey({ kind: "browser", id: "tab-2", url: "http://localhost:5173/" }));
-  assert.equal(selectionPath(at("http://localhost:5173/")), "localhost:5173");
-  // What diffPairs' isFileSelection reads.
-  assert.equal("file" in at("http://localhost:5173/"), false);
-  assert.equal(editPath(at("http://localhost:5173/")), null);
-  assert.equal(onDisk(at("http://localhost:5173/")), false);
-});
-
-test("a browser tab's key is its own, whatever its id or the other tabs' paths hold", () => {
-  const ids = ["tab-1", "", ":", "::x", "browser::tab-1", "vault:a:b", "a/b", "ü"];
-  const keys = ids.map((id) => selectionKey({ kind: "browser", id, url: "about:blank" }));
-  assert.equal(new Set(keys).size, ids.length);
-  // The title is the page's last, and isn't part of who the tab is.
-  assert.equal(selectionKey({ kind: "browser", id: "tab-1", url: "about:blank", title: "Docs" }), keys[0]);
-  assert.equal(selectionPath({ kind: "browser", id: "tab-1", url: "about:blank" }), "New Tab");
-});
-
-test("a browser tab's device is shown with it, not part of who it is", () => {
-  const plain: Selection = { kind: "browser", id: "tab-9", url: "http://localhost:5173/" };
-  assert.equal(selectionKey({ ...plain, device: { name: "iPhone 16", rotated: true } }), selectionKey(plain));
-  assert.equal(selectionPath({ ...plain, device: { name: "Responsive", w: 320, h: 640 } }), "localhost:5173");
-});

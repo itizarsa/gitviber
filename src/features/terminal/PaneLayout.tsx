@@ -1,4 +1,4 @@
-import { ClipboardPaste, Columns2, Copy, Globe, Rows2, TextSelect, X } from "lucide-react";
+import { ClipboardPaste, Columns2, Copy, Rows2, TextSelect, X } from "lucide-react";
 import { Fragment, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useGroupRef } from "react-resizable-panels";
@@ -15,7 +15,6 @@ import {
   killPane,
   paneDir,
   paneMenuState,
-  panePty,
   panesInOrder,
   paneTakesMouse,
   pasteIntoPane,
@@ -31,9 +30,6 @@ import { folderName } from "@/lib/path";
 import { NameInput } from "@/components/NameInput";
 import { StatusDot } from "@/components/StatusDot";
 import { lookLabel, paneLook } from "@/lib/terminal/agentLook";
-import { portUrl } from "@/lib/browser/url";
-import { askOpenPage } from "@/lib/browser/pageRequest";
-import { usePortsOnOpen } from "@/features/browser/PortsMenu";
 
 /** A split's structure without its sizes: what a tab re-lays out on (a split or close), not a drag. */
 export const shape = (l: Layout): string => (typeof l === "number" ? String(l) : `${l.dir}(${l.children.map(shape).join()})`);
@@ -133,11 +129,6 @@ function PaneView({ id, dim, number, header }: { id: number; dim: number; number
   useLayoutEffect(() => attachPane(id, ref.current!), [id]);
   // Read as the menu opens: the selection and the last command change under it.
   const [can, setCan] = useState(() => paneMenuState(id));
-  // What the pane's programs serve (a dev server): read again as the menu opens.
-  const { ports, read: readPorts } = usePortsOnOpen(() => {
-    const pty = panePty(id);
-    return pty === null ? [] : [pty];
-  });
   return (
     <div className="relative flex h-full flex-col">
       {header && number && <PaneHeader pane={header.pane} focused={header.focused} number={number} />}
@@ -152,7 +143,6 @@ function PaneView({ id, dim, number, header }: { id: number; dim: number; number
         onOpenChange={(open) => {
           if (!open) return;
           setCan(paneMenuState(id));
-          readPorts();
         }}
       >
         <ContextMenuTrigger asChild>
@@ -179,12 +169,6 @@ function PaneView({ id, dim, number, header }: { id: number; dim: number; number
           <ContextMenuItem disabled={!can.output} onSelect={() => selectLastOutput(id)}>
             <TextSelect /> Select Last Command Output
           </ContextMenuItem>
-          {ports.length > 0 && <ContextMenuSeparator />}
-          {ports.map((p) => (
-            <ContextMenuItem key={p.port} onSelect={() => askOpenPage(portUrl(p.port))}>
-              <Globe /> Open localhost:{p.port}
-            </ContextMenuItem>
-          ))}
         </ContextMenuContent>
       </ContextMenu>
     </div>

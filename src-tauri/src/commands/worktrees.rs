@@ -1,7 +1,6 @@
+use crate::git;
 use crate::state::{acting, in_repo, read_repo, AppState, Res};
-use crate::{browser, git};
-use std::collections::HashMap;
-use tauri::{AppHandle, State};
+use tauri::State;
 
 #[tauri::command]
 pub async fn worktrees(state: State<'_, AppState>) -> Res<Vec<git::Worktree>> {
@@ -86,25 +85,8 @@ pub async fn worktree_state(
 }
 
 #[tauri::command]
-pub async fn remove_worktree(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    path: String,
-    force: bool,
-) -> Res<()> {
-    let root = in_repo(&state, move |r| {
-        // Named as its browser pages were, while the folder is still there to resolve.
-        let root = browser::root_key(&path);
-        git::remove_worktree(r, &path, force).map(|()| root)
-    })
-    .await?;
-    close_pages(&app, vec![root]);
-    Ok(())
-}
-
-/// A removed worktree's browser pages go with it, on the main thread their views live on.
-fn close_pages(app: &AppHandle, roots: Vec<String>) {
-    let _ = app.run_on_main_thread(move || roots.iter().for_each(|r| browser::close_root(r)));
+pub async fn remove_worktree(state: State<'_, AppState>, path: String, force: bool) -> Res<()> {
+    in_repo(&state, move |r| git::remove_worktree(r, &path, force)).await
 }
 
 /// What removing a worktree would delete that isn't a change: its ignored files, sized.
@@ -113,31 +95,15 @@ pub async fn worktree_ignored(state: State<'_, AppState>, path: String) -> Res<g
     in_repo(&state, move |r| git::worktree_ignored(r, &path)).await
 }
 
-/// Removes merged worktrees and the branches known merged; Undo brings those branches back. The
-/// folders go first, outside the journal: a big node_modules takes seconds to delete, and a
-/// commit or an undo would wait for it.
+/// Removes merged worktrees and the branches known merged. The folders go first, on their own:
+/// a big node_modules takes seconds to delete, and a commit would wait for it.
 #[tauri::command]
 pub async fn clean_up_worktrees(
-    app: AppHandle,
     state: State<'_, AppState>,
     list: Vec<git::CleanUp>,
 ) -> Res<git::CleanedUp> {
-    let (mut out, branches, roots) = in_repo(&state, move |r| {
-        let roots: HashMap<String, String> = list
-            .iter()
-            .map(|w| (w.path.clone(), browser::root_key(&w.path)))
-            .collect();
-        let (out, branches) = git::remove_merged_worktrees(r, &list);
-        Ok((out, branches, roots))
-    })
-    .await?;
-    close_pages(
-        &app,
-        out.removed
-            .iter()
-            .filter_map(|p| roots.get(p).cloned())
-            .collect(),
-    );
+    let (mut out, branches) =
+        in_repo(&state, move |r| Ok(git::remove_merged_worktrees(r, &list))).await?;
     if branches.is_empty() {
         return Ok(out);
     }

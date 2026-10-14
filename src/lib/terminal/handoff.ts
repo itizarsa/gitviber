@@ -8,7 +8,7 @@ import { type Handoff, handoffTo } from "./agentState";
 import { openTerminal, worktreeAgent } from "./terminals";
 
 // Text handed to the agent CLI in a worktree's terminal, one way for every caller (a review's Ask
-// Agent, a browser tab's pick or errors): a new session started with it. A review can also paste
+// Agent): a new session started with it. A review can also paste
 // into the agent already running there, while it's free; never into a plain shell.
 
 /** The agent CLI's name for the user: Claude Code, or the program the command runs. */

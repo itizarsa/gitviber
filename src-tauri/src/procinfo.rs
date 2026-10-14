@@ -145,8 +145,6 @@ fn parse_procargs2(buf: &[u8]) -> Option<Vec<String>> {
 /// sys/proc_info.h's proc_listpids kinds; libc doesn't name them.
 #[cfg(target_os = "macos")]
 const PROC_PGRP_ONLY: u32 = 2;
-#[cfg(target_os = "macos")]
-const PROC_PPID_ONLY: u32 = 6;
 
 /// The pids proc_listpids gives for `kind` and its argument, all of them: the buffer grows
 /// while a reply fills it.
@@ -173,45 +171,6 @@ fn listpids(kind: u32, arg: u32) -> Vec<u32> {
 #[cfg(target_os = "macos")]
 pub fn job(pgid: u32) -> Vec<u32> {
     listpids(PROC_PGRP_ONLY, pgid)
-}
-
-/// `roots` and every process under them, down the tree: what a terminal's shell runs.
-pub fn tree(roots: &[u32]) -> Vec<u32> {
-    let children = children();
-    let mut all: Vec<u32> = roots.to_vec();
-    let mut at = 0;
-    while let Some(&pid) = all.get(at) {
-        for child in children(pid) {
-            if !all.contains(&child) {
-                all.push(child);
-            }
-        }
-        at += 1;
-    }
-    all
-}
-
-/// A process's children, asked of the kernel a parent at a time.
-#[cfg(target_os = "macos")]
-fn children() -> impl Fn(u32) -> Vec<u32> {
-    |ppid| listpids(PROC_PPID_ONLY, ppid)
-}
-
-/// Every process's children, from one read of /proc.
-#[cfg(target_os = "linux")]
-fn children() -> impl Fn(u32) -> Vec<u32> {
-    let mut by_parent: std::collections::HashMap<u32, Vec<u32>> = Default::default();
-    for (pid, stat) in stats() {
-        if let Some(ppid) = stat_field(&stat, 4).and_then(|f| f.parse().ok()) {
-            by_parent.entry(ppid).or_default().push(pid);
-        }
-    }
-    move |pid| by_parent.get(&pid).cloned().unwrap_or_default()
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn children() -> impl Fn(u32) -> Vec<u32> {
-    |_| Vec::new()
 }
 
 /// Field `n` of a /proc/<pid>/stat line, counted as proc(5) counts them (3 is the state, 4 the
@@ -307,20 +266,6 @@ mod tests {
         assert_eq!(stat_field("42 (a) R 7 42", 3), Some("R"));
         assert_eq!(stat_field("42 (a) R 7 42", 2), None);
         assert_eq!(stat_field("garbage", 4), None);
-    }
-
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    #[test]
-    fn a_process_tree_holds_its_children() {
-        let mut child = std::process::Command::new("sleep")
-            .arg("5")
-            .spawn()
-            .unwrap();
-        let tree = tree(&[std::process::id()]);
-        let _ = child.kill();
-        let _ = child.wait();
-        assert_eq!(tree.first(), Some(&std::process::id()));
-        assert!(tree.contains(&child.id()), "{tree:?}");
     }
 
     fn procargs(argc: i32, rest: &[u8]) -> Vec<u8> {

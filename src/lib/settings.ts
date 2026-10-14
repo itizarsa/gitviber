@@ -165,11 +165,6 @@ export type TerminalCursor = keyof typeof TERMINAL_CURSORS;
 export const SCROLLBACK_LINES = [1_000, 10_000, 50_000, 100_000];
 export const TERMINAL_LINE_HEIGHTS = [1, 1.1, 1.2, 1.3];
 
-/** Browser tabs out of sight whose pages stay alive (each a WebContent process); the rest park. */
-export const BROWSER_LIVE_HIDDEN = [0, 1, 2, 3, 4];
-/** Minutes a browser tab's page stays alive out of sight; 0 is until the cap parks it. */
-export const BROWSER_PARK_AFTER = [0, 5, 10, 30, 60];
-
 export interface Settings {
   codeFont: CodeFont;
   customCodeFont: string;
@@ -221,16 +216,6 @@ export interface Settings {
   terminalScreenReader: boolean;
   /** Markdown files open rendered rather than as source (diffs always start on the diff). */
   markdownPreview: boolean;
-  /** One of BROWSER_LIVE_HIDDEN. */
-  browserLiveHidden: number;
-  /** One of BROWSER_PARK_AFTER. */
-  browserParkAfterMin: number;
-  /** A worktree's browser pages load again when an agent there finishes, unless their dev server reloads them itself. */
-  browserReloadOnAgentDone: boolean;
-  /** Browser tabs keep what their pages log as errors and warnings, for the console badge. */
-  browserConsole: boolean;
-  /** Agents in the terminals may drive a browser tab of their pane's with `gitviber browser`. */
-  browserAgentControl: boolean;
   /** The last Code / Preview choice on an SVG; the next one opens the same way. Set from the viewer, not the dialog. */
   svgPreview: boolean;
   /** The last mode picked on a changed image (an SVG preview's too). Set from the viewer, not the dialog. */
@@ -323,11 +308,6 @@ const DEFAULTS: Settings = {
   terminalScrollback: 10_000,
   terminalScreenReader: false,
   markdownPreview: true,
-  browserLiveHidden: 2,
-  browserParkAfterMin: 10,
-  browserReloadOnAgentDone: false,
-  browserConsole: true,
-  browserAgentControl: false,
   svgPreview: false,
   imageCompare: "side",
   blame: false,
@@ -416,11 +396,6 @@ function load(): Settings {
     if (!SCROLLBACK_LINES.includes(s.terminalScrollback)) s.terminalScrollback = DEFAULTS.terminalScrollback;
     if (typeof s.terminalScreenReader !== "boolean") s.terminalScreenReader = DEFAULTS.terminalScreenReader;
     if (typeof s.markdownPreview !== "boolean") s.markdownPreview = DEFAULTS.markdownPreview;
-    if (!BROWSER_LIVE_HIDDEN.includes(s.browserLiveHidden)) s.browserLiveHidden = DEFAULTS.browserLiveHidden;
-    if (!BROWSER_PARK_AFTER.includes(s.browserParkAfterMin)) s.browserParkAfterMin = DEFAULTS.browserParkAfterMin;
-    if (typeof s.browserReloadOnAgentDone !== "boolean") s.browserReloadOnAgentDone = DEFAULTS.browserReloadOnAgentDone;
-    if (typeof s.browserConsole !== "boolean") s.browserConsole = DEFAULTS.browserConsole;
-    if (typeof s.browserAgentControl !== "boolean") s.browserAgentControl = DEFAULTS.browserAgentControl;
     if (typeof s.svgPreview !== "boolean") s.svgPreview = DEFAULTS.svgPreview;
     if (!["side", "swipe", "onion"].includes(s.imageCompare)) s.imageCompare = DEFAULTS.imageCompare;
     if (typeof s.blame !== "boolean") s.blame = DEFAULTS.blame;

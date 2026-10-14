@@ -1,7 +1,6 @@
 mod agents;
 pub mod askpass;
 mod backup;
-mod browser;
 mod cli;
 mod clipboard;
 mod commands;
@@ -78,12 +77,6 @@ fn show(window: &tauri::WebviewWindow) {
     window_state::shown(window);
 }
 
-/// When this binary runs as `gitviber browser …` (browser/client.rs): its exit status. Here so
-/// main.rs reaches the CLI while the browser module stays the crate's own.
-pub fn browser_cli() -> Option<i32> {
-    browser::client::helper()
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     shell::resolve_in_background();
@@ -152,7 +145,6 @@ pub fn run() {
                     webview.state::<AppState>().agents.forget_all();
                     askpass::decline_all();
                     quit::reset();
-                    let _ = webview.run_on_main_thread(browser::close_all);
                 }
                 if let Some(window) = webview.get_webview_window(webview.label()) {
                     translucency::reset(&window);
@@ -170,13 +162,6 @@ pub fn run() {
             }
             if let Ok(dir) = app.path().app_log_dir() {
                 errors::init(dir);
-            }
-            // Picks' pictures from earlier sessions, past the day an agent might read them in.
-            if let Ok(cache) = app.path().app_cache_dir() {
-                let folder = browser::picks::folder(&cache);
-                std::thread::spawn(move || {
-                    browser::picks::prune(&folder, std::time::SystemTime::now())
-                });
             }
             askpass::serve(app.handle().clone());
             #[cfg(target_os = "macos")]
@@ -420,27 +405,6 @@ pub fn run() {
             commands::app::install_cli,
             commands::app::set_translucent,
             commands::app::reduce_transparency,
-            commands::browser::browser_create,
-            commands::browser::browser_place,
-            commands::browser::browser_set_agent,
-            commands::browser::browser_hide,
-            commands::browser::browser_close,
-            commands::browser::browser_navigate,
-            commands::browser::browser_go,
-            commands::browser::browser_focus,
-            commands::browser::browser_set_app_keys,
-            commands::browser::browser_configure,
-            commands::browser::browser_pick,
-            commands::browser::browser_console,
-            commands::browser::browser_console_clear,
-            commands::browser::browser_agent_done,
-            commands::browser::browser_inspect,
-            commands::browser::browser_clear_data,
-            commands::browser::browser_ports,
-            commands::browser::browser_snapshot,
-            commands::browser::browser_find,
-            commands::browser::browser_zoom,
-            commands::browser::browser_appearance
         ])
         .build(context)
         .expect("error while building GitViber")

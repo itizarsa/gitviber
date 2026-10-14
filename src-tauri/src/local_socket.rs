@@ -1,4 +1,4 @@
-//! The app's own unix sockets, for helpers this binary runs as (askpass.rs, browser/client.rs):
+//! The app's own unix sockets, for helpers this binary runs as (askpass.rs):
 //! each in a folder only this user can enter, one JSON line asked and one answered.
 
 /// `n` random bytes, in hex.
@@ -12,7 +12,7 @@ pub fn random_hex(n: usize) -> Option<String> {
 }
 
 #[cfg(unix)]
-pub use unix::{ask_line, private_dir, serve_line, AskError};
+pub use unix::{ask_line, private_dir, serve_line};
 
 #[cfg(unix)]
 mod unix {
@@ -62,8 +62,8 @@ mod unix {
     }
 
     pub enum AskError {
-        /// Nothing listening there; how it failed.
-        Connect(ErrorKind),
+        /// Nothing listening there.
+        Connect,
         /// Connected, but no reply came that reads as one.
         NoAnswer,
     }
@@ -77,7 +77,7 @@ mod unix {
         request: &Req,
         wait: Option<Duration>,
     ) -> Result<Rep, AskError> {
-        let mut stream = UnixStream::connect(socket).map_err(|e| AskError::Connect(e.kind()))?;
+        let mut stream = UnixStream::connect(socket).map_err(|_| AskError::Connect)?;
         let _ = stream.set_read_timeout(wait);
         let mut line = serde_json::to_string(request).map_err(|_| AskError::NoAnswer)?;
         line.push('\n');

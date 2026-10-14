@@ -13,10 +13,10 @@ export interface ModelPick {
   onChange: (model: string) => void;
 }
 
-type AskKind = "review" | "browser";
+type AskKind = "review";
 
 // Each kind's last pick, one for every box of its kind on screen; null before any.
-const picked = (["review", "browser"] as const).reduce(
+const picked = (["review"] as const).reduce(
   (all, kind) => ({ ...all, [kind]: createStore(readJson<string | null>(`gitviber.askModel.${kind}`, null, (v): v is string => typeof v === "string")) }),
   {} as Record<AskKind, ReturnType<typeof createStore<string | null>>>,
 );
@@ -25,7 +25,7 @@ const picked = (["review", "browser"] as const).reduce(
 const CLAUDE_MODELS = ["opus", "sonnet", "haiku"];
 
 /**
- * The model to ask with, each kind of ask (`review`, `browser`) remembering its own last one, not a
+ * The model to ask with, each kind of ask (`review`) remembering its own last one, not a
  * setting: Settings → Guided Review's model until one's picked. Only for Claude Code, the one agent
  * that starts with the question in hand; null elsewhere.
  */

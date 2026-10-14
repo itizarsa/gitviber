@@ -1,7 +1,6 @@
 //! Conversions between Rust and Foundation (macOS) for raw objc2 messages: strings and data,
 //! both ways. Only these; the calls into a framework stay with the module that makes them.
-//! Raw msg_send: these few calls predate the objc2-* framework crates, linked now for browser/;
-//! new typed calls belong there.
+//! Raw msg_send, through objc2 alone.
 //! Returned objects are autoreleased: call inside a pool.
 
 use objc2::msg_send;

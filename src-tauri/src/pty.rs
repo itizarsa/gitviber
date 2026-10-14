@@ -123,9 +123,6 @@ struct Session {
     killer: Box<dyn ChildKiller + Send + Sync>,
     shell: Option<u32>,
     flow: Arc<Flow>,
-    /// The folder its pane opened in, which names the worktree it belongs to (`gitviber browser`
-    /// opens its agent's tab there).
-    pane: PathBuf,
 }
 
 impl Session {
@@ -190,12 +187,11 @@ fn with_last(path: &OsStr, dir: &Path) -> OsString {
 }
 
 impl Ptys {
-    /// Starts the user's login shell in `cwd`, for the pane opened in `pane`, with the shell
+    /// Starts the user's login shell in `cwd`, with the shell
     /// integration's scripts from `integration` if given. `exit` gets how it ended once it's gone.
     #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         &self,
-        pane: &Path,
         cwd: &Path,
         cols: u16,
         rows: u16,
@@ -254,9 +250,6 @@ impl Ptys {
             cmd.env(key, value);
         }
         let id = self.next.fetch_add(1, Ordering::Relaxed);
-        for (key, value) in crate::browser::server::env(id) {
-            cmd.env(key, value);
-        }
         let mut child = crate::process::spawning(|| pair.slave.spawn_command(cmd))
             .map_err(|e| e.to_string())?;
         drop(pair.slave);
@@ -272,7 +265,6 @@ impl Ptys {
                 killer: child.clone_killer(),
                 shell: child.process_id(),
                 flow: flow.clone(),
-                pane: pane.to_path_buf(),
             },
         );
 
@@ -360,16 +352,6 @@ impl Ptys {
     /// isn't the shell.
     pub fn foreground(&self, id: u32) -> Option<u32> {
         self.with(id, |s| Ok(s.job_leader())).ok()?
-    }
-
-    /// A session's shell, whose process tree the browser's ports menu looks through.
-    pub fn shell(&self, id: u32) -> Option<u32> {
-        self.with(id, |s| Ok(s.shell)).ok()?
-    }
-
-    /// The folder a session's pane opened in.
-    pub fn pane(&self, id: u32) -> Option<PathBuf> {
-        self.with(id, |s| Ok(s.pane.clone())).ok()
     }
 
     /// The folder a session's shell is in now, asked of the process as VS Code does for a split
