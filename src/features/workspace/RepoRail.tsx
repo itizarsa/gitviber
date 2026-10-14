@@ -6,21 +6,17 @@ import { api } from "@/lib/api";
 import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
 import { useCommands, useShortcut } from "@/lib/commands/keybindings";
-import { useWorktreeColors } from "@/lib/git/worktreeColors";
-import { hueColor, worktreeHues, worktreeName } from "@/lib/git/worktrees";
 import { folderName } from "@/lib/path";
 import { REVEAL_LABEL } from "@/lib/platform";
 import type { RepoData } from "@/lib/repo/useRepo";
-import { openTerminal, togglePanel, useTerminalsOpen } from "@/lib/terminal/terminals";
+import { openTerminal, togglePanel, usePaneLooks, useTerminalsOpen } from "@/lib/terminal/terminals";
+import { isNews, LOOK_LABEL, mostUrgent } from "@/lib/terminal/agentLook";
+import { StatusDot } from "@/components/StatusDot";
 import { cn } from "@/lib/utils";
 import { changeTotals } from "@/features/changes/changeList";
 import { openSettings } from "@/features/settings/SettingsDialog";
 
-/** What the rail holds besides the repositories: nothing, the window's toggles at its foot, or the open repo's worktrees under it. */
-export type RailStyle = "plain" | "actions" | "worktrees";
-
 interface Props {
-  style: RailStyle;
   repo: RepoData;
   /** The worktree open in the window. */
   root: string;
@@ -37,9 +33,9 @@ interface Props {
 
 /**
  * The saved repositories as a column of tiles at the window's edge, beside the sidebar: one click
- * opens one, the tooltip names it, right-click has the rest.
+ * opens one, the tooltip names it, right-click has the rest. Its foot holds the window's toggles.
  */
-export function RepoRail({ style, repo, root, main, recent, side, sidebarOpen, onToggleSidebar, onOpenRepo, onForgetRepo, onLocateRepo }: Props) {
+export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggleSidebar, onOpenRepo, onForgetRepo, onLocateRepo }: Props) {
   const openKey = useShortcut("file.openRepo");
   const info = useAsyncValue(
     async () => {
@@ -52,9 +48,6 @@ export function RepoRail({ style, repo, root, main, recent, side, sidebarOpen, o
   // Switch Project (the palette) puts the keys on the open repo's tile.
   useCommands({ "file.switchProject": () => document.querySelector<HTMLElement>('[data-repo-rail] [aria-current="true"]')?.focus() });
   const totals = changeTotals(repo);
-  const colors = useWorktreeColors();
-  const linked = repo.worktrees.filter((w) => !w.main && !w.bare && !w.prunable);
-  const hues = worktreeHues(repo.worktrees, colors);
   return (
     <nav data-repo-rail aria-label="Repositories" className={cn("flex w-12 shrink-0 flex-col items-center gap-1.5 bg-sidebar glass-sidebar pb-2", side === "left" ? "border-r" : "border-l", "border-border")}>
       <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto px-1 pt-1.5 pb-1" data-scrollbar="none">
@@ -104,24 +97,6 @@ export function RepoRail({ style, repo, root, main, recent, side, sidebarOpen, o
                   </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
-              {/* The open repo's linked worktrees, each a dot in its own color: one click opens it. */}
-              {style === "worktrees" &&
-                current &&
-                linked.map((w) => {
-                  const hue = hues.get(w.path) ?? null;
-                  const here = w.path === root;
-                  return (
-                    <Tip key={w.path} label={`Worktree ${worktreeName(w)}`} side={side === "left" ? "right" : "left"}>
-                      <button
-                        aria-label={`Worktree ${worktreeName(w)}`}
-                        onClick={() => !here && void onOpenRepo(w.path)}
-                        className={cn("flex h-5 w-8 items-center justify-center rounded-sm hover:bg-hover", here && "bg-active")}
-                      >
-                        <span className="size-2.5 rounded-full" style={{ background: hue ? hueColor(hue) : "var(--subtle)" }} />
-                      </button>
-                    </Tip>
-                  );
-                })}
             </div>
           );
         })}
@@ -131,14 +106,17 @@ export function RepoRail({ style, repo, root, main, recent, side, sidebarOpen, o
           </button>
         </Tip>
       </div>
-      {style === "actions" && <RailActions root={root} side={side} sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />}
+      <RailActions root={root} side={side} sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />
     </nav>
   );
 }
 
-/** The window's toggles, moved from the top bar to the rail's foot. */
+/** The window's toggles: the sidebar, the terminal (with a dot when one needs you while hidden) and Settings. */
 function RailActions({ root, side, sidebarOpen, onToggleSidebar }: { root: string; side: "left" | "right"; sidebarOpen: boolean; onToggleSidebar: () => void }) {
   const terminalOpen = useTerminalsOpen();
+  // The panel hidden, its tabs can't show that a terminal needs the user: this button does.
+  const look = mostUrgent(usePaneLooks().map(([, l]) => l));
+  const calling = !terminalOpen && isNews(look);
   const tip = side === "left" ? "right" : "left";
   const button = "flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-foreground";
   const Sidebar = side === "left" ? (sidebarOpen ? PanelLeft : PanelLeftDashed) : sidebarOpen ? PanelRight : PanelRightDashed;
@@ -149,9 +127,10 @@ function RailActions({ root, side, sidebarOpen, onToggleSidebar }: { root: strin
           <Sidebar className="size-4" />
         </button>
       </Tip>
-      <Tip label={terminalOpen ? "Hide terminal" : "Show terminal"} shortcut={useShortcut("terminal.toggle")} side={tip}>
-        <button aria-label="Toggle terminal" onClick={() => togglePanel(root)} className={cn(button, terminalOpen && "text-foreground")}>
+      <Tip label={terminalOpen ? "Hide terminal" : calling ? `Show terminal · a terminal: ${LOOK_LABEL[look].toLowerCase()}` : "Show terminal"} shortcut={useShortcut("terminal.toggle")} side={tip}>
+        <button aria-label="Toggle terminal" onClick={() => togglePanel(root)} className={cn(button, "relative", terminalOpen && "text-foreground")}>
           <SquareTerminal className="size-4" />
+          {calling && <StatusDot look={look} className="absolute top-1 right-1" />}
         </button>
       </Tip>
       <Tip label="Settings" shortcut={useShortcut("workbench.openSettings")} side={tip}>

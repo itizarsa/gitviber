@@ -7,13 +7,7 @@ import {
   GitMerge,
   GitPullRequestArrow,
   Loader2,
-  PanelLeft,
-  PanelLeftDashed,
-  PanelRight,
-  PanelRightDashed,
   RefreshCw,
-  Settings2,
-  SquareTerminal,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -25,22 +19,18 @@ import { api, cancelNetwork } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
 import { folderName } from "@/lib/path";
 import { IS_MAC } from "@/lib/platform";
-import { useCommands, useShortcut } from "@/lib/commands/keybindings";
-import { openTerminal, togglePanel, usePaneLooks, useTerminalsOpen } from "@/lib/terminal/terminals";
-import { isNews, LOOK_LABEL, mostUrgent } from "@/lib/terminal/agentLook";
+import { useCommands } from "@/lib/commands/keybindings";
+import { openTerminal } from "@/lib/terminal/terminals";
 import { useNetActivity } from "@/lib/repo/netActivity";
 import type { RepoData } from "@/lib/repo/useRepo";
 import { forgetRemoteTags } from "@/lib/repo/remoteTags";
-import { cn } from "@/lib/utils";
 import { type BranchDialog, BranchDialogs } from "@/features/branches/BranchDialogs";
 import { BranchPicker } from "@/features/branches/BranchPicker";
 import { PushMenu } from "./PushMenu";
 import { PublishButton } from "./PublishButton";
 import { useRepoActions } from "./useRepoActions";
-import { openSettings } from "@/features/settings/SettingsDialog";
 import { openWorktreeDialog, WorktreeDialogs } from "@/features/worktrees/WorktreeDialogs";
 import { WorktreePicker } from "@/features/worktrees/WorktreePicker";
-import { StatusDot } from "@/components/StatusDot";
 import { AgentsMenu } from "@/features/terminal/AgentsMenu";
 
 interface Props {
@@ -50,11 +40,6 @@ interface Props {
   /** The main worktree: the project this window belongs to, even inside a linked worktree. */
   main: string;
   onOpenRepo: (path?: string) => Promise<unknown>;
-  sidebarOpen: boolean;
-  sidebarSide: "left" | "right";
-  onToggleSidebar: () => void;
-  /** The rail at the window's edge has the sidebar, terminal and settings toggles instead. */
-  railActions?: boolean;
 }
 
 /** titlebar.rs emits "fullscreen" as each full-screen transition starts. */
@@ -85,18 +70,11 @@ function useFullscreen() {
  * divided by --ui-scale to stay in points (the height only grows: at 150% a 40pt bar can't
  * fit its buttons).
  */
-export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide, onToggleSidebar, railActions = false }: Props) {
+export function TopBar({ repo, root, main, onOpenRepo }: Props) {
   const { status, branches, worktrees } = repo;
   const [branchDialog, setBranchDialog] = useState<BranchDialog | null>(null);
   const net = useNetActivity();
-  const terminalOpen = useTerminalsOpen();
-  // The panel hidden, its tabs can't show that a terminal needs the user: its button does.
-  const look = mostUrgent(usePaneLooks().map(([, l]) => l));
-  const calling = !terminalOpen && isNews(look);
   const fullscreen = useFullscreen();
-  // Up here, not in the buttons: those go when the repo rail holds the toggles, and hooks can't.
-  const terminalKey = useShortcut("terminal.toggle");
-  const sidebarKey = useShortcut("view.toggleSidebar");
 
   // A branch another worktree holds can't be switched to here, so the pick opens that worktree.
   // Say why, and leave a way back: the window changed folders without being asked to.
@@ -279,32 +257,6 @@ export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide,
       )}
       <div className="mx-1 h-4 w-px bg-border-strong" />
       <AgentsMenu worktrees={worktrees} />
-      {!railActions && (
-        <>
-      <Tip label={terminalOpen ? "Hide terminal" : isNews(look) ? `Show terminal · a terminal: ${LOOK_LABEL[look].toLowerCase()}` : "Show terminal"} shortcut={terminalKey}>
-        <Button variant="ghost" size="icon" onClick={() => togglePanel(root)} className={cn("relative", terminalOpen && "text-foreground")}>
-          <SquareTerminal />
-          {calling && <StatusDot look={look} className="absolute top-1 right-1" />}
-        </Button>
-      </Tip>
-      <Tip label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} shortcut={sidebarKey}>
-        <Button variant="ghost" size="icon" aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} onClick={onToggleSidebar} className={cn(sidebarOpen && "text-foreground")}>
-          {sidebarSide === "left" ? sidebarOpen ? <PanelLeft /> : <PanelLeftDashed /> : sidebarOpen ? <PanelRight /> : <PanelRightDashed />}
-        </Button>
-      </Tip>
-      <SettingsButton />
-        </>
-      )}
     </header>
-  );
-}
-
-function SettingsButton() {
-  return (
-    <Tip label="Settings" shortcut={useShortcut("workbench.openSettings")}>
-      <Button variant="ghost" size="icon" onClick={() => openSettings()}>
-        <Settings2 />
-      </Button>
-    </Tip>
   );
 }

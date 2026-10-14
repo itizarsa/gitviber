@@ -199,7 +199,7 @@ export function App() {
     <TooltipProvider>
       {opened ? (
         <WorkspaceBoundary key={opened.root} onOpenRepo={onOpen}>
-          <Workspace root={opened.root} main={opened.main} recent={recent} onOpenRepo={onOpen} onForgetRepo={onForget} onReorderRepos={onReorder} onLocateRepo={onLocate} onRepoGone={onRepoGone} />
+          <Workspace root={opened.root} main={opened.main} recent={recent} onOpenRepo={onOpen} onForgetRepo={onForget} onLocateRepo={onLocate} onRepoGone={onRepoGone} />
         </WorkspaceBoundary>
       ) : (
         !booting &&

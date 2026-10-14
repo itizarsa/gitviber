@@ -14,11 +14,9 @@ Everything below has been built on `arshath/compassionate-galileo-706r8j`, one c
 Screenshots of the result are in [`docs/fork-plan/after/`](docs/fork-plan/after/), along with a
 67-second walkthrough, [`fork-walkthrough.mp4`](docs/fork-plan/after/fork-walkthrough.mp4).
 
-![The four repository list styles side by side](docs/fork-plan/after/options.png)
-
 | Asked for | What was done |
 |---|---|
-| Repo picker → sidebar, one click | The top bar's popover is gone. The repositories sit at the window's edge as a **rail** of tiles, beside the sidebar (or optionally as a list atop it). Settings → Appearance → Repositories picks one of four styles: *Rail*, *Rail with toggles* (sidebar/terminal/settings buttons move from the top bar to the rail's foot, which fills its empty space), *Rail with worktrees* (the open repo's worktrees as colored dots under its tile), or *List in the sidebar*. The open repo's tile shows its changed-file count. Right-click a tile to open it, start a terminal, reveal it, copy its path or remove it. |
+| Repo picker → sidebar, one click | The top bar's popover is gone. The repositories sit at the window's edge as a **rail** of tiles, beside the sidebar: one click opens one, the open repo's tile shows its changed-file count, right-click opens, starts a terminal, reveals, copies the path or removes it. The sidebar, terminal and settings toggles moved from the top bar to the rail's foot. ![The rail](docs/fork-plan/after/final-rail.png) |
 | One sidebar with Explorer, Search, Changes and History, docked left or right | Done. Tabs on ⌃1–⌃4 (Alt+1–4 off macOS), ⌘B toggles the sidebar, ⌥⌘B moves it, and Settings → Appearance → Sidebar position sets the side. Moving it doesn't reload the code view or terminals. |
 | Remove the commit box | Done. Staging, discard, stash and review marks stay. |
 | Remove PRs, Issues: "remove everything" GitHub | PRs, issues, CI checks, PR/issue tabs and terminal links, PR checkout, issue → worktree, fork-original history, permalinks and Open on GitHub, GitHub repos in Clone, protected branches, gh account switching, AI commit/PR messages, and the Rust GitHub API client with `ureq`. Settings → Commit Messages is now **Agent**: the CLI that Explain Commit and Guided Review still run. |
