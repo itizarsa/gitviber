@@ -29,12 +29,12 @@ import { useCommands, useShortcut } from "@/lib/commands/keybindings";
 import { openTerminal, togglePanel, usePaneLooks, useTerminalsOpen } from "@/lib/terminal/terminals";
 import { isNews, LOOK_LABEL, mostUrgent } from "@/lib/terminal/agentLook";
 import { useNetActivity } from "@/lib/repo/netActivity";
+import type { RepoData } from "@/lib/repo/useRepo";
 import { forgetRemoteTags } from "@/lib/repo/remoteTags";
 import { cn } from "@/lib/utils";
 import { type BranchDialog, BranchDialogs } from "@/features/branches/BranchDialogs";
 import { BranchPicker } from "@/features/branches/BranchPicker";
 import { PushMenu } from "./PushMenu";
-import { ProjectSwitcher, type ProjectSwitcherProps } from "./ProjectSwitcher";
 import { PublishButton } from "./PublishButton";
 import { useRepoActions } from "./useRepoActions";
 import { openSettings } from "@/features/settings/SettingsDialog";
@@ -43,13 +43,16 @@ import { WorktreePicker } from "@/features/worktrees/WorktreePicker";
 import { StatusDot } from "@/components/StatusDot";
 import { AgentsMenu } from "@/features/terminal/AgentsMenu";
 
-type Props = ProjectSwitcherProps;
-
-interface LayoutProps {
-  leftOpen: boolean;
-  rightOpen: boolean;
-  onToggleLeft: () => void;
-  onToggleRight: () => void;
+interface Props {
+  repo: RepoData;
+  /** The worktree open in the window. */
+  root: string;
+  /** The main worktree: the project this window belongs to, even inside a linked worktree. */
+  main: string;
+  onOpenRepo: (path?: string) => Promise<unknown>;
+  sidebarOpen: boolean;
+  sidebarSide: "left" | "right";
+  onToggleSidebar: () => void;
 }
 
 /** titlebar.rs emits "fullscreen" as each full-screen transition starts. */
@@ -80,7 +83,7 @@ function useFullscreen() {
  * divided by --ui-scale to stay in points (the height only grows: at 150% a 40pt bar can't
  * fit its buttons).
  */
-export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onReorderRepos, onLocateRepo, leftOpen, rightOpen, onToggleLeft, onToggleRight }: Props & LayoutProps) {
+export function TopBar({ repo, root, main, onOpenRepo, sidebarOpen, sidebarSide, onToggleSidebar }: Props) {
   const { status, branches, worktrees } = repo;
   const [branchDialog, setBranchDialog] = useState<BranchDialog | null>(null);
   const net = useNetActivity();
@@ -129,8 +132,6 @@ export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onR
     >
       <Wordmark />
       <div className="mx-2 h-4 w-px bg-border-strong" />
-      <ProjectSwitcher repo={repo} root={root} main={main} recent={recent} onOpenRepo={onOpenRepo} onForgetRepo={onForgetRepo} onReorderRepos={onReorderRepos} onLocateRepo={onLocateRepo} />
-      <span className="text-[13px] text-border-strong select-none">/</span>
       <BranchPicker
         main={main}
         label={branchName}
@@ -279,14 +280,9 @@ export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onR
           {calling && <StatusDot look={look} className="absolute top-1 right-1" />}
         </Button>
       </Tip>
-      <Tip label={leftOpen ? "Hide git panel" : "Show git panel"} shortcut={useShortcut("view.toggleGitPanel")}>
-        <Button variant="ghost" size="icon" onClick={onToggleLeft} className={cn(leftOpen && "text-foreground")}>
-          {leftOpen ? <PanelLeft /> : <PanelLeftDashed />}
-        </Button>
-      </Tip>
-      <Tip label={rightOpen ? "Hide explorer" : "Show explorer"} shortcut={useShortcut("view.toggleExplorer")}>
-        <Button variant="ghost" size="icon" onClick={onToggleRight} className={cn(rightOpen && "text-foreground")}>
-          {rightOpen ? <PanelRight /> : <PanelRightDashed />}
+      <Tip label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} shortcut={useShortcut("view.toggleSidebar")}>
+        <Button variant="ghost" size="icon" aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"} onClick={onToggleSidebar} className={cn(sidebarOpen && "text-foreground")}>
+          {sidebarSide === "left" ? sidebarOpen ? <PanelLeft /> : <PanelLeftDashed /> : sidebarOpen ? <PanelRight /> : <PanelRightDashed />}
         </Button>
       </Tip>
       <SettingsButton />

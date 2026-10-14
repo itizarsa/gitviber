@@ -31,12 +31,16 @@ export const COMMANDS = [
   { id: "file.openIn", title: "Open in External App", category: "General", keys: ["shift+cmd+o"] },
   // ⌘1–⌘9 pick tabs, as in browsers. Listed before the tabs, so a user who bound ⌘1 here keeps it.
   // Elsewhere "ctrl" is the Super key, which the OS takes; Alt+1–4 is the usual there.
-  { id: "view.changes", title: "Focus Changes", category: "View", keys: ["ctrl+1"], keysOther: ["alt+1"] },
-  { id: "view.history", title: "Focus History", category: "View", keys: ["ctrl+2"], keysOther: ["alt+2"] },
+  // In the sidebar's tab order: Explorer, Search, Changes, History.
+  { id: "view.explorer", title: "Show Explorer", category: "View", keys: ["ctrl+1"], keysOther: ["alt+1"] },
+  { id: "view.search", title: "Show Search", category: "View", keys: ["ctrl+2"], keysOther: ["alt+2"] },
+  { id: "view.changes", title: "Focus Changes", category: "View", keys: ["ctrl+3"], keysOther: ["alt+3"] },
+  { id: "view.history", title: "Focus History", category: "View", keys: ["ctrl+4"], keysOther: ["alt+4"] },
   // ⌘F is Find, which searches the history list too while focus is there.
   { id: "history.search", title: "Search History", category: "View", keys: ["alt+cmd+f"] },
-  { id: "view.toggleGitPanel", title: "Toggle Git Panel", category: "View", keys: ["cmd+b"] },
-  { id: "view.toggleExplorer", title: "Toggle Explorer", category: "View", keys: ["alt+cmd+b"] },
+  { id: "view.toggleSidebar", title: "Toggle Sidebar", category: "View", keys: ["cmd+b"] },
+  // Settings → Appearance → Sidebar position, from the palette or the View menu.
+  { id: "view.moveSidebar", title: "Move Sidebar Left / Right", category: "View", keys: ["alt+cmd+b"] },
   { id: "view.focusGitPanel", title: "Focus Git Panel", category: "View", keys: ["shift+cmd+g"] },
   { id: "view.focusCode", title: "Focus Code View", category: "View", keys: ["cmd+e"] },
   // The id is from when it only showed the panel; kept so a user's binding for it still applies.

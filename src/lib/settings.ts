@@ -216,6 +216,8 @@ export interface Settings {
   terminalScreenReader: boolean;
   /** Markdown files open rendered rather than as source (diffs always start on the diff). */
   markdownPreview: boolean;
+  /** Which side of the window the sidebar (repositories, explorer, search, changes, history) docks on. */
+  sidebarSide: "left" | "right";
   /** The last Code / Preview choice on an SVG; the next one opens the same way. Set from the viewer, not the dialog. */
   svgPreview: boolean;
   /** The last mode picked on a changed image (an SVG preview's too). Set from the viewer, not the dialog. */
@@ -306,6 +308,7 @@ const DEFAULTS: Settings = {
   terminalScrollback: 10_000,
   terminalScreenReader: false,
   markdownPreview: true,
+  sidebarSide: "left",
   svgPreview: false,
   imageCompare: "side",
   blame: false,
@@ -393,6 +396,7 @@ function load(): Settings {
     if (!SCROLLBACK_LINES.includes(s.terminalScrollback)) s.terminalScrollback = DEFAULTS.terminalScrollback;
     if (typeof s.terminalScreenReader !== "boolean") s.terminalScreenReader = DEFAULTS.terminalScreenReader;
     if (typeof s.markdownPreview !== "boolean") s.markdownPreview = DEFAULTS.markdownPreview;
+    if (s.sidebarSide !== "left" && s.sidebarSide !== "right") s.sidebarSide = DEFAULTS.sidebarSide;
     if (typeof s.svgPreview !== "boolean") s.svgPreview = DEFAULTS.svgPreview;
     if (!["side", "swipe", "onion"].includes(s.imageCompare)) s.imageCompare = DEFAULTS.imageCompare;
     if (typeof s.blame !== "boolean") s.blame = DEFAULTS.blame;

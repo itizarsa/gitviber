@@ -5,7 +5,7 @@ const RECENT_KEY = "gitviber.recent";
 
 export function recentRepos(): string[] {
   // Saved lists have held nulls (an undefined path serializes as null), and one null crashed
-  // the project switcher's sortable list.
+  // the project list's sortable rows.
   return stringList(readJson<unknown>(RECENT_KEY, []));
 }
 

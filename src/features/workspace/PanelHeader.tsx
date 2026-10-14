@@ -1,8 +1,5 @@
-import { PanelLeftClose, PanelRightClose } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
-import { Tip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/CountBadge";
-import { useShortcut } from "@/lib/commands/keybindings";
 import { useTabStrip } from "@/lib/ui/useTabStrip";
 import { cn } from "@/lib/utils";
 
@@ -24,25 +21,13 @@ export function PanelHeader({ ref, selected, tabs, children }: { ref: RefObject<
   );
 }
 
-export function CollapseButton({ side, onClick }: { side: "left" | "right"; onClick: () => void }) {
-  const Icon = side === "left" ? PanelLeftClose : PanelRightClose;
-  const shortcut = useShortcut(side === "left" ? "view.toggleGitPanel" : "view.toggleExplorer");
-  return (
-    <Tip label={side === "left" ? "Hide panel" : "Hide explorer"} shortcut={shortcut}>
-      <button onClick={onClick} className="ml-auto flex size-6 items-center justify-center rounded-sm text-subtle hover:bg-hover focus-visible:bg-hover hover:text-foreground focus-visible:text-foreground">
-        <Icon className="size-3.5" />
-      </button>
-    </Tip>
-  );
-}
-
 export function ListTabButton({ active, onClick, count, children }: { active: boolean; onClick: () => void; count?: number; children: ReactNode }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex h-6 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium",
+        "flex h-6 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] font-medium",
         active ? "bg-active text-foreground" : "text-subtle hover:text-foreground focus-visible:text-foreground",
       )}
     >

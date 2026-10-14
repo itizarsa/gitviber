@@ -353,8 +353,8 @@ function EmptyViewer({ hasTabs }: { hasTabs: boolean }) {
       <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1.5 text-left text-[11.5px] text-subtle">
         <Kbd ids={["workbench.showCommands"]} /> <span>All commands</span>
         <Kbd ids={["workbench.quickOpen"]} /> <span>Open a file</span>
-        <Kbd ids={["view.changes", "view.history"]} /> <span>Changes · History</span>
-        <Kbd ids={["view.toggleGitPanel", "view.toggleExplorer"]} /> <span>Toggle git panel · explorer</span>
+        <Kbd ids={["view.explorer", "view.search", "view.changes", "view.history"]} /> <span>Explorer · Search · Changes · History</span>
+        <Kbd ids={["view.toggleSidebar"]} /> <span>Toggle sidebar</span>
         <Kbd ids={["review.nextFile", "review.prevFile"]} /> <span>Next / previous file</span>
         <Kbd ids={["diff.nextChange", "diff.prevChange"]} /> <span>Next / previous change</span>
         <Kbd ids={["diff.toggleSplit", "diff.toggleCollapse", "editor.toggleWrap"]} /> <span>Split · Collapse · Wrap</span>

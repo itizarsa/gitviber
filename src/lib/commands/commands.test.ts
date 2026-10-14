@@ -79,16 +79,16 @@ test("canonical orders modifiers and rejects unknown ones", () => {
 
 test("cleanOverrides drops unknown commands and bad chords", () => {
   assert.deepEqual(
-    cleanOverrides({ "view.toggleGitPanel": ["cmd+shift+g"], "tab.close": [], "gone.command": ["cmd+g"], "view.changes": ["Meta+b"], "view.history": "cmd+2" }),
-    { "view.toggleGitPanel": ["shift+cmd+g"], "tab.close": [] },
+    cleanOverrides({ "view.toggleSidebar": ["cmd+shift+g"], "tab.close": [], "gone.command": ["cmd+g"], "view.changes": ["Meta+b"], "view.history": "cmd+2" }),
+    { "view.toggleSidebar": ["shift+cmd+g"], "tab.close": [] },
   );
   assert.deepEqual(cleanOverrides(null), {});
   assert.deepEqual(cleanOverrides(["cmd+b"]), {});
 });
 
 test("the first listed command wins a shared chord", () => {
-  assert.equal(commandFor("cmd+1", { "view.toggleGitPanel": ["cmd+1"] })?.id, "view.toggleGitPanel");
-  assert.equal(commandFor("cmd+b", { "tab.goto1": ["cmd+b"] })?.id, "view.toggleGitPanel");
+  assert.equal(commandFor("cmd+1", { "view.toggleSidebar": ["cmd+1"] })?.id, "view.toggleSidebar");
+  assert.equal(commandFor("cmd+b", { "tab.goto1": ["cmd+b"] })?.id, "view.toggleSidebar");
   assert.equal(commandFor("cmd+enter", {}), undefined, "local commands never run globally");
 });
 
@@ -97,20 +97,23 @@ test("⌘1–⌘9 pick tabs; the git panel's views moved to ⌃1–⌃4", () => 
   assert.equal(run("cmd+1"), "tab.goto1");
   assert.equal(run("cmd+8"), "tab.goto8");
   assert.equal(run("cmd+9"), "tab.last");
-  assert.equal(run("ctrl+1"), "view.changes");
-  assert.equal(run("ctrl+2"), "view.history");
+  assert.equal(run("ctrl+1"), "view.explorer");
+  assert.equal(run("ctrl+3"), "view.changes");
+  assert.equal(run("ctrl+4"), "view.history");
+  assert.equal(run("ctrl+2"), "view.search");
   for (const chord of ["cmd+right", "shift+cmd+]", "ctrl+tab"]) assert.equal(run(chord), "tab.next");
   for (const chord of ["cmd+left", "shift+cmd+[", "ctrl+shift+tab"]) assert.equal(run(chord), "tab.prev");
   // Only the defaults moved: someone who bound ⌘1 to Changes keeps it.
   assert.equal(run("cmd+1", { "view.changes": ["cmd+1"] }), "view.changes");
-  assert.equal(run("ctrl+1", { "view.changes": ["alt+cmd+1"] }), undefined);
+  assert.equal(run("ctrl+3", { "view.changes": ["alt+cmd+1"] }), undefined);
 });
 
 test("off macOS: views on Alt+1–4, tabs on Ctrl+Tab (the Super key is the OS's)", () => {
   const run = (chord: string, overrides = {}) => commandFor(chord, overrides, false)?.id;
   assert.equal(run("cmd+1"), "tab.goto1", "Ctrl+1");
-  assert.equal(run("alt+1"), "view.changes");
-  assert.equal(run("alt+2"), "view.history");
+  assert.equal(run("alt+3"), "view.changes");
+  assert.equal(run("alt+4"), "view.history");
+  assert.equal(run("alt+1"), "view.explorer");
   assert.equal(run("ctrl+1"), undefined, "Super+1");
   assert.equal(run("cmd+tab"), "tab.next");
   assert.equal(run("shift+cmd+tab"), "tab.prev");
@@ -119,7 +122,7 @@ test("off macOS: views on Alt+1–4, tabs on Ctrl+Tab (the Super key is the OS's
   // Ctrl+← / Ctrl+→ move by word, as everywhere there.
   assert.equal(run("cmd+right"), undefined);
   assert.equal(press("Tab", "Tab", { ctrlKey: true }, false), "cmd+tab");
-  assert.deepEqual(bindingsFor("view.changes", {}, false), ["alt+1"]);
+  assert.deepEqual(bindingsFor("view.changes", {}, false), ["alt+3"]);
   assert.deepEqual(bindingsFor("view.changes", { "view.changes": ["cmd+1"] }, false), ["cmd+1"]);
 });
 
@@ -155,7 +158,7 @@ test("what still runs while typing (elsewhere: cmd is the physical Ctrl)", () =>
   const typing = (chord: string, id: string) => runsWhileTyping(chord, byId(id), false);
   assert.equal(typing("cmd+tab", "tab.next"), true);
   assert.equal(typing("cmd+1", "tab.goto1"), true);
-  assert.equal(typing("cmd+b", "view.toggleGitPanel"), true);
+  assert.equal(typing("cmd+b", "view.toggleSidebar"), true);
   assert.equal(typing("cmd+right", "tab.next"), false, "Ctrl+→ moves by word");
   assert.equal(typing("alt+1", "view.changes"), false, "Alt types characters on some layouts");
 });
@@ -169,7 +172,7 @@ test("the terminal hands the app its Ctrl chords, except Ctrl+letter", () => {
   assert.equal(taken("cmd+1", "tab.goto1", true), false);
   assert.equal(taken("cmd+tab", "tab.next", false), true, "Ctrl+Tab");
   assert.equal(taken("cmd+1", "tab.goto1", false), true, "Ctrl+1");
-  assert.equal(taken("cmd+b", "view.toggleGitPanel", false), false, "Ctrl+B is the shell's (tmux)");
+  assert.equal(taken("cmd+b", "view.toggleSidebar", false), false, "Ctrl+B is the shell's (tmux)");
   assert.equal(taken("cmd+left", "tab.prev", false), false, "Ctrl+← moves by word");
   assert.equal(taken("alt+1", "view.changes", false), false);
   assert.equal(taken("shift+cmd+t", "terminal.new", false), true, "Ctrl+Shift+T, as in Linux terminals");
@@ -207,8 +210,8 @@ test("with the terminal focused, a key goes to the app or the shell, never both"
   // Elsewhere the physical Ctrl is "cmd": Ctrl+letter is the shell's, Super is the app's.
   assert.equal(app("cmd+tab", "tab.next", false), true);
   assert.equal(app("cmd+1", "tab.goto1", false), true);
-  assert.equal(app("cmd+b", "view.toggleGitPanel", false), false);
-  assert.equal(app("ctrl+b", "view.toggleGitPanel", false), true);
+  assert.equal(app("cmd+b", "view.toggleSidebar", false), false);
+  assert.equal(app("ctrl+b", "view.toggleSidebar", false), true);
 });
 
 test("a punctuation key also counts as its US name; letters and digits only as typed", () => {

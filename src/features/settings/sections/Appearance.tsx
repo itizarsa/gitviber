@@ -104,6 +104,17 @@ export function AppearanceSection() {
         </Field>
       </Group>
       <Group title="Interface">
+        <Field label="Sidebar position" hint="Which side the sidebar docks on: repositories, Explorer, Search, Changes and History." commands={["view.moveSidebar", "view.toggleSidebar"]}>
+          <Segmented<"left" | "right">
+            value={s.sidebarSide}
+            onChange={(sidebarSide) => updateSettings({ sidebarSide })}
+            options={[
+              { value: "left", label: "Left" },
+              { value: "right", label: "Right" },
+            ]}
+            variant="field"
+          />
+        </Field>
         <Field label="Interface font" hint="The code font is under Editor, the terminal's under Terminal.">
           <FontPicker
             fonts={uiFontChoices}

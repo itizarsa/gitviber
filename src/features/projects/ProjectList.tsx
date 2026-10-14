@@ -25,9 +25,11 @@ export interface ProjectListProps {
   onLocate: (path: string) => void;
   /** Open a terminal in a project, the window staying where it is; only where a window is open. */
   onTerminal?: (path: string) => void;
+  /** One line a row, the path on hover: the sidebar's list. */
+  compact?: boolean;
 }
 
-/** Asked each time a list mounts (the switcher mounts on open), so a moved folder shows up at once. */
+/** Asked each time a list mounts (the sidebar's with each repo opened), so a moved folder shows up. */
 function useProjectInfo(paths: string[]) {
   const key = paths.join("\n");
   return useAsyncValue(
@@ -42,10 +44,10 @@ function useProjectInfo(paths: string[]) {
 }
 
 /**
- * The saved projects, shared by the top bar's switcher and the welcome screen. Rows open on
+ * The saved projects, shared by the sidebar's Repositories and the welcome screen. Rows open on
  * click or ↵, reorder by dragging, and have hover actions and a right-click menu (also ⇧F10).
  */
-export function ProjectList({ recent, current, away, onOpen, onForget, onReorder, onLocate, onTerminal }: ProjectListProps) {
+export function ProjectList({ recent, current, away, onOpen, onForget, onReorder, onLocate, onTerminal, compact = false }: ProjectListProps) {
   const info = useProjectInfo(recent);
   // Folders that are gone sink below the rest, each group in the user's own order.
   const gone = (p: string) => info.get(p)?.exists === false;
@@ -92,6 +94,7 @@ export function ProjectList({ recent, current, away, onOpen, onForget, onReorder
             onForget={onForget}
             onLocate={onLocate}
             onTerminal={onTerminal}
+            compact={compact}
             onMoveToTop={() => onReorder([p, ...recent.filter((x) => x !== p)])}
           />
         ))}
@@ -111,6 +114,7 @@ function ProjectRow({
   onForget,
   onLocate,
   onTerminal,
+  compact,
   onMoveToTop,
 }: {
   path: string;
@@ -123,6 +127,7 @@ function ProjectRow({
   onForget: (p: string) => void;
   onLocate: (p: string) => void;
   onTerminal?: (p: string) => void;
+  compact: boolean;
   onMoveToTop: () => void;
 }) {
   const { props, dragging, guard } = useSortableItem(path);
@@ -141,18 +146,23 @@ function ProjectRow({
           tabIndex={tabStop ? 0 : -1}
           data-project={path}
           aria-current={current || undefined}
+          title={compact ? (missing ? `${path} (folder not found)` : path) : undefined}
           onClick={guard(() => (missing ? onLocate(path) : !here && onOpen(path)))}
           className={cn(
-            "group flex h-9 items-center gap-2.5 rounded-sm px-2 outline-none select-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
+            "group flex items-center gap-2.5 rounded-sm px-2 outline-none select-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
+            compact ? "h-7" : "h-9",
             here ? "cursor-default bg-active" : "cursor-pointer hover:bg-hover focus:bg-hover data-[state=open]:bg-hover",
             away && "bg-active",
             dragging && "cursor-grabbing bg-elevated shadow-lg ring-1 shadow-black/40 ring-border-strong",
           )}
         >
-          <ProjectTile name={name} large className={cn(missing && "opacity-45")} />
+          <ProjectTile name={name} large={!compact} className={cn(missing && "opacity-45")} />
           <div className="min-w-0 flex-1">
-            <div className={cn("truncate text-[12.5px] font-medium", missing && "text-muted-foreground")}>{name}</div>
-            <div className={cn("truncate text-[10.5px]", missing ? "text-conflict" : "text-subtle")}>{missing ? "Folder not found" : away ? `In worktree ${away.folder}` : path}</div>
+            <div className={cn("truncate text-[12.5px]", compact ? (here || away ? "font-semibold" : "") : "font-medium", missing && "text-muted-foreground")}>
+              {name}
+              {compact && away && <span className="ml-1.5 text-[10.5px] font-normal text-subtle">in {away.folder}</span>}
+            </div>
+            {!compact && <div className={cn("truncate text-[10.5px]", missing ? "text-conflict" : "text-subtle")}>{missing ? "Folder not found" : away ? `In worktree ${away.folder}` : path}</div>}
           </div>
           {current && <Check className="size-3.5 shrink-0 text-primary group-focus-within:hidden group-hover:hidden" />}
           {!dragging && (

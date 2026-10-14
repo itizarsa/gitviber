@@ -12,7 +12,7 @@ import { createStore } from "@/lib/store";
 
 const shown = createStore(false);
 const setShown = shown.set;
-/** Welcome, File → Clone Repository… and the project switcher open it. */
+/** Welcome, File → Clone Repository… and the sidebar's Repositories open it. */
 export const openClone = () => setShown(true);
 
 /** Clones a repository into a folder of the user's choice, then opens it. */
