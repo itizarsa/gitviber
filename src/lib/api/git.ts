@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { network } from "./network";
-import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, NotifyPermission, OpenInApp, Opened, OpenedRepo, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
+import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, OpenInApp, Opened, OpenedRepo, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
 
 /** Commits per history page: every list asks for this many, and a full page means there may be more. */
 export const LOG_PAGE = 200;
@@ -324,12 +324,4 @@ export const api = {
   showLogs: () => invoke<void>("show_logs"),
   /** How this install updates (updates.rs): in place, from the Releases page, or not at all. */
   updateMode: () => invoke<"install" | "download" | null>("update_mode"),
-  /** Whether the OS shows GitViber's notifications (notifications.rs). */
-  notificationPermission: () => invoke<NotifyPermission>("notification_permission"),
-  /** Asks the OS, which asks the user the first time; resolves once they answer. */
-  requestNotifications: () => invoke<NotifyPermission>("notification_request"),
-  /** `target` comes back with a "notification-click" event when the user clicks it. */
-  notify: (title: string, body: string, target?: string) => invoke<void>("notification_send", { title, body, target }),
-  /** System Settings → Notifications at GitViber (macOS). */
-  notificationSettings: () => invoke<void>("notification_settings"),
 };

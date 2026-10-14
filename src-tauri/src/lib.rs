@@ -26,7 +26,6 @@ mod local_socket;
 mod menu;
 mod navigation;
 mod network;
-mod notifications;
 #[cfg(target_os = "macos")]
 mod objc;
 mod obsidian;
@@ -108,8 +107,7 @@ pub fn run() {
     }));
     let mut builder = builder
         .plugin(navigation::guard(dev_url))
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_dialog::init());
     #[cfg(desktop)]
     {
         builder = builder.plugin(window_state::plugin());
@@ -182,7 +180,6 @@ pub fn run() {
                 });
             }
             askpass::serve(app.handle().clone());
-            notifications::setup(app.handle());
             #[cfg(target_os = "macos")]
             menu::keep_typed_key_equivalents();
             #[cfg(target_os = "macos")]
@@ -202,10 +199,6 @@ pub fn run() {
             commands::app::log_error,
             commands::app::show_logs,
             commands::app::clipboard_write,
-            commands::app::notification_permission,
-            commands::app::notification_request,
-            commands::app::notification_send,
-            commands::app::notification_settings,
             commands::repo::open_repo,
             commands::repo::git_info,
             commands::repo::install_git,

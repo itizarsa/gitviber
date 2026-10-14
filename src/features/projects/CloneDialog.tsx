@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Lock } from "lucide-react";
 import { api, CANCELLED, cancelNetwork, errorMessage, github, type NetOp, netOp, type Progress } from "@/lib/api";
 import { cloneFolderName, cloneUrl } from "@/lib/git/clone";
-import { notifyIfAway } from "@/lib/app/notify";
 import { updateSettings, useSettings } from "@/lib/settings";
 import { toast } from "@/lib/app/toast";
 import { createStore } from "@/lib/store";
@@ -70,7 +69,6 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
     setProgress(null);
     try {
       const path = await api.cloneRepo(cloneUrl(url), parent, folder.trim(), o);
-      notifyIfAway("notifyGit", "Clone finished", folder.trim());
       updateSettings({ cloneParent: parent });
       close();
       onCloned(path);
@@ -78,7 +76,6 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
       if (e === CANCELLED) toast("info", "Clone cancelled");
       else {
         setError(errorMessage(e));
-        notifyIfAway("notifyGit", "Clone failed", errorMessage(e));
       }
     } finally {
       setOp(null);

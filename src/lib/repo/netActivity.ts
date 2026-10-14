@@ -1,5 +1,4 @@
-import { CANCELLED, CANCELLED_STASHED, errorMessage, type NetOp, netOp, type Progress } from "../api";
-import { notifyIfAway } from "../app/notify";
+import { type NetOp, netOp, type Progress } from "../api";
 import { createStore } from "../store";
 
 /** The command the top bar shows with its progress and Cancel, whichever panel started it: a network one, or a commit while its hooks run. */
@@ -23,12 +22,7 @@ export async function withNetActivity<T>(label: string, fn: (op: NetOp) => Promi
   const op = netOp((progress) => update(active.map((a) => (a.op === op ? { ...a, progress } : a))));
   update([...active, { label, op, progress: null }]);
   try {
-    const value = await fn(op);
-    notifyIfAway("notifyGit", `${label} finished`);
-    return value;
-  } catch (e) {
-    if (e !== CANCELLED && e !== CANCELLED_STASHED) notifyIfAway("notifyGit", `${label} failed`, errorMessage(e));
-    throw e;
+    return await fn(op);
   } finally {
     update(active.filter((a) => a.op !== op));
   }

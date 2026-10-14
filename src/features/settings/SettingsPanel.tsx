@@ -1,5 +1,5 @@
 import { ask } from "@/lib/app/ask";
-import { Bell, CircleArrowUp, Code2, Gem, GitBranch, GitCompareArrows, Globe, Keyboard, Palette, RotateCcw, ScanSearch, Sparkles, SquareArrowOutUpRight, SquareTerminal } from "lucide-react";
+import { CircleArrowUp, Code2, Gem, GitBranch, GitCompareArrows, Globe, Keyboard, Palette, RotateCcw, ScanSearch, Sparkles, SquareArrowOutUpRight, SquareTerminal } from "lucide-react";
 import { IS_MAC } from "@/lib/platform";
 import { resetSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ import { GitSection } from "./sections/Git";
 import { CommitSection } from "./sections/Commit";
 import { ReviewSection } from "./sections/Review";
 import { OpenInSection } from "./sections/OpenIn";
-import { NotificationsSection } from "./sections/Notifications";
 import { type Recording, ShortcutsSection } from "./sections/Shortcuts";
 import { UpdatesSection } from "./sections/Updates";
 import { TerminalSection } from "./sections/Terminal";
@@ -22,7 +21,6 @@ const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette, group: "General" },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard, group: "General" },
   { id: "openIn", label: "Open In", icon: SquareArrowOutUpRight, group: "General" },
-  { id: "notifications", label: "Notifications", icon: Bell, group: "General" },
   { id: "updates", label: "Updates", icon: CircleArrowUp, group: "General" },
   { id: "editor", label: "Editor", icon: Code2, group: "Workspace" },
   { id: "diff", label: "Diff", icon: GitCompareArrows, group: "Workspace" },
@@ -112,7 +110,6 @@ export function SettingsPanel({
           {section === "commit" && <CommitSection />}
           {section === "review" && <ReviewSection />}
           {section === "openIn" && <OpenInSection />}
-          {section === "notifications" && <NotificationsSection />}
           {section === "shortcuts" && <ShortcutsSection recording={recording} setRecording={setRecording} />}
           {section === "updates" && <UpdatesSection />}
         </div>

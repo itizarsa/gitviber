@@ -2,11 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useMemo, useSyncExternalStore } from "react";
 import { pty } from "../api";
-import { enableNotifications } from "../app/notify";
 import { stoppedByQuit } from "../app/quit";
-import { toast } from "../app/toast";
-import { getSettings } from "../settings";
-import { readJson, writeJson } from "../storage";
 import { type AgentEntry, agentsWaiting, type AgentState, byUrgency, nextAgent, type PaneAgent, quitStops } from "./agentState";
 import { type Look, paneLook, shownState } from "./agentLook";
 import { lookedAt, needsYou } from "./needsYou";
@@ -33,7 +29,7 @@ export function onAgentFinished(l: (dir: string) => void) {
 function apply(p: Pane, read: PaneAgent | null, live = false) {
   const i = info(p);
   if (!i) return;
-  const { agent, note, first } = nextAgent(i.agent, read, live);
+  const { agent, note } = nextAgent(i.agent, read, live);
   if (!agent) since.delete(p.id);
   else {
     watchBadge();
@@ -45,8 +41,7 @@ function apply(p: Pane, read: PaneAgent | null, live = false) {
   // Woken (its background shell exited) before its finish was seen: that news is old, and its
   // next finish must be told again.
   if (live && agent?.state === "working" && i.agent?.state !== "working") lookedAt(p.id);
-  if (note) needsYou(p, { body: note }, agent?.state === "waiting" ? "notifyAgentWaiting" : "notifyAgentDone");
-  if (first && agent) suggestNotifications(agent.name);
+  if (note) needsYou(p);
 }
 
 /** Looks up the agents `only` (or every pane) run now. */
@@ -83,18 +78,6 @@ try {
   }).catch(() => {});
 } catch {
   // Not in Tauri (the browser-only dev fixture).
-}
-
-const HINT_KEY = "gitviber.agentNotifyHint";
-
-/** Once ever, and only while notifications are off: turning them on is what asks the OS. */
-function suggestNotifications(name: string) {
-  if (getSettings().notify || readJson(HINT_KEY, false)) return;
-  writeJson(HINT_KEY, true);
-  toast("info", `Get a notification when ${name} finishes?`, "While GitViber isn't the app in front. Turning them on asks your OS for permission.", {
-    label: "Turn on",
-    run: () => void enableNotifications(true),
-  });
 }
 
 /** Each pane's look (agentLook) with its folder, for the marks outside the panel. */
