@@ -32,7 +32,6 @@ import { revealPath } from "@/lib/app/openIn";
 import { windowTitle } from "@/lib/app/windowTitle";
 import { ChangesPanel } from "@/features/changes/ChangesPanel";
 import { ApplyPatchDialog, openApplyPatch } from "@/features/changes/ApplyPatchDialog";
-import { focusCommitMessage } from "@/features/changes/CommitBox";
 import { changeList } from "@/features/changes/changeList";
 import { changesView, ordered } from "@/features/changes/changesView";
 import { ChangesViewMenu } from "@/features/changes/ChangesViewMenu";
@@ -379,12 +378,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
     "view.toggleGitPanel": () => toggle("list", "git"),
     "view.toggleExplorer": () => toggle("files", "explorer"),
     "view.focusGitPanel": () => show("list", "git"),
-    "changes.focusMessage": () => {
-      setListTab("changes");
-      setReview(null);
-      sidebars.expand("list");
-      focusCommitMessage();
-    },
     "view.showExplorer": () => {
       setExplorerView("files");
       show("files", "explorer");
@@ -565,7 +558,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                 )}
                 {seenTabs.has("changes") && status && (
                   <KeptPanel shown={listTab === "changes" && review === null}>
-                    <ChangesPanel status={status} head={repo.commits[0] ?? null} main={main} activeKey={activeKey} onOpen={open} onHover={prefetch} refresh={() => repo.refresh(false)} viewed={viewed} setViewed={setViewed} onRevealInExplorer={revealInExplorer} onShowHistory={(path) => showHistory(path, true)} mtimes={mtimes} />
+                    <ChangesPanel status={status} activeKey={activeKey} onOpen={open} onHover={prefetch} refresh={() => repo.refresh(false)} viewed={viewed} setViewed={setViewed} onRevealInExplorer={revealInExplorer} onShowHistory={(path) => showHistory(path, true)} mtimes={mtimes} />
                   </KeptPanel>
                 )}
                 {seenTabs.has("pulls") && (

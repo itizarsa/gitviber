@@ -3,7 +3,7 @@ import { ArrowLeftToLine, ArrowRightToLine, Check, Minus, Plus, Undo2 } from "lu
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useListFilter } from "@/components/ListFilter";
 import { Windowed } from "@/components/Windowed";
-import { api, type Commit, type FileChange, type RepoStatus } from "@/lib/api";
+import { api, type FileChange, type RepoStatus } from "@/lib/api";
 import { hasConflictMarkers } from "@/lib/git/conflicts";
 import { ignorePattern } from "@/lib/git/gitignore";
 import { focusPanel } from "@/lib/ui/panels";
@@ -25,7 +25,6 @@ import { OperationBanner } from "./OperationBanner";
 import { AllCaughtUp, collapsedSections, FolderRow, NestedRow, ReviewSummary, Row, Section, SectionBtn } from "./ChangeRows";
 import { changesView, closedFolders, folderKey, type Item, itemsOf, type Mtimes, ordered, toggleFolder } from "./changesView";
 import { foldersOf } from "@/lib/ui/pathTree";
-import { CommitBox } from "./CommitBox";
 import { RowAction } from "@/components/RowAction";
 import { primaryKey } from "@/lib/platform";
 import { useNotes } from "@/lib/review/noteStore";
@@ -34,10 +33,6 @@ import { openGuide } from "@/features/review/guides";
 
 interface Props {
   status: RepoStatus;
-  /** HEAD's commit, for Amend; null before the first commit or while history loads. */
-  head: Commit | null;
-  /** The main worktree: sign-off is kept per repository, across its worktrees. */
-  main: string;
   activeKey: string | null;
   onOpen: (s: Selection, pin?: boolean) => void;
   /** Hovering a row starts loading it, so the click feels instant. */
@@ -59,7 +54,7 @@ const ROW_HEIGHT = 26;
 
 const SECTION_OF: Record<Change["kind"], string> = { conflict: "Conflicts", staged: "Staged", unstaged: "Changes" };
 
-export function ChangesPanel({ status: full, head, main, activeKey, onOpen, onHover, refresh, viewed, setViewed, onRevealInExplorer, onShowHistory, mtimes }: Props) {
+export function ChangesPanel({ status: full, activeKey, onOpen, onHover, refresh, viewed, setViewed, onRevealInExplorer, onShowHistory, mtimes }: Props) {
   // The list and its section actions (Stage all, Discard) cover the files the filter leaves, and
   // say so ("Stage 3 shown"); the commit takes hidden ones too and says how many.
   const filter = useListFilter("git", "Filter changed files");
@@ -685,19 +680,15 @@ export function ChangesPanel({ status: full, head, main, activeKey, onOpen, onHo
         {sections.filter(([t]) => !collapsed.includes(t)).map(([t, s]) => <Fragment key={t}>{s}</Fragment>)}
       </div>
       {sections.some(([t]) => collapsed.includes(t)) && (
-        // The commit box's top border is the last header's bottom one.
         <div className="shrink-0 border-t border-border [&>:last-child>:first-child]:border-b-0">
           {sections.filter(([t]) => collapsed.includes(t)).map(([t, s]) => <Fragment key={t}>{s}</Fragment>)}
         </div>
       )}
       {stashing && <StashDialog status={full} paths={stashing} onClose={() => setStashing(null)} refresh={refresh} />}
-      {status.operation && !status.operation.split ? (
-        // Committing by hand mid-rebase would splice an extra commit into the history; a split's pieces are the point.
+      {status.operation && !status.operation.split && (
         <div className="shrink-0 border-t border-border bg-panel px-3 py-2.5 text-[11.5px] text-muted-foreground">
           A {status.operation.kind} is in progress. Resolve the conflicts, then use <span className="font-medium text-foreground">Continue</span> above.
         </div>
-      ) : (
-        <CommitBox status={full} shown={filtering ? status : null} head={head} main={main} refresh={refresh} />
       )}
     </div>
   );

@@ -43,7 +43,6 @@ export const COMMANDS = [
   { id: "view.focusCode", title: "Focus Code View", category: "View", keys: ["cmd+e"] },
   // GitHub Desktop's Go to Commit Message. Not its ⌘G, macOS's Find Next: ⌃⌘, as fetch, pull and push,
   // which neither macOS, Monaco nor the terminal uses with C. Elsewhere ⌃ is the Super key: unbound.
-  { id: "changes.focusMessage", title: "Focus Commit Message", category: "View", keys: ["ctrl+cmd+c"], keysOther: [] },
   // The id is from when it only showed the panel; kept so a user's binding for it still applies.
   { id: "view.showExplorer", title: "Focus Explorer", category: "View", keys: ["shift+cmd+e"] },
   { id: "view.focusNextPanel", title: "Focus Next Panel", category: "View", keys: ["f6"] },

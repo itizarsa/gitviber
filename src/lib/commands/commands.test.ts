@@ -319,8 +319,8 @@ test("stage, unstage and discard the change at the cursor leave Monaco's keys an
   assert.equal(commandFor("alt+cmd+n", {}, true)?.id, "diff.unstageChange");
 });
 
-test("fetch, pull, push and Focus Commit Message reach the app from text fields and the terminal (macOS); unbound elsewhere", () => {
-  const keys = { "git.fetch": "ctrl+shift+cmd+t", "git.pull": "ctrl+shift+cmd+p", "git.push": "ctrl+cmd+p", "changes.focusMessage": "ctrl+cmd+c" } as const;
+test("fetch, pull and push reach the app from text fields and the terminal (macOS); unbound elsewhere", () => {
+  const keys = { "git.fetch": "ctrl+shift+cmd+t", "git.pull": "ctrl+shift+cmd+p", "git.push": "ctrl+cmd+p" } as const;
   for (const [id, chord] of Object.entries(keys) as [keyof typeof keys, string][]) {
     assert.deepEqual(bindingsFor(id, {}, true), [chord]);
     assert.deepEqual(bindingsFor(id, {}, false), []);
@@ -330,7 +330,6 @@ test("fetch, pull, push and Focus Commit Message reach the app from text fields 
   }
   assert.equal(press("t", "KeyT", { ctrlKey: true, shiftKey: true, metaKey: true }), "ctrl+shift+cmd+t");
   assert.equal(commandFor("ctrl+cmd+p", {}, true)?.id, "git.push");
-  assert.equal(commandFor("ctrl+cmd+c", {}, true)?.id, "changes.focusMessage");
   // ⌘G stays macOS's Find Next.
   assert.equal(commandFor("cmd+g", {}, true), undefined);
 });
