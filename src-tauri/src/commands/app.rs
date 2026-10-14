@@ -1,7 +1,7 @@
 use crate::state::{blocking, AppState, Res};
 use crate::{
-    agents, cli, clipboard, conversations, errors, git, launch, menu, process, pty,
-    translucency, updates,
+    agents, cli, clipboard, conversations, errors, git, launch, menu, process, pty, translucency,
+    updates,
 };
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -338,4 +338,3 @@ pub fn set_menu(
 ) -> Res<()> {
     menu::update(&app, &handles, items, recent).map_err(|e| e.to_string())
 }
-

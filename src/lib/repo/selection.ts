@@ -45,8 +45,6 @@ export type Selection =
   | { kind: "compare"; base: ComparePoint; head: ComparePoint; mergeBase: boolean }
   // Two working-tree files side by side (the explorer's Compare Selected): `file.oldPath` against `file.path`.
   | { kind: "files"; file: FileChange }
-  // A file in an Obsidian vault (`vault`: its folder), outside the repo; `path` is vault-relative.
-  | { kind: "vault"; vault: string; path: string }
   // An agent's guided review (features/review/GuideView) of a commit, of HEAD's branch since
   // `base` (a full ref, `label` its short name), of a pull request (`target`: the repo it's on), or
   // of the worktree's uncommitted changes.
@@ -87,7 +85,7 @@ const rangeScope = (range: PullRange) => `${range.number ?? ""}@${range.base}..$
 
 /** File path for file-like tabs; for a PR or issue overview, a label. */
 export function selectionPath(s: Selection) {
-  if (s.kind === "file" || s.kind === "vault") return s.path;
+  if (s.kind === "file") return s.path;
   if (s.kind === "pull") return `#${s.pull.number} ${s.pull.title}`;
   if (s.kind === "issue") return `#${s.issue.number} ${s.issue.title}`;
   if (s.kind === "changes") return s.list === "commit" ? `Commit ${s.commit.shortSha}` : s.list === "range" ? `All Changes · ${rangeLabel(s.range)}` : LIST_TITLES[s.list];
@@ -104,24 +102,19 @@ export function onDisk(s: Selection) {
 }
 
 /**
- * What unsaved edits to the tab's file are kept under (lib/editor/edits): a repo file by its
- * path, a vault's by its tab's key. Null for anything that can't be typed into.
+ * What unsaved edits to the tab's file are kept under (lib/editor/edits): its path. Null for
+ * anything that can't be typed into.
  */
 export function editPath(s: Selection) {
   // An unstaged diff's new side is the file on disk, typed into as the file view is.
-  if (s.kind === "file" || s.kind === "unstaged") return selectionPath(s);
-  return s.kind === "vault" ? selectionKey(s) : null;
+  return s.kind === "file" || s.kind === "unstaged" ? selectionPath(s) : null;
 }
-
-/** A vault note's path inside its vault, taken out of its edit key (`editPath`). */
-export const vaultEditFile = (vault: string, key: string) => key.slice(editPath({ kind: "vault", vault, path: "" })!.length);
 
 /** Identity of what a tab shows; also used to match list rows to the open tab. */
 export function selectionKey(s: Selection) {
   // By url: a fork's #3 and its original's #3 are different threads.
   if (s.kind === "pull") return `pull:${s.pull.url}`;
   if (s.kind === "issue") return `issue:${s.issue.url}`;
-  if (s.kind === "vault") return `vault:${s.vault}:${s.path}`;
   // The same tab as its page moves on.
   if (s.kind === "browser") return `browser::${s.id}`;
   // A PR file by its commits too, as its range's list is.

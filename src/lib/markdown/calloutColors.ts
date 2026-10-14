@@ -1,5 +1,5 @@
 // Obsidian's default theme colors, as RGB channels ("r g b") for dark and light themes: the
-// callouts and the canvas's six colors use them.
+// callouts use them.
 export type Rgb = readonly [dark: string, light: string];
 
 export const COLORS = {

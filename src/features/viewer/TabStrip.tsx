@@ -2,7 +2,6 @@ import { Bot, ExternalLink, Files, GitCompareArrows, Globe, History, ListTree, R
 import { type RefObject, useLayoutEffect, useRef } from "react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { compareLabel, editPath, onDisk, type Selection, selectionPath } from "@/lib/repo/selection";
-import { noteName } from "@/lib/obsidian/links";
 import { isFileSelection } from "./diffPairs";
 import { useShortcut } from "@/lib/commands/keybindings";
 import { focusMovedTab, focusTab, isMenuKey, openRowMenu, tabMove } from "@/lib/ui/useListNav";
@@ -34,8 +33,6 @@ interface Props {
 
 function tabLabel(sel: Selection) {
   if (sel.kind === "compare") return `Compare ${compareLabel(sel)}`;
-  // A note by its name, as Obsidian's tabs have it.
-  if (sel.kind === "vault") return noteName(sel.path);
   return isFileSelection(sel) ? basename(selectionPath(sel)) : selectionPath(sel);
 }
 
@@ -78,7 +75,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onCloseTabs, onPin
   };
 
   // As VS Code: two open files of one name show their folders too.
-  const folders = distinctFolders(tabs.filter((t) => isFileSelection(t.sel) || t.sel.kind === "vault").map((t) => selectionPath(t.sel)));
+  const folders = distinctFolders(tabs.filter((t) => isFileSelection(t.sel)).map((t) => selectionPath(t.sel)));
 
   return (
     <div
@@ -302,7 +299,7 @@ function BrowserItems({ sel }: { sel: PageSelection }) {
 }
 
 function TabKind({ sel }: { sel: Selection }) {
-  const labels: Partial<Record<Selection["kind"], string>> = { staged: "staged", unstaged: "diff", conflict: "conflict", vault: "vault" };
+  const labels: Partial<Record<Selection["kind"], string>> = { staged: "staged", unstaged: "diff", conflict: "conflict" };
   const label =
     sel.kind === "commit" ? sel.commit.shortSha : sel.kind === "pr-file" ? [sel.range.number && `#${sel.range.number}`, sel.range.label].filter(Boolean).join(" ") || "compare" : sel.kind === "branch" ? `vs ${sel.label}` : sel.kind === "files" ? `vs ${basename(sel.file.oldPath ?? "")}` : labels[sel.kind];
   return label ? <span className="shrink-0 font-mono text-[10px] text-subtle">{label}</span> : null;

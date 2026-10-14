@@ -1,6 +1,6 @@
 import { Bug, Check, ChevronRight, CircleCheck, CircleHelp, ClipboardList, Flame, Info, Lightbulb, List, type LucideIcon, MessageSquareWarning, OctagonAlert, Pencil, Quote, TriangleAlert, X, Zap } from "lucide-react";
 import { Children, isValidElement, type ReactNode, useState } from "react";
-import { COLORS, type Rgb } from "@/lib/obsidian/colors";
+import { COLORS, type Rgb } from "@/lib/markdown/calloutColors";
 import { useSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 

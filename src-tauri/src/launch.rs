@@ -1,6 +1,6 @@
 //! Handing things to the OS: a web page to the browser, a file to the file manager.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 /// Links in GitHub text are written by anyone, so only http(s) passes, in the canonical
@@ -33,14 +33,6 @@ fn desktop_tool(program: &str) -> Command {
 /// Opens a web page in the default browser.
 pub fn open_url(url: &str) -> Result<(), String> {
     launch(&openable(url).ok_or("refusing to open this URL")?)
-}
-
-/// Opens a file of an Obsidian vault in Obsidian, by its obsidian:// link.
-pub fn open_in_obsidian(path: &Path) -> Result<(), String> {
-    let mut url = tauri::Url::parse("obsidian://open").map_err(|e| e.to_string())?;
-    url.query_pairs_mut()
-        .append_pair("path", &path.to_string_lossy());
-    launch(url.as_str())
 }
 
 /// Hands `url` to the OS's opener, as one argument.

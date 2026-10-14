@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Commit } from "../api/types.ts";
-import { editPath, filesSelection, isComparePoint, onDisk, type Selection, selectionKey, selectionPath, vaultEditFile } from "./selection.ts";
+import { editPath, filesSelection, isComparePoint, onDisk, type Selection, selectionKey, selectionPath } from "./selection.ts";
 
 test("two working-tree files compared make one tab per pair, the right one's path its own", () => {
   const ab = filesSelection("src/a.ts", "src/b.ts");
@@ -53,15 +53,6 @@ test("a stored comparison with a side missing or misshapen isn't taken for one",
   for (const bad of [undefined, null, "a", {}, { ref: "refs/heads/a" }, { ref: 1, label: "a" }]) assert.equal(isComparePoint(bad), false);
 });
 
-test("a vault note's path comes back out of its edit key, at the vault's root or deep in it", () => {
-  for (const vault of ["/Users/x/My Vault", "C:\\Notes", "/v/odd:name"]) {
-    for (const path of ["Home.md", "Projects/Alpha/Plan.md", "Odd names/Note #1.md", "a:b.md"]) {
-      const key = editPath({ kind: "vault", vault, path })!;
-      assert.equal(vaultEditFile(vault, key), path);
-    }
-  }
-});
-
 test("a browser tab is one tab wherever its page goes, and no file", () => {
   const at = (url: string): Selection => ({ kind: "browser", id: "tab-1", url });
   assert.equal(selectionKey(at("http://localhost:5173/")), selectionKey(at("http://localhost:5173/docs")));
@@ -77,11 +68,6 @@ test("a browser tab's key is its own, whatever its id or the other tabs' paths h
   const ids = ["tab-1", "", ":", "::x", "browser::tab-1", "vault:a:b", "a/b", "ü"];
   const keys = ids.map((id) => selectionKey({ kind: "browser", id, url: "about:blank" }));
   assert.equal(new Set(keys).size, ids.length);
-  const others: Selection[] = [
-    { kind: "vault", vault: "browser", path: ":tab-1" },
-    { kind: "vault", vault: "", path: "tab-1" },
-  ];
-  for (const s of others) assert.equal(keys.includes(selectionKey(s)), false, selectionKey(s));
   // The title is the page's last, and isn't part of who the tab is.
   assert.equal(selectionKey({ kind: "browser", id: "tab-1", url: "about:blank", title: "Docs" }), keys[0]);
   assert.equal(selectionPath({ kind: "browser", id: "tab-1", url: "about:blank" }), "New Tab");

@@ -13,7 +13,6 @@ import { createEditModel, detachModel, monaco, unitOf } from "./monaco";
  * when the edit began (`base`), so a save can tell whether something else changed the file since.
  * They're stored per worktree as well: macOS's ⌘Q quits without asking, and a reload or a repo
  * switch shouldn't lose them either. An edit restored from there has no model until it's shown.
- * Files outside the repo (an Obsidian vault's) belong to a store of their own (openStore).
  */
 interface Edit {
   base: string;
@@ -57,7 +56,7 @@ export const useEdited = () =>
 
 export const isEdited = (path: string) => edits.has(path);
 
-/** The file's name for a prompt: a vault note's key carries its vault's folder. */
+/** The file's name for a prompt. */
 const nameOf = (path: string) => stores.get(edits.get(path)?.store ?? owners.get(path) ?? "")?.name?.(path) ?? basename(path);
 
 /** Whether `model` holds an unsaved edit: a view done with it leaves it to the edit, undisposed. */
@@ -129,22 +128,6 @@ export function saveEdit(path: string): Promise<boolean> {
   return run;
 }
 const saving = new Map<string, Promise<boolean>>();
-
-/**
- * Opens a store of edits kept apart from any repo's (an Obsidian vault's: its files outside the
- * repo, its edits across repo switches); the edits saved there come back once.
- */
-export function openStore(id: string, io: EditStore) {
-  if (stores.has(id)) return;
-  stores.set(id, io);
-  restore(id);
-  changed();
-}
-
-/** Edits to `path` go to the store `id` (see openStore), not the repo's. */
-export function claimEdits(path: string, id: string) {
-  owners.set(path, id);
-}
 
 function restore(id: string) {
   for (const [path, e] of Object.entries(loadEdits(id))) {

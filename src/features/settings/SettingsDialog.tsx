@@ -62,7 +62,7 @@ export function SettingsDialog({ main }: { main: string | null }) {
         }}
         className="top-1/2 flex outline-none h-[min(620px,calc(100vh-64px))] w-[calc(100vw-48px)] max-w-[880px] -translate-y-1/2 overflow-hidden p-0"
       >
-        <DialogDescription className="sr-only">Appearance, keyboard shortcut, Open in, notification, update, editor, diff, terminal, Obsidian, git and commit message preferences.</DialogDescription>
+        <DialogDescription className="sr-only">Appearance, keyboard shortcut, Open in, update, editor, diff, terminal, git and commit message preferences.</DialogDescription>
         {section && (
           <SettingsPanel
             section={section}

@@ -28,7 +28,6 @@ mod navigation;
 mod network;
 #[cfg(target_os = "macos")]
 mod objc;
-mod obsidian;
 mod open_in;
 mod opened;
 mod patch;
@@ -324,15 +323,6 @@ pub fn run() {
             commands::changes::open_merge_tool,
             commands::changes::open_diff_tool,
             commands::files::write_file,
-            commands::obsidian::vaults,
-            commands::obsidian::vault_list_dir,
-            commands::obsidian::vault_files,
-            commands::obsidian::vault_read_file,
-            commands::obsidian::vault_media,
-            commands::obsidian::vault_write_file,
-            commands::obsidian::vault_watch,
-            commands::obsidian::vault_reveal,
-            commands::obsidian::vault_open_in_obsidian,
             commands::files::create_file,
             commands::files::create_dir,
             commands::files::rename_path,
