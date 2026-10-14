@@ -6,6 +6,22 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
+The first release of this fork, trimmed to reviewing and git: [FORK_PLAN.md](FORK_PLAN.md) has the details.
+
+### Added
+
+- **A repository rail.** The saved repositories sit as tiles at the window's edge: one click opens one, the open one shows its changed-file count, and right-click opens, starts a terminal, reveals, copies the path or removes it. The sidebar, terminal and Settings toggles live at its foot.
+- **One sidebar.** Explorer, Search, Changes and History share one sidebar, on `⌃1`–`⌃4` (Alt+1–4 off macOS). `⌘B` shows and hides it; `⌥⌘B` or Settings → Appearance → Sidebar position docks it left or right.
+
+### Removed
+
+- The commit box: commit from the terminal or an agent.
+- Everything GitHub: pull requests, issues, checks, permalinks, PR checkout, issue worktrees and the GitHub account.
+- The browser tab, the Obsidian vault, desktop notifications, Apply Patch from Clipboard, and undo/redo of git actions. A discard still keeps the old version in the Trash.
+- The in-app updater: `brew upgrade --cask itizarsa/tap/gitviber` updates it.
+
 ## [0.1.13] - 2026-10-09
 
 ### Added
@@ -574,7 +590,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/emircan-sahin/gitviber/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/itizarsa/gitviber/compare/v0.1.13...v0.2.0
 [0.1.13]: https://github.com/emircan-sahin/gitviber/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/emircan-sahin/gitviber/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/emircan-sahin/gitviber/compare/v0.1.10...v0.1.11

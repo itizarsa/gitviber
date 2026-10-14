@@ -22,9 +22,10 @@ cask "gitviber" do
   # The `gitviber` command (src-tauri/resources/gitviber), linked into Homebrew's bin.
   binary "#{appdir}/GitViber.app/Contents/Resources/bin/gitviber"
 
-  # A build without an Apple Developer ID isn't notarized: let Gatekeeper open it anyway.
-  postflight do
-    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{appdir}/GitViber.app"]
+  # GitViber is self-signed, not notarized. Clearing quarantine lets it open without
+  # the Gatekeeper prompt.
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/GitViber.app"], must_succeed: false
   end
 
   zap trash: [
