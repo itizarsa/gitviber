@@ -8,6 +8,56 @@ referenced below where relevant. A 45-second walkthrough of everything listed he
 [`docs/fork-plan/walkthrough.mp4`](docs/fork-plan/walkthrough.mp4): the repo popover, the PRs and
 Issues tabs, Undo history, a Browser tab, and the Obsidian, Notifications and Browser settings.
 
+## Status: implemented
+
+Everything below has been built on `arshath/compassionate-galileo-706r8j`, one commit per step.
+Screenshots of the result are in [`docs/fork-plan/after/`](docs/fork-plan/after/), along with a
+67-second walkthrough, [`fork-walkthrough.mp4`](docs/fork-plan/after/fork-walkthrough.mp4).
+
+![The four repository list styles side by side](docs/fork-plan/after/options.png)
+
+| Asked for | What was done |
+|---|---|
+| Repo picker → sidebar, one click | The top bar's popover is gone. The repositories sit at the window's edge as a **rail** of tiles, beside the sidebar (or optionally as a list atop it). Settings → Appearance → Repositories picks one of four styles: *Rail*, *Rail with toggles* (sidebar/terminal/settings buttons move from the top bar to the rail's foot, which fills its empty space), *Rail with worktrees* (the open repo's worktrees as colored dots under its tile), or *List in the sidebar*. The open repo's tile shows its changed-file count. Right-click a tile to open it, start a terminal, reveal it, copy its path or remove it. |
+| One sidebar with Explorer, Search, Changes and History, docked left or right | Done. Tabs on ⌃1–⌃4 (Alt+1–4 off macOS), ⌘B toggles the sidebar, ⌥⌘B moves it, and Settings → Appearance → Sidebar position sets the side. Moving it doesn't reload the code view or terminals. |
+| Remove the commit box | Done. Staging, discard, stash and review marks stay. |
+| Remove PRs, Issues: "remove everything" GitHub | PRs, issues, CI checks, PR/issue tabs and terminal links, PR checkout, issue → worktree, fork-original history, permalinks and Open on GitHub, GitHub repos in Clone, protected branches, gh account switching, AI commit/PR messages, and the Rust GitHub API client with `ureq`. Settings → Commit Messages is now **Agent**: the CLI that Explain Commit and Guided Review still run. |
+| Remove the Browser | Done, including the macOS WKWebView code, `gitviber browser`, the terminal's Open localhost menu, and three objc2 crates. |
+| Remove Obsidian | Done. Callout colors move to `lib/markdown/calloutColors.ts`, since they style every markdown file. |
+| Remove Notifications | Done, including the notification plugin. A terminal or agent that needs you still marks its pane and tab. |
+| Remove Apply Patch from Clipboard | Done, along with the clipboard read only it used. |
+| Remove Undo History, "all should go" | The undo/redo buttons, history, ⌘Z/⇧⌘Z, toast Undo and the journal behind them. **Kept on purpose:** what a discard, restore or revert overwrites is still copied to the Trash first (`src-tauri/src/backup.rs`). "Undo commit" in History is a git soft reset, not the journal, so it stays. |
+| Homebrew tap | The in-app updater is removed (it pointed at upstream's releases). The cask template installs from `itizarsa/gitviber`, sets `auto_updates false`, and clears quarantine for an unnotarized build. `homebrew.yml` commits to `itizarsa/homebrew-tap`. |
+
+Older saved windows can hold tabs this fork no longer has (browser, vault, PR, issue, PR guided
+review). They're dropped on restore instead of crashing.
+
+**Checks** (`pnpm check`, which CI runs): version match, `tsc`, production build, 580 JS tests,
+license list, `cargo fmt`, `cargo clippy -D warnings` all pass. Rust tests: 481/486. The 5 that
+fail are this container's, not the code's: 4 fail the same way on untouched upstream here (running
+as root, no signing key, the sticky Trash layout), and the 5th passes on its own (it's
+timing-sensitive under load).
+
+**Not done / your call:**
+- The app identifier is still `app.gitviber.desktop`. If upstream GitViber is also installed,
+  they share settings, and the `gitviber` CLI opens whichever macOS picks. Change `identifier` in
+  `tauri.conf.json`, `open -b` in `src-tauri/resources/gitviber`, and the cask's `zap` paths
+  together if you want them apart.
+- macOS-only Rust code was edited (the browser removal, the clipboard) but can only be compiled
+  on a Mac: run `pnpm check:rust` there once.
+- README and CHANGELOG still describe upstream.
+
+### Build and install on your Mac
+
+```sh
+pnpm install
+pnpm install:mac          # release build of the .app, copied to /Applications
+# or, for your tap: pnpm tauri build --bundles dmg --target universal-apple-darwin
+# upload the .dmg to a GitHub release, then fill in packaging/homebrew/gitviber.rb
+```
+
+The rest of this file is the original plan, kept for reference.
+
 ---
 
 ## 0. Where things are today
