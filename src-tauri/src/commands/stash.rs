@@ -2,9 +2,8 @@
 //! by its sha.
 
 use crate::git;
-use crate::journal::{files_label, Action, Mode};
 use crate::lines;
-use crate::state::{in_repo, indexed_once, journaled, AppState, Res};
+use crate::state::{acting, in_repo, indexed_once, AppState, Res};
 use std::path::Path;
 use tauri::State;
 
@@ -41,11 +40,7 @@ pub async fn stash_push(
 /// True when applying stopped on conflicts (the stash is kept then).
 #[tauri::command]
 pub async fn stash_branch(state: State<'_, AppState>, name: String, sha: String) -> Res<bool> {
-    let label = format!("Branch {name} from a stash");
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::stash_branch(r, &name, &sha)
-    })
-    .await
+    acting(&state, move |r| git::stash_branch(r, &name, &sha)).await
 }
 
 /// True when it stopped on conflicts.
@@ -68,14 +63,11 @@ pub async fn stash_lines(
     mut request: lines::Request,
 ) -> Res<()> {
     request.action = "stash".into();
-    let (journal, index) = (state.journal.clone(), state.index.clone());
+    let index = state.index.clone();
     in_repo(&state, move |r| {
         let paths = [request.path.clone()];
-        let label = files_label("Stash lines of", &paths);
         let write = move |r: &Path| lines::stash(r, &message, &request).map(|_| vec![]);
-        journal
-            .replace(r, label, "stashed", &paths, &index, write)
-            .map(|_| ())
+        crate::backup::replace(r, "stashed", &paths, &index, write).map(|_| ())
     })
     .await
 }
@@ -88,15 +80,12 @@ pub async fn stash_restore_file(
     path: String,
     untracked: bool,
 ) -> Res<()> {
-    let (journal, index) = (state.journal.clone(), state.index.clone());
+    let index = state.index.clone();
     in_repo(&state, move |r| {
         let paths = [path.clone()];
-        let label = files_label("Take from a stash", &paths);
         let write =
             move |r: &Path| git::stash_restore_file(r, &sha, &path, untracked).map(|_| vec![]);
-        journal
-            .replace(r, label, "before stash", &paths, &index, write)
-            .map(|_| ())
+        crate::backup::replace(r, "before stash", &paths, &index, write).map(|_| ())
     })
     .await
 }

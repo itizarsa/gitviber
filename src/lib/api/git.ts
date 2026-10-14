@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { network } from "./network";
-import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles, Journal, JournalEntry, LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, NotifyPermission, OpenInApp, Opened, OpenedRepo, PatchPreview, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
+import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, NotifyPermission, OpenInApp, Opened, OpenedRepo, PatchPreview, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
 
 /** Commits per history page: every list asks for this many, and a full page means there may be more. */
 export const LOG_PAGE = 200;
@@ -321,12 +321,6 @@ export const api = {
   remoteTags: (op?: NetOp) => network<RemoteTags>("remote_tags", {}, op),
   /** The commit to link the working tree's `path` (or its 1-based `lines`) to on GitHub, and where the lines are in it. Refused, saying why, when it isn't there yet. */
   githubPermalink: (path: string, lines: [number, number] | null) => invoke<{ sha: string; tree: boolean; lines: [number, number] | null }>("github_permalink", { path, lines }),
-  journal: () => invoke<Journal>("journal"),
-  /** The newest entry's id; a change across an action means it was recorded. */
-  journalLast: () => invoke<number | null>("journal_last"),
-  /** `id`: the entry meant; refused if it's no longer the next one. */
-  undo: (id?: number) => invoke<JournalEntry>("undo", { id }),
-  redo: (id?: number) => invoke<JournalEntry>("redo", { id }),
   /** The menu bar's items that changed (menu.rs), and File → Open Recent when it did. */
   setMenu: (items: Record<string, unknown>, recent: unknown) => invoke<void>("set_menu", { items, recent }),
   /** Into the app's error log (errors.rs). */

@@ -4,7 +4,7 @@ import { FileIcon } from "@/components/FileIcon";
 import { LineCounts, PathLabel, StatusLetter } from "@/components/StatusBadge";
 import { api, type PatchPreview } from "@/lib/api";
 import { failed, toast } from "@/lib/app/toast";
-import { rewriteFiles } from "@/lib/repo/undo";
+import { rewriteFiles } from "@/lib/repo/rewriteFiles";
 import { createStore } from "@/lib/store";
 
 /** The patch read from the clipboard, and what applying it would do, while the dialog asks. */

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { api, type Commit, errorMessage, type FileChange, type RepoStatus, type Stash, type StashFiles } from "@/lib/api";
 import { type Selection, selectionKey } from "@/lib/repo/selection";
 import { toast } from "@/lib/app/toast";
-import { rewriteFiles } from "@/lib/repo/undo";
+import { rewriteFiles } from "@/lib/repo/rewriteFiles";
 import { copyLater } from "@/lib/app/clipboard";
 import { useListNav } from "@/lib/ui/useListNav";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,7 @@ export function StashList({ stashes, activeKey, onOpen, onHover, refresh }: Prop
   const [open, setOpen] = useState<string | null>(null);
   const [files, setFiles] = useState<Record<string, StashFiles>>({});
   // Conflicts from an apply or pop land in Changes like a merge's; git keeps the stash then.
-  const { busy, run: act } = useGitAction({ refresh, tracked: false, conflicts: "Resolve them in Changes. The stash is kept; drop it once you're done." });
+  const { busy, run: act } = useGitAction({ refresh, conflicts: "Resolve them in Changes. The stash is kept; drop it once you're done." });
   const [branching, setBranching] = useState<Stash | null>(null);
   const [renaming, setRenaming] = useState<Stash | null>(null);
   const nav = useListNav({ activeKey });

@@ -140,8 +140,6 @@ test("what still runs while typing in a text field or the terminal (macOS)", () 
   assert.equal(typing("j", "review.nextFile"), false);
   assert.equal(typing("alt+down", "diff.nextChange"), false);
   assert.equal(typing("f7", "diff.nextChange"), true);
-  // Text fields keep ⌘Z whatever it's bound to.
-  assert.equal(typing("cmd+z", "git.undo"), false);
 });
 
 test("a file being edited takes ⌥Z for word wrap, unless it types a letter there", () => {
@@ -160,7 +158,6 @@ test("what still runs while typing (elsewhere: cmd is the physical Ctrl)", () =>
   assert.equal(typing("cmd+b", "view.toggleGitPanel"), true);
   assert.equal(typing("cmd+right", "tab.next"), false, "Ctrl+→ moves by word");
   assert.equal(typing("alt+1", "view.changes"), false, "Alt types characters on some layouts");
-  assert.equal(typing("cmd+z", "git.undo"), false);
 });
 
 test("the terminal hands the app its Ctrl chords, except Ctrl+letter", () => {

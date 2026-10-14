@@ -13,7 +13,6 @@ mod conversations;
 mod github_token;
 mod history;
 mod history_more;
-mod journal;
 mod lines;
 mod main_back;
 mod main_back_edges;
@@ -44,7 +43,6 @@ mod terminal_links;
 mod watcher;
 mod worktrees;
 
-use crate::journal::{Action, Journal, Mode};
 use crate::network::Net;
 use crate::{fs as vfs, git::*};
 use std::fs;
@@ -106,7 +104,7 @@ impl Drop for Sandbox {
     }
 }
 
-/// Clean up as the command runs it: the worktrees, then their branches (journaled there).
+/// Clean up as the command runs it: the worktrees, then their branches (as the command does).
 fn clean_up_worktrees(repo: &Path, list: &[CleanUp]) -> CleanedUp {
     let (mut out, branches) = remove_merged_worktrees(repo, list);
     delete_merged_branches(repo, &mut out, branches);
@@ -224,7 +222,7 @@ fn on_branch(repo: &Path) -> String {
         .to_string()
 }
 
-/// Undo (`forward` false) or redo the next entry.
-fn step(j: &Journal, repo: &Path, forward: bool) -> Result<(), String> {
-    j.step(repo, forward, None, &Mutex::new(())).map(|_| ())
+/// What a command runs through `state::acting`: `f` on the repo.
+fn record<T>(repo: &Path, f: impl FnOnce(&Path) -> Result<T, String>) -> Result<T, String> {
+    f(repo)
 }

@@ -1,5 +1,4 @@
-use crate::journal::{Action, Mode};
-use crate::state::{in_repo, journaled, read_repo, watch_network, AppState, Res};
+use crate::state::{acting, in_repo, read_repo, watch_network, AppState, Res};
 use crate::{git, network};
 use tauri::ipc::Channel;
 use tauri::State;
@@ -33,27 +32,12 @@ pub async fn delete_merged(
     merged: Vec<String>,
     upstream: Vec<String>,
 ) -> Res<()> {
-    let label = match (merged.as_slice(), upstream.as_slice()) {
-        ([one], []) | ([], [one]) => format!("Delete branch {one}"),
-        _ => format!("Delete {} branches", merged.len() + upstream.len()),
-    };
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::delete_merged(r, &merged, &upstream)
-    })
-    .await
+    acting(&state, move |r| git::delete_merged(r, &merged, &upstream)).await
 }
 
 #[tauri::command]
 pub async fn switch_branch(state: State<'_, AppState>, name: String, create: bool) -> Res<()> {
-    let label = if create {
-        format!("Create branch {name}")
-    } else {
-        format!("Switch to {name}")
-    };
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::switch_branch(r, &name, create)
-    })
-    .await
+    acting(&state, move |r| git::switch_branch(r, &name, create)).await
 }
 
 #[tauri::command]
@@ -62,14 +46,7 @@ pub async fn delete_branches(
     names: Vec<String>,
     force: bool,
 ) -> Res<()> {
-    let label = match names.as_slice() {
-        [one] => format!("Delete branch {one}"),
-        all => format!("Delete {} branches", all.len()),
-    };
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::delete_branches(r, &names, force)
-    })
-    .await
+    acting(&state, move |r| git::delete_branches(r, &names, force)).await
 }
 
 #[tauri::command]
@@ -79,11 +56,7 @@ pub async fn create_branch(
     base: String,
     switch: bool,
 ) -> Res<()> {
-    let label = format!("Create branch {name}");
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::create_branch(r, &name, &base, switch)
-    })
-    .await
+    acting(&state, move |r| git::create_branch(r, &name, &base, switch)).await
 }
 
 /// Only the local rename is undoable; what `remote` did on the remote stays.
@@ -96,9 +69,8 @@ pub async fn rename_branch(
     op: String,
     progress: Channel<network::Progress>,
 ) -> Res<()> {
-    let label = format!("Rename {old} to {new}");
     let net = watch_network(&state, op, progress);
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
+    acting(&state, move |r| {
         git::rename_branch(r, &old, &new, remote, &net)
     })
     .await
@@ -139,24 +111,15 @@ pub async fn create_tag(
     sha: String,
     message: Option<String>,
 ) -> Res<()> {
-    let label = format!("Create tag {name}");
-    journaled(
-        &state,
-        Action::new(label, Mode::Keep).with_tags(),
-        move |r| git::create_tag(r, &name, &sha, message.as_deref()),
-    )
+    acting(&state, move |r| {
+        git::create_tag(r, &name, &sha, message.as_deref())
+    })
     .await
 }
 
 #[tauri::command]
 pub async fn delete_tag(state: State<'_, AppState>, name: String) -> Res<()> {
-    let label = format!("Delete tag {name}");
-    journaled(
-        &state,
-        Action::new(label, Mode::Keep).with_tags(),
-        move |r| git::delete_tag(r, &name),
-    )
-    .await
+    acting(&state, move |r| git::delete_tag(r, &name)).await
 }
 
 /// Remote tag changes are not undoable: others may have fetched them already.
@@ -194,14 +157,7 @@ pub async fn remote_tags(
 
 #[tauri::command]
 pub async fn switch_tracking(state: State<'_, AppState>, remote_ref: String) -> Res<()> {
-    let local = remote_ref
-        .split_once('/')
-        .map_or(remote_ref.as_str(), |(_, b)| b);
-    let label = format!("Switch to {local}");
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::switch_tracking(r, &remote_ref)
-    })
-    .await
+    acting(&state, move |r| git::switch_tracking(r, &remote_ref)).await
 }
 
 #[tauri::command]

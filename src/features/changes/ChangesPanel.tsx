@@ -14,7 +14,6 @@ import { matchesCommand, useCommands } from "@/lib/commands/keybindings";
 import { type Selection, selectionKey } from "@/lib/repo/selection";
 import { type Leaving, rowInPlace, settleLeaving } from "@/lib/repo/leaving";
 import { toast } from "@/lib/app/toast";
-import { tracked, undoAction } from "@/lib/repo/undo";
 import { NESTED_EXPLAINED, stageable } from "@/lib/git/worktrees";
 import { StashDialog, StashList, useStashes } from "./StashList";
 import { BisectBar } from "@/features/history/BisectBar";
@@ -195,17 +194,16 @@ export function ChangesPanel({ status: full, activeKey, onOpen, onHover, refresh
       : `Discard changes to ${one ?? files(restorable.length)}?${copied ? ` ${restorable.length === 1 ? "Its current version is" : "Their current versions are"} moved to the Trash.` : ""}${untracked.length ? ` ${files(untracked.length)} git doesn't track will be moved to the Trash too.` : ""}`;
     const ok = await ask(message, trashOnly ? { title: one ? "Delete file" : "Delete files", kind: "warning", okLabel: "Move to Trash" } : { title: "Discard changes", kind: "warning", okLabel: "Discard" });
     if (!ok) return;
-    let entry: number | null = null;
     await leave(
       list.map((file): Change => ({ kind: "unstaged", file })),
       async () => {
         const done = await attempt(trashOnly ? "Could not move to Trash" : "Discard failed", async () => {
-          if (restorable.length) [, entry] = await tracked(() => api.discard(restorable.map((f) => f.path)));
+          if (restorable.length) await api.discard(restorable.map((f) => f.path));
           for (const f of untracked) await api.trashPath(f.path);
         });
         if (done && restorable.length) {
           const single = restorable.length === 1;
-          toast("success", `Discarded ${single ? restorable[0].path : files(restorable.length)}`, copied ? `The old ${copied === 1 ? "version is" : "versions are"} in the Trash.` : undefined, undoAction(entry, refresh));
+          toast("success", `Discarded ${single ? restorable[0].path : files(restorable.length)}`, copied ? `The old ${copied === 1 ? "version is" : "versions are"} in the Trash.` : undefined);
         }
         await refresh();
         return done;

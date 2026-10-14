@@ -203,32 +203,6 @@ fn line_endings_filters_and_modes() {
 }
 
 #[test]
-fn a_discarded_change_comes_back_with_undo() {
-    let (_sb, r) = repo("lines-undo");
-    write_commit(&r, "a.txt", "a\nb\n", "base");
-    fs::write(r.join("a.txt"), "a\nkeep\nb\ngone\n").unwrap();
-    let j = crate::journal::Journal::default();
-    let req = request(&r, "unstaged", "discard", "a.txt", &[], &[4]);
-    let write = move |r: &Path| change(r, &req).map(|_| vec![]);
-    let lock = std::sync::Mutex::new(());
-    j.replace(
-        &r,
-        "Discard a.txt".into(),
-        "discarded",
-        &["a.txt".into()],
-        &lock,
-        write,
-    )
-    .unwrap();
-    assert_eq!(disk(&r, "a.txt"), "a\nkeep\nb\n");
-    j.step(&r, false, None, &lock).unwrap();
-    assert_eq!(disk(&r, "a.txt"), "a\nkeep\nb\ngone\n");
-    // Redo discards those lines again, not the whole file.
-    j.step(&r, true, None, &lock).unwrap();
-    assert_eq!(disk(&r, "a.txt"), "a\nkeep\nb\n");
-}
-
-#[test]
 fn a_file_changed_since_it_was_shown_is_left_alone() {
     let (_sb, r) = repo("lines-stale");
     write_commit(&r, "a.txt", "a\n", "base");

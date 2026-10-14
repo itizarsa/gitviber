@@ -56,7 +56,6 @@ export function IssueView({ issue, onDeleted }: { issue: Issue; onDeleted: () =>
   const load = () => detail.refresh(true);
 
   const { busy: acting, run: act } = useGitAction({
-    tracked: false,
     onDone: () => {
       notifyIssuesChanged();
       return load();

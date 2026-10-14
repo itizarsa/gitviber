@@ -37,7 +37,6 @@ import { BranchPicker } from "@/features/branches/BranchPicker";
 import { PushMenu } from "./PushMenu";
 import { ProjectSwitcher, type ProjectSwitcherProps } from "./ProjectSwitcher";
 import { PublishButton } from "./PublishButton";
-import { UndoControls } from "./UndoControls";
 import { useRepoActions } from "./useRepoActions";
 import { openSettings } from "@/features/settings/SettingsDialog";
 import { openWorktreeDialog, WorktreeDialogs } from "@/features/worktrees/WorktreeDialogs";
@@ -185,7 +184,7 @@ export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onR
 
       {/* Filler: grabbing the bar anywhere empty moves the window. A running command shows at
           its right end, so starting or ending one never shifts the buttons around it (a click
-          meant for × once landed on the undo history), and its text truncates, not the bar.
+          meant for × once landed on the button beside it), and its text truncates, not the bar.
           History's tag pushes show here too: `net` is whichever network command runs. */}
       <div data-tauri-drag-region className="flex min-w-4 flex-1 items-center justify-end self-stretch overflow-hidden">
         {activity && (
@@ -216,8 +215,6 @@ export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onR
         )}
       </div>
 
-      <UndoControls repo={repo} disabled={!!busy} />
-      <div className="mx-1 h-4 w-px bg-border-strong" />
       <Tip label="Fetch">
         <Button variant="ghost" size="icon" disabled={!!busy} onClick={() => runNet("Fetch", api.fetch)}>
           <RefreshCw />

@@ -133,16 +133,8 @@ fn split_with_a_dirty_worktree_and_a_new_file_made_meanwhile() {
 fn split_continued_from_a_terminal_or_left_half_done() {
     let (_sb, r) = repo("hm-split-terminal");
     let before = head(&r);
-    let j = Journal::default();
-    let action = || Action::new("Split", Mode::Keep);
     assert_eq!(
-        j.record(&r, action(), |r| rewrite(
-            r,
-            &before,
-            &split(&before),
-            false
-        ))
-        .unwrap(),
+        record(&r, |r| rewrite(r, &before, &split(&before), false)).unwrap(),
         Outcome::Split
     );
     // Pieces left over, one a tracked file's edit: git refuses, and the stop stays a split.
@@ -232,96 +224,6 @@ fn split_with_stacked_branches_and_a_root_with_a_file_mode_change() {
 }
 
 #[test]
-fn fixup_staged_edges() {
-    let (_sb, r) = repo("hm-fixup");
-    let fix = |sha: &str| Edit::FixupStaged { sha: sha.into() };
-    let before = head(&r);
-    // Nothing staged, though there are unstaged edits.
-    fs::write(r.join("b.txt"), "b2\n").unwrap();
-    assert!(rewrite(&r, &before, &fix(&sha_of(&r, "two")), false)
-        .unwrap_err()
-        .contains("no staged"));
-    assert!(idle(&r));
-    run(&r, &["checkout", "-q", "--", "b.txt"]).unwrap();
-
-    // A staged rename goes into the older commit as a rename.
-    run(&r, &["mv", "b.txt", "b2.txt"]).unwrap();
-    let j = Journal::default();
-    j.record(&r, Action::new("Fixup", Mode::Soft), |r| {
-        rewrite(r, &before, &fix(&sha_of(r, "three")), false)
-    })
-    .unwrap();
-    assert_eq!(subjects(&r), ["five", "four", "three", "two", "one"]);
-    assert_eq!(
-        git(&r, &["ls-tree", "--name-only", "-r", &sha_of(&r, "three")]),
-        "a.txt\nb2.txt\nc.txt\n"
-    );
-    assert!(idle(&r));
-    step(&j, &r, false).unwrap();
-    assert_eq!(head(&r), before);
-    assert_eq!(
-        git(&r, &["diff", "--cached", "--name-status"])
-            .lines()
-            .count(),
-        1
-    );
-    run(&r, &["reset", "-q", "--hard"]).unwrap();
-
-    // Into the root: the first commit is made again with --root.
-    fs::write(r.join("first.txt"), "late\n").unwrap();
-    stage(&r, &["first.txt".into()]).unwrap();
-    let one = sha_of(&r, "one");
-    assert_eq!(
-        rewrite(&r, &head(&r), &fix(&one), false).unwrap(),
-        Outcome::Done
-    );
-    assert_eq!(subjects(&r), ["five", "four", "three", "two", "one"]);
-    assert_eq!(
-        git(&r, &["show", &format!("{}:first.txt", sha_of(&r, "one"))]),
-        "late\n"
-    );
-    assert!(idle(&r));
-    assert!(git(&r, &["diff", "--cached", "--name-only"]).is_empty());
-}
-
-#[test]
-fn fixup_that_conflicts_can_be_continued_and_undone() {
-    let (_sb, r) = repo("hm-fixup-conflict");
-    let before = head(&r);
-    // five's a.txt, which "two" doesn't have changed: conflicts going down into "two"? Use b.txt.
-    write_commit(&r, "b.txt", "b5\n", "six");
-    let before2 = head(&r);
-    fs::write(r.join("b.txt"), "b fixed\n").unwrap();
-    stage(&r, &["b.txt".into()]).unwrap();
-    let j = Journal::default();
-    let edit = Edit::FixupStaged {
-        sha: sha_of(&r, "two"),
-    };
-    let out = j
-        .record(&r, Action::new("Fixup", Mode::Soft), |r| {
-            rewrite(r, &before2, &edit, false)
-        })
-        .unwrap();
-    assert_eq!(out, Outcome::Conflicts);
-    resolve_side(&r, "b.txt", Side::Theirs).unwrap();
-    let res = j.record(&r, Action::new("Continue", Mode::Keep), op_continue);
-    eprintln!("continue: {res:?} {}", git(&r, &["status", "--short"]));
-    let mut guard = 0;
-    while !idle(&r) && guard < 5 {
-        for p in git(&r, &["diff", "--name-only", "--diff-filter=U"]).lines() {
-            resolve_side(&r, p, Side::Theirs).unwrap();
-        }
-        let _ = j.record(&r, Action::new("Continue", Mode::Keep), op_continue);
-        guard += 1;
-    }
-    assert!(idle(&r));
-    assert_eq!(j.view(&r).undo.len(), 1);
-    step(&j, &r, false).unwrap();
-    assert_eq!(head(&r), before2);
-    let _ = before;
-}
-
-#[test]
 fn stacked_branches_at_the_same_commit_and_remote_tracking() {
     let sb = Sandbox::new("hm-stacked-same");
     let clones = sb.remote_with_clones(1);
@@ -402,25 +304,6 @@ fn feat_repo(name: &str) -> (Sandbox, PathBuf, Vec<String>) {
 }
 
 #[test]
-fn cherry_pick_many_with_a_merge_in_the_list() {
-    let (_sb, r, shas) = feat_repo("hm-pick-merge");
-    let j = Journal::default();
-    let action = || Action::new("Cherry-pick 3 commits", Mode::Keep);
-    let before = head(&r);
-    // f1 is new, the merge relative to its first parent brings "side work", f3 is new.
-    assert!(!j
-        .record(&r, action(), |r| cherry_pick_many(r, &shas))
-        .unwrap());
-    assert_eq!(subjects(&r)[..4], ["f3", "merge side", "f1", "base"]);
-    assert!(r.join("s.txt").exists() && r.join("f3.txt").exists());
-    assert_eq!(j.view(&r).undo.len(), 1);
-    step(&j, &r, false).unwrap();
-    assert_eq!(head(&r), before);
-    step(&j, &r, true).unwrap();
-    assert_eq!(subjects(&r)[0], "f3");
-}
-
-#[test]
 fn cherry_pick_many_root_duplicates_applied_and_empty() {
     let (_sb, r, shas) = feat_repo("hm-pick-odd");
     // The root commit of an unrelated history.
@@ -465,60 +348,4 @@ fn cherry_pick_many_root_duplicates_applied_and_empty() {
     let res = cherry_pick_many(&r, &[nothing]);
     assert!(res.is_err(), "{res:?}");
     assert!(idle(&r));
-}
-
-#[test]
-fn cherry_pick_many_conflict_resolved_to_nothing_then_undo_and_dirty_tree() {
-    let sb = Sandbox::new("hm-pick-conflict");
-    let r = sb.path("r");
-    init(&r);
-    write_commit(&r, "a.txt", "base\n", "base");
-    run(&r, &["switch", "-q", "-c", "feat"]).unwrap();
-    write_commit(&r, "a.txt", "feat\n", "feat a");
-    write_commit(&r, "n.txt", "n\n", "feat n");
-    let picks = [rev(&r, "HEAD~1"), rev(&r, "HEAD")];
-    run(&r, &["switch", "-q", "main"]).unwrap();
-    write_commit(&r, "a.txt", "main\n", "main a");
-    let before = head(&r);
-    let j = Journal::default();
-    let action = || Action::new("Cherry-pick 2 commits", Mode::Keep);
-    assert!(j
-        .record(&r, action(), |r| cherry_pick_many(r, &picks))
-        .unwrap());
-    // Keeping main's side leaves the pick with no change: it's left out, the next one lands.
-    resolve_side(&r, "a.txt", Side::Ours).unwrap();
-    assert!(!j.record(&r, action(), op_continue).unwrap());
-    assert!(idle(&r));
-    assert_eq!(subjects(&r)[..2], ["feat n", "main a"]);
-    assert_eq!(j.view(&r).undo.len(), 1);
-    step(&j, &r, false).unwrap();
-    assert_eq!(head(&r), before);
-
-    // A dirty file the second pick needs: the first lands, then git refuses; nothing is left
-    // half-way waiting on nothing to resolve.
-    run(&r, &["reset", "-q", "--hard", "feat~1"]).unwrap();
-    run(&r, &["reset", "-q", "--hard", &before]).unwrap();
-    write_commit(&r, "x.txt", "x\n", "main x");
-    let before = head(&r);
-    run(&r, &["switch", "-q", "feat"]).unwrap();
-    write_commit(&r, "p1.txt", "1\n", "pick one");
-    write_commit(&r, "x.txt", "feat x\n", "pick two");
-    let picks = [rev(&r, "HEAD~1"), rev(&r, "HEAD")];
-    run(&r, &["switch", "-q", "main"]).unwrap();
-    fs::write(r.join("x.txt"), "my edit\n").unwrap();
-    let res = j.record(&r, action(), |r| cherry_pick_many(r, &picks));
-    eprintln!(
-        "dirty: {res:?} op={:?} head==before {}",
-        operation(&r).map(|o| o.kind),
-        head(&r) == before
-    );
-    if res.is_err() {
-        assert!(
-            idle(&r),
-            "left a pick waiting on nothing: {:?}",
-            operation(&r).map(|o| o.kind)
-        );
-        assert_eq!(head(&r), before);
-        assert_eq!(fs::read_to_string(r.join("x.txt")).unwrap(), "my edit\n");
-    }
 }

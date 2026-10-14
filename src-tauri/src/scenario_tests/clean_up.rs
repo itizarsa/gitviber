@@ -184,47 +184,6 @@ fn clean_up_leaves_locked_and_missing_worktrees() {
     }
 }
 
-/// Undo after Clean up brings every deleted branch back at its commit; the folders stay gone.
-#[test]
-fn undo_after_clean_up_brings_the_branches_back() {
-    let sb = Sandbox::new("cu-undo");
-    let r = sb.path("r");
-    init(&r);
-    write_commit(&r, "a.txt", "a\n", "base");
-    let mut list = vec![];
-    let mut tips = vec![];
-    for name in ["one", "two", "fix/three"] {
-        run(&r, &["branch", name]).unwrap();
-        let w = add_worktree(&r, name, None, false, None).unwrap();
-        write_commit(
-            Path::new(&w),
-            &format!("{}.txt", name.replace('/', "-")),
-            "x\n",
-            name,
-        );
-        tips.push((name, rev(&r, name)));
-        list.push(item(&w, None));
-    }
-    run(&r, &["merge", "-q", "one", "two", "fix/three"]).unwrap();
-    let j = Journal::default();
-    let out = j
-        .record(
-            &r,
-            Action::new("Delete merged worktrees' branches", Mode::Keep),
-            |r| Ok(clean_up_worktrees(r, &list)),
-        )
-        .unwrap();
-    assert_eq!(out.deleted.len(), 3, "{out:?}");
-    step(&j, &r, false).unwrap();
-    for (name, tip) in &tips {
-        assert_eq!(&rev(&r, name), tip, "{name} came back");
-    }
-    assert_eq!(on_branch(&r), "main");
-    // Redo deletes them again.
-    step(&j, &r, true).unwrap();
-    assert!(tips.iter().all(|(n, _)| !exists(&r, n)));
-}
-
 /// The dialog's sizes: links aren't followed (a loop, a link to a big folder elsewhere), odd
 /// names come back as they are, and a folder being deleted meanwhile doesn't fail it.
 #[cfg(unix)]

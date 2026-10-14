@@ -1,5 +1,6 @@
 mod agents;
 pub mod askpass;
+mod backup;
 mod browser;
 mod cli;
 mod clipboard;
@@ -18,7 +19,6 @@ mod git;
 mod github;
 mod grep;
 mod handoff;
-mod journal;
 mod launch;
 mod lfs;
 mod lines;
@@ -377,10 +377,6 @@ pub fn run() {
             commands::branches::push_tags,
             commands::branches::delete_remote_tag,
             commands::branches::remote_tags,
-            commands::journal::journal,
-            commands::journal::journal_last,
-            commands::journal::undo,
-            commands::journal::redo,
             commands::github::github_permalink,
             commands::github::gh_account,
             commands::github::gh_accounts,

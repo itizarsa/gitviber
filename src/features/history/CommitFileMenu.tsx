@@ -3,7 +3,7 @@ import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/com
 import { api, type Commit, type FileChange } from "@/lib/api";
 import type { Selection } from "@/lib/repo/selection";
 import { copyLater } from "@/lib/app/clipboard";
-import { rewriteFiles } from "@/lib/repo/undo";
+import { rewriteFiles } from "@/lib/repo/rewriteFiles";
 import { basename } from "@/lib/path";
 
 /** Right-click actions on a file of a commit: the working tree takes its version, or its change undone (Fork's Restore and Reverse). */

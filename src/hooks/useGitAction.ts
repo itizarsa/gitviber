@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { CANCELLED, type NetOp } from "@/lib/api";
+import { api, CANCELLED, type NetOp } from "@/lib/api";
 import { gitFailed, type GitFixes } from "@/lib/app/gitFailed";
 import { toast, type ToastAction } from "@/lib/app/toast";
 import { withNetActivity } from "@/lib/repo/netActivity";
-import { tracked, undoAction } from "@/lib/repo/undo";
 
 /** What only this call knows: the ways out of its failures, and what to say if it stops on conflicts. */
 export interface RunExtras {
   fixes?: GitFixes;
   conflicts?: string;
-  /** Said instead of `done` when the action moved nothing, i.e. recorded no undo entry. */
+  /** Said instead of `done` when the action left HEAD where it was. */
   nothing?: string;
 }
 
@@ -18,12 +17,10 @@ export type GitRun = (label: string, fn: () => Promise<unknown>, done?: string, 
 export type NetRun = (label: string, fn: (op: NetOp) => Promise<unknown>, done?: string, extras?: RunExtras) => Promise<boolean>;
 
 interface Options {
-  /** Re-reads the repo: after every action, gone through or not, and after an undo from its toast. */
+  /** Re-reads the repo: after every action, gone through or not. */
   refresh?: () => unknown;
   /** Only after an action that went through, before `busy` clears. */
   onDone?: () => unknown;
-  /** false: the action records no undo entry (stashes, GitHub writes), so its toast offers none. */
-  tracked?: boolean;
   /** What to do after an action stops on conflicts. */
   conflicts?: string;
 }
@@ -32,7 +29,7 @@ interface Options {
  * The toasts, busy state and refresh around a git action. An action that can stop on conflicts
  * resolves to true; that's a state to handle, not an error. `busy` is the running action's label.
  */
-export function useGitAction({ refresh, onDone, tracked: undoable = true, conflicts = "Resolve them in Changes, then continue." }: Options = {}) {
+export function useGitAction({ refresh, onDone, conflicts = "Resolve them in Changes, then continue." }: Options = {}) {
   const [busy, setBusy] = useState<string | null>(null);
   const running = useRef<string | null>(null);
   const mounted = useRef(true);
@@ -58,10 +55,12 @@ export function useGitAction({ refresh, onDone, tracked: undoable = true, confli
   const attempt = async (label: string, fn: () => Promise<unknown>, done?: string, detail?: string, extras: RunExtras = {}) => {
     setBusy((running.current = label));
     try {
-      const [stopped, entry] = undoable ? await tracked(fn) : [await fn(), null];
+      const head = async () => (extras.nothing ? (await api.status().catch(() => null))?.head : undefined);
+      const before = await head();
+      const stopped = await fn();
       if (stopped === true) toast("info", `${label} stopped on conflicts`, extras.conflicts ?? conflicts);
-      else if (undoable && entry === null && extras.nothing) toast("info", extras.nothing);
-      else if (done) toast("success", done, detail, undoAction(entry, refresh ?? (() => {})));
+      else if (extras.nothing && before === (await head())) toast("info", extras.nothing);
+      else if (done) toast("success", done, detail);
       await onDone?.();
       return true;
     } catch (e) {

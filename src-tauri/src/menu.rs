@@ -255,9 +255,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &b.command("git.fetch", "Fetch")?,
             &b.command("git.pull", "Pull")?,
             &b.command("git.push", "Push")?,
-            &sep()?,
-            &b.command("git.undo", "Undo Git Action")?,
-            &b.command("git.redo", "Redo Git Action")?,
         ],
     )?;
 

@@ -11,7 +11,6 @@ import { isMenuKey, openRowMenu } from "@/lib/ui/useListNav";
 import { filesSelection, type Selection, selectionKey } from "@/lib/repo/selection";
 import { fileMark } from "@/lib/repo/compareMark";
 import { toast } from "@/lib/app/toast";
-import { tracked, undoAction } from "@/lib/repo/undo";
 import { cn } from "@/lib/utils";
 import { copyFiles, copyLabel, copyText } from "@/lib/app/clipboard";
 import { revealPath } from "@/lib/app/openIn";
@@ -289,9 +288,9 @@ export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathM
     });
     if (!ok) return;
     try {
-      const [, entry] = await tracked(() => api.discard(list.map((e) => e.path)));
+      await api.discard(list.map((e) => e.path));
       // The file watcher refreshes after an undo writes the file back.
-      toast("success", `Discarded ${what}`, list.length > 1 ? "The old versions are in the Trash." : "The old version is in the Trash.", undoAction(entry, () => {}));
+      toast("success", `Discarded ${what}`, list.length > 1 ? "The old versions are in the Trash." : "The old version is in the Trash.");
     } catch (err) {
       toast("error", "Discard failed", errorMessage(err));
     }

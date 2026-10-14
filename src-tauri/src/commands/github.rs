@@ -1,6 +1,5 @@
 //! GitHub: the account, forks, pull requests and issues.
 
-use crate::journal::{Action, Mode};
 use crate::state::{blocking, in_repo, repo, watch_network, with_github, AppState, Res};
 use crate::{git, github, network};
 use std::path::PathBuf;
@@ -477,19 +476,16 @@ pub async fn pr_checkout(
     blocking(move || {
         let state = app.state::<AppState>();
         let r = repo(&state)?;
-        let action = Action::new(format!("Check out PR #{number}"), Mode::Keep);
-        state.journal.record(&r, action, |r| {
-            let (remote, owner) = github::pr_source(&state.github, r, target.as_deref())?;
-            github::checkout(
-                r,
-                &remote,
-                owner.as_deref(),
-                number,
-                &head_ref,
-                same_repo,
-                &net,
-            )
-        })
+        let (remote, owner) = github::pr_source(&state.github, &r, target.as_deref())?;
+        github::checkout(
+            &r,
+            &remote,
+            owner.as_deref(),
+            number,
+            &head_ref,
+            same_repo,
+            &net,
+        )
     })
     .await
 }

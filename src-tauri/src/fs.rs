@@ -417,7 +417,7 @@ pub fn trash_copy(root: &Path, rel: &str, name: &str) -> Result<PathBuf, String>
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let src = resolve_entry(root, rel)?;
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    // Under test the copy stays for `put_back`: beside the repo, in the sandbox that removes it.
+    // Under test the copy stays beside the repo, in the sandbox that removes it.
     let tmp = match root.parent() {
         Some(sandbox) if cfg!(test) => sandbox.to_path_buf(),
         _ => std::env::temp_dir(),
@@ -441,23 +441,6 @@ fn stash(copy: &Path) -> Result<PathBuf, String> {
 #[cfg(test)]
 fn stash(copy: &Path) -> Result<PathBuf, String> {
     Ok(copy.to_path_buf())
-}
-
-/// Writes `copy` (from `trash_copy`) back over `rel`, or removes `rel` when there's none.
-pub fn put_back(root: &Path, rel: &str, copy: Option<&Path>) -> Result<(), String> {
-    let dst = resolve_entry(root, rel)?;
-    if let Some(c) = copy {
-        c.symlink_metadata()
-            .map_err(|_| format!("The discarded version of {rel} is no longer in the Trash."))?;
-    }
-    // Copying onto a link would write where it points.
-    if copy.is_none_or(is_link) || is_link(&dst) {
-        match std::fs::remove_file(&dst) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.to_string()),
-            _ => {}
-        }
-    }
-    copy.map_or(Ok(()), |c| copy_entry(c, &dst))
 }
 
 fn is_link(p: &Path) -> bool {

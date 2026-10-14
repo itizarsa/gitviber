@@ -1,5 +1,4 @@
-use crate::journal::{Action, Mode};
-use crate::state::{in_repo, journaled, read_repo, AppState, Res};
+use crate::state::{acting, in_repo, read_repo, AppState, Res};
 use crate::{browser, git};
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
@@ -142,9 +141,7 @@ pub async fn clean_up_worktrees(
     if branches.is_empty() {
         return Ok(out);
     }
-    // Named for what Undo can bring back: the folders are gone for good.
-    let action = Action::new("Delete merged worktrees' branches", Mode::Keep);
-    journaled(&state, action, move |r| {
+    acting(&state, move |r| {
         git::delete_merged_branches(r, &mut out, branches);
         Ok(out)
     })

@@ -1,5 +1,4 @@
-use crate::journal::{Action, Mode};
-use crate::state::{in_repo, journaled, read_repo, short, AppState, Res};
+use crate::state::{acting, in_repo, read_repo, AppState, Res};
 use crate::{fs, git, rewrite};
 use std::path::Path;
 use tauri::State;
@@ -164,39 +163,7 @@ pub async fn rewrite(
     edit: rewrite::Edit,
     branches: bool,
 ) -> Res<rewrite::Outcome> {
-    let what = |shas: &[String]| match shas {
-        [sha] => short(sha).to_string(),
-        _ => format!("{} commits", shas.len()),
-    };
-    let label = match &edit {
-        rewrite::Edit::Reword { sha, .. } => format!("Reword {}", short(sha)),
-        // Counted as the toast counts them: every commit that ends up in the one.
-        rewrite::Edit::Squash {
-            shas,
-            onto,
-            message,
-        } => {
-            let verb = if message.is_some() { "Squash" } else { "Fixup" };
-            match &shas[..] {
-                [sha] => format!("{verb} {} into {}", short(sha), short(onto)),
-                _ => format!("{verb} {} commits", shas.len() + 1),
-            }
-        }
-        rewrite::Edit::Drop { shas } => format!("Drop {}", what(shas)),
-        rewrite::Edit::Move { sha, .. } => format!("Move {}", short(sha)),
-        rewrite::Edit::Reorder { shas, .. } => format!("Move {}", what(shas)),
-        rewrite::Edit::Split { sha } => format!("Split {}", short(sha)),
-        rewrite::Edit::FixupStaged { sha } => format!("Fixup staged changes into {}", short(sha)),
-    };
-    // Undone, a fixup's changes come back staged, as they were.
-    let mode = match edit {
-        rewrite::Edit::FixupStaged { .. } => Mode::Soft,
-        _ => Mode::Keep,
-    };
-    journaled(&state, Action::new(label, mode), move |r| {
-        rewrite::run(r, &head, &edit, branches)
-    })
-    .await
+    acting(&state, move |r| rewrite::run(r, &head, &edit, branches)).await
 }
 
 /// The local branches `edit` would replay commits of, to offer moving them along.
@@ -210,11 +177,7 @@ pub async fn stacked_branches(
 
 #[tauri::command]
 pub async fn undo_commit(state: State<'_, AppState>, sha: String) -> Res<()> {
-    let label = format!("Undo commit {}", short(&sha));
-    journaled(&state, Action::new(label, Mode::Soft), move |r| {
-        git::undo_commit(r, &sha)
-    })
-    .await
+    acting(&state, move |r| git::undo_commit(r, &sha)).await
 }
 
 #[tauri::command]
@@ -224,17 +187,7 @@ pub async fn reset(
     mode: git::ResetMode,
     head: String,
 ) -> Res<()> {
-    let label = format!("Reset to {}", short(&sha));
-    // Undone the same way, except that a hard reset's lost changes can't come back.
-    let back = match mode {
-        git::ResetMode::Soft => Mode::Soft,
-        git::ResetMode::Mixed => Mode::Mixed,
-        git::ResetMode::Hard => Mode::Keep,
-    };
-    journaled(&state, Action::new(label, back), move |r| {
-        git::reset(r, &sha, mode, &head)
-    })
-    .await
+    acting(&state, move |r| git::reset(r, &sha, mode, &head)).await
 }
 
 #[tauri::command]
@@ -248,59 +201,36 @@ pub async fn drops_pushed(state: State<'_, AppState>, sha: Option<String>) -> Re
 
 #[tauri::command]
 pub async fn revert(state: State<'_, AppState>, sha: String) -> Res<bool> {
-    let label = format!("Revert {}", short(&sha));
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::revert(r, &sha)
-    })
-    .await
+    acting(&state, move |r| git::revert(r, &sha)).await
 }
 
 #[tauri::command]
 pub async fn cherry_pick(state: State<'_, AppState>, sha: String) -> Res<bool> {
-    let label = format!("Cherry-pick {}", short(&sha));
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::cherry_pick(r, &sha)
-    })
-    .await
+    acting(&state, move |r| git::cherry_pick(r, &sha)).await
 }
 
 /// Picks `shas`, oldest first, onto HEAD.
 #[tauri::command]
 pub async fn cherry_pick_many(state: State<'_, AppState>, shas: Vec<String>) -> Res<bool> {
-    let label = format!("Cherry-pick {} commits", shas.len());
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::cherry_pick_many(r, &shas)
-    })
-    .await
+    acting(&state, move |r| git::cherry_pick_many(r, &shas)).await
 }
 
-/// Picks onto the branch of another worktree (`path`), running git there. The entry goes in
-/// that worktree's undo history, where a pick stopped on conflicts is also continued.
+/// Picks onto the branch of another worktree (`path`), running git there.
 #[tauri::command]
 pub async fn cherry_pick_into(state: State<'_, AppState>, path: String, sha: String) -> Res<bool> {
-    let journal = state.journal.clone();
     in_repo(&state, move |r| {
         let target = git::pick_target(r, &path)?;
-        let action = Action::new(format!("Cherry-pick {}", short(&sha)), Mode::Keep);
-        journal.record(&target, action, |t| git::cherry_pick_into(t, &sha))
+        git::cherry_pick_into(&target, &sha)
     })
     .await
 }
 
 #[tauri::command]
 pub async fn checkout_commit(state: State<'_, AppState>, sha: String) -> Res<()> {
-    let label = format!("Check out {}", short(&sha));
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::checkout_commit(r, &sha)
-    })
-    .await
+    acting(&state, move |r| git::checkout_commit(r, &sha)).await
 }
 
 #[tauri::command]
 pub async fn create_branch_at(state: State<'_, AppState>, name: String, sha: String) -> Res<()> {
-    let label = format!("Create branch {name}");
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
-        git::create_branch_at(r, &name, &sha)
-    })
-    .await
+    acting(&state, move |r| git::create_branch_at(r, &name, &sha)).await
 }

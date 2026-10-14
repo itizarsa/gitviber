@@ -1,6 +1,5 @@
 //! What every command shares: the open repo, the locks around it, and the blocking pool.
 
-use crate::journal::{self, Action};
 use crate::{agents, git, github, network, pty, suggest};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -20,7 +19,6 @@ pub(crate) struct AppState {
     pub(crate) network: network::Running,
     /// Held by commands that write the index: two `git add`s at once fail on index.lock.
     pub(crate) index: Arc<Mutex<()>>,
-    pub(crate) journal: Arc<journal::Journal>,
     /// `git --version`, checked once; the page asks again after the user installs git.
     pub(crate) git: Mutex<Option<git::GitInfo>>,
     pub(crate) suggest: suggest::Suggester,
@@ -118,15 +116,14 @@ pub(crate) fn with_index_lock<T>(
     }
 }
 
-/// Runs a command that may move HEAD or local branches, recording what it moved for undo.
-pub(crate) async fn journaled<T: Send + 'static>(
+/// `f` with the open repo on the blocking pool, without the index lock: the commands that move
+/// HEAD or branches run git, which takes its own, and some hold this one around their writes.
+pub(crate) async fn acting<T: Send + 'static>(
     state: &State<'_, AppState>,
-    action: Action,
     f: impl FnOnce(&Path) -> Res<T> + Send + 'static,
 ) -> Res<T> {
     let r = repo(state)?;
-    let journal = state.journal.clone();
-    blocking(move || journal.record(&r, action, f)).await
+    blocking(move || f(&r)).await
 }
 
 /// Registers a network command under the page's id, streaming its progress to `progress`.

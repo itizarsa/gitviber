@@ -437,28 +437,6 @@ export interface StashFiles {
   untracked: FileChange[];
 }
 
-/** One of the app's own git actions, as the undo history lists it. */
-export interface JournalEntry {
-  id: number;
-  label: string;
-  /** Unix seconds. */
-  time: number;
-  /** The branch (or short commit) undoing it switches to, in the undo list; redoing it, in the redo list. Null: no switch. */
-  switchTo: string | null;
-  /** Files a redo of a file action (a restore, a patch) left with conflict markers. */
-  conflicts: string[];
-}
-
-export interface Journal {
-  /** Newest first. */
-  undo: JournalEntry[];
-  /** Next redo first. */
-  redo: JournalEntry[];
-  /** Why the next undo or redo can't run now: pushed since, changed outside the app, … */
-  undoBlocked: string | null;
-  redoBlocked: string | null;
-}
-
 /** "quiet": allowed without banners, into Notification Center only; "unbundled": a dev build macOS can't ask (notifications.rs). */
 export type NotifyPermission = "granted" | "quiet" | "denied" | "prompt" | "unbundled";
 

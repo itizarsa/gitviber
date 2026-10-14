@@ -415,59 +415,6 @@ fn upstream_of(repo: &Path, branch: &str) -> Option<String> {
         .map(|s| s.trim().to_string())
 }
 
-fn on_remote(repo: &Path, branch: &str) -> bool {
-    let full = format!("refs/heads/{branch}");
-    !run_text(repo, &["ls-remote", "origin", &full])
-        .unwrap()
-        .trim()
-        .is_empty()
-}
-
-/// Renaming the checked-out branch with its remote: the new name is pushed and tracked, the
-/// old one leaves the remote. Undo brings the old name back with its old upstream settings.
-#[test]
-fn rename_a_branch_here_and_on_the_remote() {
-    let sb = Sandbox::new("rename");
-    let c = sb.remote_with_clones(1);
-    let a = &c[0];
-    switch_branch(a, "feat", true).unwrap();
-    write_commit(a, "f.txt", "f\n", "feat");
-    push(a, false, None, &Net::default()).unwrap();
-    assert!(rename_branch(a, "feat", "--evil", false, &Net::default()).is_err());
-    // The remote default branch is refused before anything moves.
-    assert!(rename_branch(a, "main", "trunk", true, &Net::default()).is_err());
-    assert!(exists(a, "main"));
-
-    let j = Journal::default();
-    j.record(a, Action::new("Rename feat to feature", Mode::Keep), |r| {
-        rename_branch(r, "feat", "feature", true, &Net::default())
-    })
-    .unwrap();
-    assert_eq!(on_branch(a), "feature");
-    assert!(!exists(a, "feat"));
-    assert_eq!(upstream_of(a, "feature").as_deref(), Some("origin/feature"));
-    assert!(on_remote(a, "feature") && !on_remote(a, "feat"));
-
-    step(&j, a, false).unwrap();
-    assert_eq!(on_branch(a), "feat");
-    assert!(!exists(a, "feature"));
-    let merge = run_text(a, &["config", "branch.feat.merge"]).unwrap();
-    assert_eq!(merge.trim(), "refs/heads/feat");
-    step(&j, a, true).unwrap();
-    assert_eq!(on_branch(a), "feature");
-    assert_eq!(upstream_of(a, "feature").as_deref(), Some("origin/feature"));
-
-    // A local-only rename of a branch that isn't checked out.
-    switch_branch(a, "side", true).unwrap();
-    switch_branch(a, "feature", false).unwrap();
-    rename_branch(a, "side", "aside", false, &Net::default()).unwrap();
-    assert!(exists(a, "aside") && !exists(a, "side"));
-    assert!(
-        rename_branch(a, "aside", "x", true, &Net::default()).is_err(),
-        "tracks nothing"
-    );
-}
-
 /// A branch from a remote branch or a tag starts there without tracking it; the upstream is
 /// set and unset on its own.
 #[test]
@@ -495,70 +442,6 @@ fn create_branch_from_a_base_and_set_its_upstream() {
     assert!(set_upstream(a, "from-tag", Some("origin/nope")).is_err());
     set_upstream(a, "from-tag", None).unwrap();
     assert_eq!(upstream_of(a, "from-tag"), None);
-}
-
-#[test]
-fn annotated_tags_push_and_undo() {
-    let sb = Sandbox::new("tags");
-    let c = sb.remote_with_clones(1);
-    let a = &c[0];
-    write_commit(a, "b.txt", "b\n", "release");
-    let head = rev(a, "HEAD");
-    let j = Journal::default();
-    j.record(
-        a,
-        Action::new("Create tag v1", Mode::Keep).with_tags(),
-        |r| create_tag(r, "v1", &head, Some("First release\n\nNotes")),
-    )
-    .unwrap();
-    create_tag(a, "light", &head, Some("  ")).unwrap();
-    assert!(create_tag(a, "--evil", &head, None).is_err());
-    let kind = |t: &str| {
-        run_text(a, &["cat-file", "-t", t])
-            .unwrap()
-            .trim()
-            .to_string()
-    };
-    assert_eq!((kind("v1"), kind("light")), ("tag".into(), "commit".into()));
-    let msg = run_text(a, &["tag", "-l", "--format=%(contents)", "v1"]).unwrap();
-    assert!(msg.starts_with("First release\n\nNotes"), "{msg}");
-
-    push_with_tags(a, false, None, &Net::default()).unwrap();
-    let there = remote_tags(a, &Net::default()).unwrap();
-    assert_eq!(
-        (there.remote.as_str(), there.names.clone()),
-        ("origin", vec!["v1".to_string()])
-    );
-    assert_eq!(
-        push_tags(a, &["light".into()], &Net::default()).unwrap(),
-        "origin"
-    );
-    assert_eq!(
-        remote_tags(a, &Net::default()).unwrap().names,
-        vec!["light", "v1"]
-    );
-    delete_remote_tag(a, "light", &Net::default()).unwrap();
-    assert_eq!(remote_tags(a, &Net::default()).unwrap().names, vec!["v1"]);
-
-    // Undo takes the tag away and redo brings back the same tag object, message and all.
-    let object = rev(a, "refs/tags/v1");
-    step(&j, a, false).unwrap();
-    assert!(run(a, &["rev-parse", "--verify", "-q", "refs/tags/v1"]).is_err());
-    step(&j, a, true).unwrap();
-    assert_eq!(rev(a, "refs/tags/v1"), object);
-
-    j.record(
-        a,
-        Action::new("Delete tag v1", Mode::Keep).with_tags(),
-        |r| delete_tag(r, "v1"),
-    )
-    .unwrap();
-    assert!(!tags(a).unwrap().contains(&"v1".to_string()));
-    step(&j, a, false).unwrap();
-    assert_eq!(rev(a, "refs/tags/v1"), object);
-    // Moved outside the app since: no longer safe to undo or redo.
-    run(a, &["tag", "-f", "v1", "HEAD~1"]).unwrap();
-    assert!(j.view(a).redo_blocked.is_some());
 }
 
 /// Recent branches as people move: `git checkout -`, detached at a commit and a tag, names with

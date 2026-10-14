@@ -83,7 +83,7 @@ export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMo
   // A pick into another worktree, which records no undo entry here.
   const [picking, setPicking] = useState(false);
 
-  // git runs in that worktree, and the entry lands in its undo history, not this one's. A pick
+  // git runs in that worktree, not this one. A pick
   // stopped on conflicts waits there, for its own Changes panel to finish.
   const pickInto = async (w: Worktree, c: Commit) => {
     const branch = w.branch ?? folderName(w.path);

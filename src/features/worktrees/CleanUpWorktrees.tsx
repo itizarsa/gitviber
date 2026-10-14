@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { api, type CleanedUp, errorMessage, type IgnoredFiles } from "@/lib/api";
-import { toast, type ToastAction } from "@/lib/app/toast";
+import { toast } from "@/lib/app/toast";
 import { formatBytes, plural } from "@/lib/format";
 import { type Cleanable, shortPath } from "@/lib/git/worktrees";
 import { folderName } from "@/lib/path";
-import { tracked, undoAction } from "@/lib/repo/undo";
 import { terminalsIn, useTerminals } from "@/lib/terminal/terminals";
 import { cn } from "@/lib/utils";
 import { type GitRun, useSubmit } from "@/hooks/useGitAction";
@@ -78,10 +77,9 @@ export function CleanUpWorktrees({ list, main, run, onClose }: { list: Cleanable
     // Checked again here and in the backend: the list may be minutes old.
     const items = chosen.filter((c) => !terminalsIn(c.worktree.path)).map((c) => ({ path: c.worktree.path, mergedHead: c.mergedHead }));
     let result: CleanedUp | null = null;
-    let entry: number | null = null;
     void send(async () => {
-      const ok = await run("Clean up", async () => void ([result, entry] = await tracked(() => api.cleanUpWorktrees(items))));
-      if (result) report(result, undoAction(entry, () => {}));
+      const ok = await run("Clean up", async () => void (result = await api.cleanUpWorktrees(items)));
+      if (result) report(result);
       return ok;
     });
   };
@@ -144,14 +142,12 @@ function ignoredLine(ignored: IgnoredFiles) {
   return `Deletes ignored ${named}${more} · ${complete ? "" : "at least "}${formatBytes(total)} in all`;
 }
 
-function report({ removed, deleted, kept, failed: left }: CleanedUp, undo: ToastAction | undefined) {
+function report({ removed, deleted, kept, failed: left }: CleanedUp) {
   const lines = [
     deleted.length && `Deleted ${deleted.length === 1 ? "branch" : "branches"} ${deleted.join(", ")}.`,
     kept.length && `Kept ${kept.length === 1 ? "branch" : "branches"} ${kept.join(", ")}: moved since, or out in another worktree.`,
     ...left.map(([path, why]) => `Left ${folderName(path)}: ${why}.`),
-    // The folders went outside the journal, so Undo has only the branches to bring back.
-    undo && removed.length && "Undo brings back the branches, not the worktree folders.",
   ].filter(Boolean);
   const title = removed.length ? `Removed ${plural(removed.length, "worktree")}` : "No worktree removed";
-  toast(left.length ? "info" : "success", title, lines.join("\n") || undefined, undo);
+  toast(left.length ? "info" : "success", title, lines.join("\n") || undefined);
 }

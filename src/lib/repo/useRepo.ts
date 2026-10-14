@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Branch, type Commit, errorMessage, type Journal, LOG_PAGE, type RepoStatus, type Worktree } from "../api";
+import { api, type Branch, type Commit, errorMessage, LOG_PAGE, type RepoStatus, type Worktree } from "../api";
 import { recheckPullsSoon } from "../github/githubCache";
 import { useBackgroundFetch } from "./backgroundFetch";
 import { toast } from "../app/toast";
@@ -21,7 +21,6 @@ export function useRepo(root: string, onGone: () => void) {
   const [hasMore, setHasMore] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
-  const [journal, setJournal] = useState<Journal | null>(null);
   // Bumped on every change on disk so open views can reload their content.
   const [revision, setRevision] = useState(0);
   // What the revision was last bumped for: status (each changed file's size and mtime, HEAD) and
@@ -45,17 +44,15 @@ export function useRepo(root: string, onGone: () => void) {
     const limit = Math.max(LOG_PAGE, loaded.current);
     const wrote = written.current;
     written.current = false;
-    const [st, br, log, wt, jn] = await Promise.all([
+    const [st, br, log, wt] = await Promise.all([
       api.status(),
       history ? api.branches() : null,
       history ? api.log(0, limit) : null,
       history ? api.worktrees() : null,
-      history ? api.journal() : null,
     ]);
     setStatus(st);
     if (br) setBranches(br);
     if (wt) setWorktrees(wt);
-    if (jn) setJournal(jn);
     if (log) {
       loaded.current = log.length;
       setCommits(log);
@@ -122,7 +119,6 @@ export function useRepo(root: string, onGone: () => void) {
   useEffect(() => {
     setStatus(null);
     setCommits([]);
-    setJournal(null);
     loaded.current = 0;
     live.current = root;
     refresh(true);
@@ -158,7 +154,7 @@ export function useRepo(root: string, onGone: () => void) {
 
   useBackgroundFetch(root, !!status?.remotes.length, refresh);
 
-  return { status, commits, hasMore, branches, worktrees, journal, revision, refresh, loadMore };
+  return { status, commits, hasMore, branches, worktrees, revision, refresh, loadMore };
 }
 
 export type RepoData = ReturnType<typeof useRepo>;

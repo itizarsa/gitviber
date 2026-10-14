@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { api, type RepoStatus } from "@/lib/api";
 import { gitFailed } from "@/lib/app/gitFailed";
 import { toast } from "@/lib/app/toast";
-import { tracked, undoAction } from "@/lib/repo/undo";
 import { plural } from "@/lib/format";
 
 const OP_LABEL = { merge: "Merging", rebase: "Rebasing", "cherry-pick": "Cherry-picking", revert: "Reverting", bisect: "Bisecting" } as const;
@@ -17,13 +16,13 @@ export function OperationBanner({ status, refresh }: { status: RepoStatus; refre
   const left = status.conflicted.length;
   const split = op.split;
   const uncommitted = status.unstaged.length + status.staged.length;
-  const run = async (title: string, fn: () => Promise<boolean | void>) => {
+  // `finishes`: going through ends the operation (Continue, Skip); an abort just leaves it.
+  const run = async (title: string, fn: () => Promise<boolean | void>, finishes = true) => {
     setBusy(true);
     try {
-      const [stopped, entry] = await tracked(fn);
+      const stopped = await fn();
       if (stopped) toast("info", "Stopped on new conflicts", "Resolve them to continue.");
-      // Finished: the entry is the whole merge or rebase, from where it started.
-      else if (entry !== null) toast("success", `${op.kind[0].toUpperCase()}${op.kind.slice(1)} finished`, undefined, undoAction(entry, refresh));
+      else if (finishes) toast("success", `${op.kind[0].toUpperCase()}${op.kind.slice(1)} finished`);
     } catch (e) {
       gitFailed(title, e);
     } finally {
@@ -33,7 +32,7 @@ export function OperationBanner({ status, refresh }: { status: RepoStatus; refre
   };
   const abort = async () => {
     const ok = await ask(`Abort the ${op.kind}? Your branch goes back to how it was before it started.`, { title: `Abort ${op.kind}`, kind: "warning", okLabel: "Abort" });
-    if (ok) await run("Abort failed", api.opAbort);
+    if (ok) await run("Abort failed", api.opAbort, false);
   };
   return (
     <div className="shrink-0 border-b border-conflict/40 bg-conflict/10 px-3 py-2">

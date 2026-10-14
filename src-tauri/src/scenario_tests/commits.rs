@@ -196,44 +196,6 @@ fn a_prepared_message_comes_before_the_template() {
     assert_eq!(commit_template(&r).as_deref(), Some("Why:"));
 }
 
-/// A new repository has no commits yet: every view reads it as empty, and staging, unstaging
-/// and the first commit work before HEAD exists.
-#[test]
-fn init_then_first_commit() {
-    let sb = Sandbox::new("init");
-    let r = sb.path("new");
-    fs::create_dir_all(&r).unwrap();
-    crate::git::init(&r).unwrap();
-    identity(&r);
-    assert!(crate::git::init(&r).is_err(), "already a repository");
-    let first = run_text(&r, &["config", "--get", "init.defaultBranch"])
-        .map(|b| b.trim().to_string())
-        .unwrap_or_else(|_| "main".into());
-    let st = status(&r).unwrap();
-    assert_eq!(st.branch.as_deref(), Some(first.as_str()));
-    assert!(st.head.is_none() && st.upstream.is_none() && st.remotes.is_empty());
-    assert!(log(&r, None, 0, 10).unwrap().is_empty());
-    branches(&r).unwrap();
-    worktrees(&r).unwrap();
-
-    fs::write(r.join("a.txt"), "a\n").unwrap();
-    stage(&r, &["a.txt".into()]).unwrap();
-    unstage(&r, &["a.txt".into()]).unwrap();
-    assert_eq!(status(&r).unwrap().unstaged.len(), 1);
-    stage(&r, &["a.txt".into()]).unwrap();
-    let j = Journal::default();
-    j.record(&r, Action::new("Commit", Mode::Soft), |r| {
-        commit(r, "first", &CommitOptions::default(), &Net::default())
-    })
-    .unwrap();
-    assert_eq!(log(&r, None, 0, 10).unwrap().len(), 1);
-    assert!(publish_remote(&r).unwrap_err().contains("no remote"));
-    // Undoing the first commit makes the branch unborn again, its file still staged.
-    step(&j, &r, false).unwrap();
-    let st = status(&r).unwrap();
-    assert!(st.head.is_none() && st.staged.len() == 1);
-}
-
 #[test]
 fn a_repository_of_its_own_identity_and_back_to_global() {
     let sb = Sandbox::new("repo-identity");
@@ -394,17 +356,12 @@ fn a_cancel_after_the_commit_was_made_keeps_it() {
     let r = sb.path("r");
     init(&r);
     write_commit(&r, "a.txt", "a\n", "base");
-    let j = Journal::default();
-    let action = || Action::new("Commit", Mode::Soft).ok_only();
     let (result, _, gone) = cancel_in_hook(&sb, &r, "post-commit", "", |net| {
-        j.record(&r, action(), |r| {
-            commit(r, "Add b", &CommitOptions::default(), net)
-        })
+        record(&r, |r| commit(r, "Add b", &CommitOptions::default(), net))
     });
     result.unwrap();
     assert!(gone);
     assert_eq!(log(&r, None, 0, 1).unwrap()[0].subject, "Add b");
-    assert_eq!(j.view(&r).undo.len(), 1);
 
     fs::remove_file(r.join(".git/hooks/post-commit")).unwrap();
     fs::remove_file(sb.path("post-commit.pid")).unwrap();
@@ -437,17 +394,12 @@ fn a_cancel_while_an_agent_commits_is_still_cancelled() {
     let r = sb.path("r");
     init(&r);
     write_commit(&r, "a.txt", "a\n", "base");
-    let j = Journal::default();
     let (result, _, gone) = cancel_in_hook(
         &sb,
         &r,
         "pre-commit",
         "git commit -q --no-verify --allow-empty -m 'agent commit' || exit 1",
-        |net| {
-            j.record(&r, Action::new("Commit", Mode::Soft).ok_only(), |r| {
-                commit(r, "Add b", &CommitOptions::default(), net)
-            })
-        },
+        |net| record(&r, |r| commit(r, "Add b", &CommitOptions::default(), net)),
     );
     assert_eq!(result.unwrap_err(), CANCELLED);
     assert!(gone);
@@ -456,7 +408,6 @@ fn a_cancel_while_an_agent_commits_is_still_cancelled() {
         log.iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(),
         ["agent commit", "base"]
     );
-    assert!(j.view(&r).undo.is_empty());
 }
 
 /// git prints nothing of its own when a hook fails, so the error says which hooks are set up,

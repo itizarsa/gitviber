@@ -1,5 +1,4 @@
-use crate::journal::{Action, Mode};
-use crate::state::{in_repo, journaled, watch_network, with_index_lock, AppState, Res};
+use crate::state::{acting, in_repo, watch_network, with_index_lock, AppState, Res};
 use crate::{askpass, git, network, rewrite};
 use tauri::ipc::Channel;
 use tauri::State;
@@ -40,13 +39,8 @@ pub async fn pull(
     op: String,
     progress: Channel<network::Progress>,
 ) -> Res<bool> {
-    let label = match mode {
-        git::PullMode::Ff => "Pull",
-        git::PullMode::Merge => "Pull (merge)",
-        git::PullMode::Rebase => "Pull (rebase)",
-    };
     let net = watch_network(&state, op, progress);
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
+    acting(&state, move |r| {
         git::pull(r, mode, autostash.unwrap_or(false), &net)
     })
     .await
@@ -60,13 +54,7 @@ pub async fn merge(
     autostash: Option<bool>,
 ) -> Res<bool> {
     let how = how.unwrap_or(git::MergeKind::Ff);
-    // Compare hands over a full ref; the undo list names the branch.
-    let shown = git::short_ref(&name);
-    let label = match how {
-        git::MergeKind::Squash => format!("Squash merge {shown}"),
-        git::MergeKind::Ff | git::MergeKind::NoFf => format!("Merge {shown}"),
-    };
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
+    acting(&state, move |r| {
         git::merge(r, &name, how, autostash.unwrap_or(false))
     })
     .await
@@ -79,8 +67,7 @@ pub async fn rebase(
     autostash: Option<bool>,
     update_refs: Option<bool>,
 ) -> Res<bool> {
-    let label = format!("Rebase onto {onto}");
-    journaled(&state, Action::new(label, Mode::Keep), move |r| {
+    acting(&state, move |r| {
         git::rebase(r, &onto, autostash.unwrap_or(false), update_refs)
     })
     .await
@@ -96,15 +83,12 @@ pub async fn rebase_stacked(state: State<'_, AppState>, onto: String) -> Res<rew
 #[tauri::command]
 pub async fn op_continue(state: State<'_, AppState>) -> Res<bool> {
     let lock = state.index.clone();
-    journaled(&state, Action::new("Continue", Mode::Keep), move |r| {
-        with_index_lock(&lock, r, git::op_continue)
-    })
-    .await
+    acting(&state, move |r| with_index_lock(&lock, r, git::op_continue)).await
 }
 
 #[tauri::command]
 pub async fn op_abort(state: State<'_, AppState>) -> Res<()> {
-    journaled(&state, Action::new("Abort", Mode::Keep), |r| {
+    acting(&state, |r| {
         rewrite::before_abort(r)?;
         git::op_abort(r)?;
         rewrite::after_abort(r)
@@ -114,7 +98,7 @@ pub async fn op_abort(state: State<'_, AppState>) -> Res<()> {
 
 #[tauri::command]
 pub async fn rebase_skip(state: State<'_, AppState>) -> Res<bool> {
-    journaled(&state, Action::new("Skip", Mode::Keep), git::rebase_skip).await
+    acting(&state, git::rebase_skip).await
 }
 
 #[tauri::command]

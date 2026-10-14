@@ -8,7 +8,7 @@ import { type Change, changeAt, changes, isEmpty, type Picked, pick, type Side, 
 import { monaco } from "./monaco";
 import { toast } from "../app/toast";
 import { copyLater } from "../app/clipboard";
-import { rewriteFiles, tracked, undoAction } from "../repo/undo";
+import { rewriteFiles } from "../repo/rewriteFiles";
 
 /**
  * Where a diff's lines can go: index → worktree ("unstaged") or HEAD → index ("staged") stage,
@@ -64,8 +64,8 @@ async function run(s: Staging, action: LineAction, p: Picked) {
   try {
     if (action === "stash") {
       // Not a branch move: Undo puts the file back, the stash stays to drop.
-      const [, entry] = await tracked(() => api.stashLines("", request));
-      toast("success", `Stashed lines of ${s.path}`, "Name it in Stashes. Undo puts the lines back; the stash stays.", undoAction(entry, s.refresh));
+      await api.stashLines("", request);
+      toast("success", `Stashed lines of ${s.path}`, "Name it in Stashes.");
     } else await api.changeLines(request);
   } catch (e) {
     toast("error", LABELS[action][2], errorMessage(e));

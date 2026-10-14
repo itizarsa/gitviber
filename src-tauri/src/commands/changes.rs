@@ -1,6 +1,5 @@
-use crate::journal::{files_label, Action, Mode};
 use crate::state::{
-    blocking, in_repo, indexed, indexed_once, journaled, read_repo, watch_network, with_index_lock,
+    acting, blocking, in_repo, indexed, indexed_once, read_repo, watch_network, with_index_lock,
     AppState, Res,
 };
 use crate::{git, github, handoff, lines, network, suggest};
@@ -46,14 +45,11 @@ pub async fn remove_index_lock(state: State<'_, AppState>, path: String) -> Res<
 
 #[tauri::command]
 pub async fn discard(state: State<'_, AppState>, paths: Vec<String>) -> Res<()> {
-    let (journal, index) = (state.journal.clone(), state.index.clone());
+    let index = state.index.clone();
     in_repo(&state, move |r| {
-        let label = files_label("Discard", &paths);
         let list = paths.clone();
         let write = move |r: &Path| git::discard(r, &list).map(|_| vec![]);
-        journal
-            .replace(r, label, "discarded", &paths, &index, write)
-            .map(|_| ())
+        crate::backup::replace(r, "discarded", &paths, &index, write).map(|_| ())
     })
     .await
 }
@@ -64,14 +60,11 @@ pub async fn change_lines(state: State<'_, AppState>, request: lines::Request) -
     if request.action != "discard" {
         return indexed(&state, move |r| lines::run(r, &request)).await;
     }
-    let (journal, index) = (state.journal.clone(), state.index.clone());
+    let index = state.index.clone();
     in_repo(&state, move |r| {
         let paths = [request.path.clone()];
-        let label = files_label("Discard", &paths);
         let write = move |r: &Path| lines::run(r, &request).map(|_| vec![]);
-        journal
-            .replace(r, label, "discarded", &paths, &index, write)
-            .map(|_| ())
+        crate::backup::replace(r, "discarded", &paths, &index, write).map(|_| ())
     })
     .await
 }
@@ -84,15 +77,9 @@ pub async fn commit(
     op: String,
     progress: Channel<network::Progress>,
 ) -> Res<()> {
-    let subject = message.lines().next().unwrap_or("").trim();
-    let label = match (options.amend, subject) {
-        (true, "") => "Amend last commit".to_string(),
-        (true, s) => format!("Amend \"{s}\""),
-        (false, s) => format!("Commit \"{s}\""),
-    };
     let lock = state.index.clone();
     let net = watch_network(&state, op, progress);
-    journaled(&state, Action::new(label, Mode::Soft).ok_only(), move |r| {
+    acting(&state, move |r| {
         with_index_lock(&lock, r, |r| git::commit(r, &message, &options, &net))
     })
     .await

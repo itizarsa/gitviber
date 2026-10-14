@@ -51,14 +51,6 @@ pub(crate) fn drops_pushed_from(repo: &Path, from: &str, keep: &[&str]) -> Resul
     Ok(!run_text(repo, &args)?.trim().is_empty())
 }
 
-/// The commit HEAD's push target (or upstream) is at, if it has one.
-pub(crate) fn pushed_tip(repo: &Path) -> Option<String> {
-    let spec = format!("{}^{{commit}}", pushed_base(repo));
-    run_text(repo, &["rev-parse", "--verify", "-q", &spec])
-        .ok()
-        .map(|s| s.trim().to_string())
-}
-
 /// "soft", "mixed" or "hard", as `git reset` takes them.
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(rename_all = "kebab-case")]
