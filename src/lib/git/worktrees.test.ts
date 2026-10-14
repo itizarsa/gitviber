@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { FileChange, WorktreeState } from "../api/types.ts";
-import type { Pull, Worktree } from "../api/index.ts";
+import type { Worktree } from "../api/index.ts";
 import { cleanable, defaultBranch, folderForBranch, hueColor, HUE_NAMES, HUES, isHueChoice, mainBackOffer, shortPath, stageable, worktreeHue, worktreeHues, worktreeName } from "./worktrees.ts";
 
 test("short worktree paths", () => {
@@ -71,14 +71,11 @@ test("clean up offers merged, clean, idle worktrees only", () => {
     "/p/app.worktrees/holder": st(),
     "/p/app.worktrees/holder/.claude/worktrees/inner": st(),
   };
-  const pull = { number: 12, state: "merged", headSha: "f".repeat(40) } as Pull;
-  const found = cleanable(list, states, (b) => (b === "squashed" ? pull : undefined), (p) => (p.endsWith("/busy") ? 1 : 0));
+  const found = cleanable(list, states, (p) => (p.endsWith("/busy") ? 1 : 0));
   assert.deepEqual(
     found.map((c) => [c.worktree.branch, c.why, c.mergedHead]),
     [
-      ["done", "merged", null],
-      ["squashed", "#12 merged", "f".repeat(40)],
-    ],
+      ["done", "merged", null]],
   );
 });
 
@@ -108,7 +105,7 @@ test("clean up tells a worktree inside another from one whose name only starts t
   const st: WorktreeState = { uncommitted: 0, commits: 0, merged: true, updated: null };
   const list = [wt("/p/app", { main: true, current: true }), wt("/p/app.worktrees/fix"), wt("/p/app.worktrees/fix-2"), wt("/p/app.worktrees/fix 3"), wt("/p/app.worktrees/fix.old")];
   const states = Object.fromEntries(list.map((w) => [w.path, st]));
-  const found = cleanable(list, states, () => undefined, () => 0).map((c) => c.worktree.branch);
+  const found = cleanable(list, states, () => 0).map((c) => c.worktree.branch);
   assert.deepEqual(found, ["fix", "fix-2", "fix 3", "fix.old"]);
 });
 

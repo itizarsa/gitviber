@@ -3,7 +3,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
-import { api, type Branch, type BranchTracking, fullName, github, type Worktree } from "@/lib/api";
+import { api, type Branch, type BranchTracking, type Worktree } from "@/lib/api";
 import { matchesCommand, useCommands, useShortcut } from "@/lib/commands/keybindings";
 import { pointerMoved } from "@/lib/ui/pointer";
 import { isMenuKey, openRowMenu } from "@/lib/ui/useListNav";
@@ -18,7 +18,6 @@ import { branchPoint } from "@/lib/git/comparePoints";
 import { RowAction } from "@/components/RowAction";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
 import { usePickerIndex } from "@/hooks/usePickerIndex";
-import { useGitHubAccount } from "@/features/github/shared/useGitHubAccount";
 
 interface Props {
   /** The main worktree: pins are kept per project, across its worktrees. */
@@ -80,9 +79,6 @@ export function BranchPicker({ main, label, current, branches, worktrees, onSwit
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
-  // GitHub branch protection, asked when the menu opens. No GitHub, no answer: then only
-  // the remote default is held back, and the confirm is what guards the rest.
-  const guarded = useAsyncValue(open ? () => github.protectedBranches().then((names) => new Set(names.map((n) => `origin/${n}`))) : null, [open], new Set<string>());
   useCommands({ "git.switchBranch": () => setOpen(true) });
 
   // The worktree a branch is checked out in, other than this one. Switching to origin/x means
@@ -181,15 +177,6 @@ export function BranchPicker({ main, label, current, branches, worktrees, onSwit
   const listId = useId();
   const hotOption = options[index];
   const hotHeld = hotOption?.kind === "branch" && heldIn(hotOption.branch) ? hotOption.branch : null;
-
-  // Which GitHub repository each remote is, so branches on one you can't push to (a fork's
-  // original) offer no delete.
-  const remoteRepos = useAsyncValue(open ? () => github.remotes().then((list) => new Map(list.map((r) => [r.name, r.repo]))) : null, [open], new Map<string, string | null>());
-  const { account } = useGitHubAccount(open);
-  const accessOf = (remote: string) => {
-    const repo = remoteRepos.get(remote)?.toLowerCase();
-    return repo ? ([account?.origin, account?.parent].find((a) => a && fullName(a.repo).toLowerCase() === repo) ?? null) : null;
-  };
 
   // Opening starts on the current branch, where Enter does nothing; a search, on its first match.
   useEffect(() => setIndex(q ? 0 : Math.max(0, options.findIndex((o) => o.kind === "branch" && o.branch.current))), [query, open]);
@@ -444,7 +431,7 @@ export function BranchPicker({ main, label, current, branches, worktrees, onSwit
                   </>
                 )}
                 {/* Where you can't push, GitHub would refuse the delete anyway. */}
-                {!o.branch.current && !heldIn(o.branch) && !o.branch.remoteDefault && !guarded.has(o.branch.name) && !(o.branch.remote && accessOf(remoteOf(o.branch))?.push === false) && (
+                {!o.branch.current && !heldIn(o.branch) && !o.branch.remoteDefault && (
                   <RowAction variant="picker" hot={hot} label={o.branch.remote ? "Delete from the remote…" : o.branch.merged || upstream(o.branch) ? "Delete branch (merged)" : "Delete branch…"} onClick={act(() => onDelete(o.branch, upstream(o.branch)), o.branch.name)}>
                     <Trash2 />
                   </RowAction>

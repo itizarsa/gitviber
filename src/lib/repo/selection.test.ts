@@ -25,18 +25,16 @@ const commit = (sha: string) => ({ sha, shortSha: sha.slice(0, 7), subject: "s",
 
 test("a commit's whole list is its own tab, apart from the lists Changes keeps", () => {
   const a = selectionKey({ kind: "changes", list: "commit", commit: commit("a".repeat(40)) });
-  assert.equal(a, selectionKey({ kind: "changes", list: "commit", commit: commit("a".repeat(40)), url: "https://example.test/c" }));
   assert.notEqual(a, selectionKey({ kind: "changes", list: "commit", commit: commit("b".repeat(40)) }));
   assert.notEqual(a, selectionKey({ kind: "changes", list: "unstaged" }));
   assert.equal(selectionKey({ kind: "changes", list: "branch" }), "changes::All Branch Changes");
   assert.equal(selectionPath({ kind: "changes", list: "commit", commit: commit("a".repeat(40)) }), "Commit aaaaaaa");
 });
 
-test("a range's list is told apart by its ends, and by being a PR's", () => {
+test("a range's list is told apart by its ends", () => {
   const range = { label: "main...feature", base: "1".repeat(40), head: "2".repeat(40) };
   const key = selectionKey({ kind: "changes", list: "range", range });
   assert.notEqual(key, selectionKey({ kind: "changes", list: "range", range: { ...range, head: "3".repeat(40) } }));
-  assert.notEqual(key, selectionKey({ kind: "changes", list: "range", range: { ...range, number: 4 } }));
   assert.equal(selectionPath({ kind: "changes", list: "range", range }), "All Changes · main...feature");
   assert.equal(selectionPath({ kind: "changes", list: "range", range: { base: "1".repeat(40), head: "2".repeat(40) } }), "All Changes · 1111111..2222222");
 });

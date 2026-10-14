@@ -4,7 +4,6 @@ pub mod app;
 pub mod branches;
 pub mod changes;
 pub mod files;
-pub mod github;
 pub mod history;
 pub mod patch;
 pub mod repo;

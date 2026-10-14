@@ -1,16 +1,15 @@
 // Where links (lib/links/links) resolve and what opening one does: the repo's file lists, loaded on the
 // first ⌘-hover in a tree, and the workspace that opens files. Shared by the code view's Go to
 // Definition (lib/editor/definitions) and the terminal (terminalLinks below), whose links also
-// reach commits (History), and pull requests and issues (their tabs) of the repo.
+// reach commits (History).
 import type { IBufferRange, IDisposable, ILink, Terminal } from "@xterm/xterm";
-import { api, fullName, type GitHubAccount, github, type Issue, issues, type Pull, repoOf, toIssue, toPull } from "../api";
+import { api } from "../api";
 import { IS_MAC, primaryKey } from "../platform";
-import { type Alias, cellText, diskCandidates, diskTarget, type FileIndex, findTerminalLinks, folders, githubItem, hyperlinkTarget, indexCase, indexFiles, type Link, LINK_WINDOW, loadAliases, resolveLink, resolveTerminalLink, type Target } from "./links";
+import { type Alias, cellText, diskCandidates, diskTarget, type FileIndex, findTerminalLinks, folders, hyperlinkTarget, indexCase, indexFiles, type Link, LINK_WINDOW, loadAliases, resolveLink, resolveTerminalLink, type Target } from "./links";
 import { dirname, slashes } from "../path";
 import { failed } from "../app/toast";
 import { revealInCode } from "../editor/reveal";
 import { revealPath } from "../app/openIn";
-import { cached as cachedData, revalidate } from "../github/githubCache";
 
 /** Where a file's paths resolve: a commit's tree (`<sha>`, `<sha>^`), or the working tree (null) as of `revision`. */
 export interface LinkTree {
@@ -33,12 +32,8 @@ interface LinkHost {
   open(path: string, focus: boolean): void;
   /** `show`: the explorer comes up and takes the keys, as for a folder; else it follows along if it's there. */
   reveal(path: string, show: boolean): void;
-  /** origin's page on GitHub (null: it isn't there): #123, and its pull requests' and issues' URLs, open here. */
-  github: string | null;
   /** A commit, by its full id, opened in History. */
   showCommit(sha: string): void;
-  /** A pull request or an issue, in its tab. */
-  openItem(item: { kind: "pull"; pull: Pull } | { kind: "issue"; issue: Issue }): void;
 }
 
 let host: LinkHost | null = null;
@@ -102,7 +97,7 @@ export async function resolverFor({ path, tree }: LinkSide) {
 
 /** Opens a link's target: a page in the browser, or a file in a tab at its line. `focus`: the code view takes the keys. */
 export function openTarget(target: Target, focus = false) {
-  if ("url" in target) return void github.openUrl(target.url).catch(failed("Could not open the link"));
+  if ("url" in target) return void api.openUrl(target.url).catch(failed("Could not open the link"));
   if (!host) return;
   if (target.line) revealInCode({ path: target.path, line: target.line, column: target.column ?? 1 });
   host.open(target.path, focus);
@@ -115,53 +110,25 @@ export function openTargetIn(root: string, target: Target) {
   else waiting = { root, target, until: Date.now() + 10_000 };
 }
 
-/**
- * What only terminal links open: a commit in History, and a pull request or an issue in its tab
- * (`pull`: the URL said which; `repo`: its https://github.com/owner/name).
- */
-type GitTarget = { commit: string } | { number: number; pull: boolean; repo: string };
+/** What only terminal links open: a commit in History. */
+type GitTarget = { commit: string };
 export type TerminalTarget = Target | GitTarget;
 
 const CLICK = `${IS_MAC ? "⌘" : "Ctrl"}-click`;
 
 /** What ⌘-click does, for the hover: as VS Code's terminal says it. */
 function hint(target: TerminalTarget) {
-  const does = "commit" in target ? "Show in History" : "number" in target ? `Open #${target.number}` : "url" in target ? "Follow link" : target.dir ? "Show folder" : "Open file";
+  const does = "commit" in target ? "Show in History" : "url" in target ? "Follow link" : target.dir ? "Show folder" : "Open file";
   return `${does} (${CLICK})`;
 }
 
-/** A terminal link: a page in the browser, a file in the code view and shown in the explorer, a folder in the explorer, a commit in History, a pull request or issue in its tab. */
+/** A terminal link: a page in the browser, a file in the code view and shown in the explorer, a folder in the explorer, a commit in History. */
 export function followTerminalLink(target: TerminalTarget) {
   if ("commit" in target) return host?.showCommit(target.commit);
-  if ("number" in target) return void openItem(target);
   if ("url" in target || !host) return openTarget(target, true);
   if (target.dir) return host.reveal(target.path, true);
   openTarget(target, true);
   host.reveal(target.path, false);
-}
-
-/**
- * #123 or a pull request's or issue's URL, in its tab: as a pull request unless GitHub says there's
- * none of that number, then as an issue (whose read would take a pull request for one). Asked only
- * on a click. Not signed in, or GitHub unreachable: the page, in the browser.
- */
-async function openItem({ number, pull, repo }: { number: number; pull: boolean; repo: string }) {
-  const h = host;
-  if (!h) return;
-  // Under the keys the tab's own view reads with, so it opens on what was just read.
-  const [target, pullUrl, issueUrl] = [repoOf(repo), `${repo}/pull/${number}`, `${repo}/issues/${number}`];
-  try {
-    return h.openItem({ kind: "pull", pull: toPull(await revalidate(`pr:${pullUrl}`, () => github.detail(target, number))) });
-  } catch {
-    // No such pull request: an issue, or GitHub can't be asked.
-  }
-  if (!pull)
-    try {
-      return h.openItem({ kind: "issue", issue: toIssue(await revalidate(`issue:${issueUrl}`, () => issues.detail(target, number))) });
-    } catch {
-      // GitHub can't be asked.
-    }
-  openTarget({ url: pull ? pullUrl : issueUrl });
 }
 
 // What the repo said of SHAs, until the working tree changes, as `disk` below: a full id, or null.
@@ -178,13 +145,6 @@ async function commitIds(shas: string[], revision: number) {
     ask.forEach((s, i) => known.set(s, ids[i] ?? null));
   }
   return shas.map((s) => known.get(s) ?? null);
-}
-
-/** The GitHub repos whose #123 and URLs open here: origin, then a fork's parent once the account says. */
-function githubRepos(h: LinkHost) {
-  if (!h.github) return [];
-  const parent = cachedData<GitHubAccount>("account")?.parent;
-  return parent ? [h.github, `https://github.com/${fullName(parent.repo)}`] : [h.github];
 }
 
 type OnDisk = { path: string; kind: "file" | "dir" } | null;
@@ -331,15 +291,13 @@ async function targetsOf(found: Link[], h: LinkHost, cwd: string): Promise<(Term
     });
   // Only a shell in this checkout may fall back to its root (a …/ path, a root-relative one).
   const rootToo = dir !== null && !nested;
-  const repos = githubRepos(h);
   const files = found.some((l) => l.kind === "file");
   const shas = dir === null ? [] : found.filter((l) => l.kind === "commit").map((l) => l.spec);
   const [index, ids] = await Promise.all([files ? indexOf({ rev: null, revision: h.revision }) : NO_FILES, shas.length ? commitIds(shas, h.revision) : []]);
   const known = new Map(shas.map((s, i) => [s, ids[i]]));
   const targets = found.map((l): TerminalTarget | null => {
     if (l.kind === "commit") return known.get(l.spec) ? { commit: known.get(l.spec)! } : null;
-    const item = l.kind === "issue" && dir === null ? null : githubItem(l, repos);
-    return item ?? resolveTerminalLink(l, dir, index, root, rootToo);
+    return resolveTerminalLink(l, dir, index, root, rootToo);
   });
   // What the list lacks may be on disk, ignored: one call for the line's paths, only when hovered.
   const asks = found.map((l, i) => (targets[i] ? [] : diskCandidates(l, dir, root, rootToo)));

@@ -1,5 +1,5 @@
 import { ask } from "@/lib/app/ask";
-import { ArrowDown, ArrowUp, Cherry, Combine, Files, SearchCode, Scissors, GitCommitVertical, Copy, ExternalLink, Eye, EyeOff, FileDiff, FolderGit2, GitBranchPlus, GitCommitHorizontal, GitCompare, GitCompareArrows, History, Link, ListFilter, Pencil, RotateCcw, Sparkles, SquareDashedMousePointer, Tag, Trash2, Undo2, UploadCloud } from "lucide-react";
+import { ArrowDown, ArrowUp, Cherry, Combine, Files, SearchCode, Scissors, GitCommitVertical, Copy, Eye, EyeOff, FileDiff, FolderGit2, GitBranchPlus, GitCommitHorizontal, GitCompare, GitCompareArrows, History, ListFilter, Pencil, RotateCcw, Sparkles, SquareDashedMousePointer, Tag, Trash2, Undo2, UploadCloud } from "lucide-react";
 import { Fragment, useRef, useState } from "react";
 import {
   ContextMenuContent,
@@ -13,11 +13,10 @@ import {
 import { api, type Commit, errorMessage, type RemoteTags, type ResetMode } from "@/lib/api";
 import { forgetRemoteTags, remoteTags } from "@/lib/repo/remoteTags";
 import { folderName } from "@/lib/path";
-import { copyLink, openOnGitHub } from "@/lib/github/url";
 import { copyLater, copyText } from "@/lib/app/clipboard";
 import { openWorktreeDialog } from "@/features/worktrees/WorktreeDialogs";
 import { startBisect } from "./BisectBar";
-import { type Actions, checkoutDetached, commitUrl, dropsPushed, MERGE_WARNING, PUSHED_WARNING, undoCommit } from "./commitActions";
+import { type Actions, checkoutDetached, dropsPushed, MERGE_WARNING, PUSHED_WARNING, undoCommit } from "./commitActions";
 import { groupRefs } from "./groupRefs";
 import { commitMark } from "@/lib/repo/compareMark";
 
@@ -67,10 +66,9 @@ function TagMenu({ tag, remote, onOpen, actions }: { tag: string; remote: TagsTh
 
 /** Right-click actions on a commit. `head`: the first row, i.e. the checked-out commit. */
 export function CommitMenu({ commit: c, head, actions }: { commit: Commit; head: boolean; actions: Actions }) {
-  const { status, headSha, webUrl, locked, run, refMenu } = actions;
+  const { status, headSha, locked, run, refMenu } = actions;
   // The badges shown; a detached HEAD's names no ref to hide.
   const graphRefs = refMenu ? groupRefs(c.refs, actions.remotes, actions.showRefs).filter((r) => r.refs.length) : [];
-  const url = commitUrl(c, actions);
   const short = c.shortSha;
   const target = status?.branch ?? "HEAD";
   const root = status?.root;
@@ -274,16 +272,6 @@ export function CommitMenu({ commit: c, head, actions }: { commit: Commit; head:
       <ContextMenuItem disabled={c.parents.length > 1} onSelect={() => copyLater(() => api.commitPatch(c.sha), "Patch copied")}>
         <FileDiff /> Copy as Patch
       </ContextMenuItem>
-      {webUrl && (
-        <>
-          <ContextMenuItem disabled={!url} onSelect={() => url && copyLink(url)}>
-            <Link /> Copy link
-          </ContextMenuItem>
-          <ContextMenuItem disabled={!url} onSelect={() => url && openOnGitHub(url)}>
-            <ExternalLink /> Open on GitHub
-          </ContextMenuItem>
-        </>
-      )}
     </ContextMenuContent>
   );
 }

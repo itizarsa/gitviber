@@ -2,7 +2,7 @@
 // name under it is defined, ⌥F12 peeks, ⇧F12 (or ⌘-click on a definition) lists where it's used,
 // several places show as a list. definitions.rs finds names; an import path or path:line
 // (lib/links/links) goes to the file it names. URLs are Monaco's own links.
-import { api, DEFINITIONS_CANCELLED, type Definition, errorMessage, github } from "../api";
+import { api, type Definition, DEFINITIONS_CANCELLED, errorMessage } from "../api";
 import { narrow, widenColumn } from "./indent";
 import { commandIn } from "../commands/keybindings";
 import { languageFor } from "./language";
@@ -202,7 +202,7 @@ monaco.editor.registerEditorOpener({
 monaco.editor.registerLinkOpener({
   open(uri) {
     if (uri.scheme !== "http" && uri.scheme !== "https") return false;
-    github.openUrl(uri.toString(true)).catch(failed("Could not open the link"));
+    api.openUrl(uri.toString(true)).catch(failed("Could not open the link"));
     return true;
   },
 });

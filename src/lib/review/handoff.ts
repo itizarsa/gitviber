@@ -70,7 +70,6 @@ export function placedIn<T extends Pick<HandoffInput, "head" | "checkedOut" | "m
 function what(sel: GuideSelection, branch: string | null, base: string, head: string) {
   const range = `${short(base)}..${short(head)}`;
   if (sel.of === "commit") return `commit ${short(sel.commit.sha)} ${quote(sel.commit.subject)} by ${sel.commit.authorName}`;
-  if (sel.of === "pull") return `pull request #${sel.pull.number} ${quote(sel.pull.title)} by ${sel.pull.author} (${sel.pull.headRef} into ${sel.pull.baseRef}), commits ${range}`;
   if (sel.of === "changes") return `the uncommitted changes in this worktree${branch ? ` on ${branch}` : ""} (staged, unstaged and new files) against ${base === EMPTY_TREE ? "no commit yet" : `HEAD ${short(base)}`}`;
   return `the branch ${branch ?? "HEAD"} since it left ${sel.label}, commits ${range}`;
 }
@@ -154,7 +153,7 @@ export const riskPrompt = (checkedOut: boolean) =>
 
 /** The session's name in the agent (its prompt box, resume list and terminal title); handoff.rs makes it one short line. */
 export function handoffName(sel: GuideSelection, about: HandoffAbout) {
-  const of = sel.of === "commit" ? short(sel.commit.sha) : sel.of === "pull" ? `PR #${sel.pull.number}` : sel.of === "changes" ? "uncommitted" : sel.label;
+  const of = sel.of === "commit" ? short(sel.commit.sha) : sel.of === "changes" ? "uncommitted" : sel.label;
   const part = !about ? "" : "section" in about ? about.section.title : about.risk.title;
   return `${about && "risk" in about ? "Risk" : "Review"}: ${of}${part ? ` · ${part}` : ""}`;
 }

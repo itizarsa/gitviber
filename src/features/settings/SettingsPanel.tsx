@@ -24,7 +24,7 @@ const SECTIONS = [
   { id: "diff", label: "Diff", icon: GitCompareArrows, group: "Workspace" },
   { id: "terminal", label: "Terminal", icon: SquareTerminal, group: "Workspace" },
   { id: "git", label: "Git", icon: GitBranch, group: "Git" },
-  { id: "commit", label: "Commit Messages", icon: Sparkles, group: "Git" },
+  { id: "commit", label: "Agent", icon: Sparkles, group: "Git" },
   { id: "review", label: "Guided Review", icon: ScanSearch, group: "Git" },
 ] as const;
 export type Section = (typeof SECTIONS)[number]["id"];
@@ -100,7 +100,7 @@ export function SettingsPanel({
           {section === "diff" && <DiffSection />}
           {section === "terminal" && <TerminalSection />}
           {/* Keyed: the settings window stays open as the workspace opens another project. */}
-          {section === "git" && <GitSection key={main} main={main} />}
+          {section === "git" && <GitSection key={main} />}
           {section === "commit" && <CommitSection />}
           {section === "review" && <ReviewSection />}
           {section === "openIn" && <OpenInSection />}

@@ -98,7 +98,7 @@ test("⌘1–⌘9 pick tabs; the git panel's views moved to ⌃1–⌃4", () => 
   assert.equal(run("cmd+8"), "tab.goto8");
   assert.equal(run("cmd+9"), "tab.last");
   assert.equal(run("ctrl+1"), "view.changes");
-  assert.equal(run("ctrl+4"), "view.issues");
+  assert.equal(run("ctrl+2"), "view.history");
   for (const chord of ["cmd+right", "shift+cmd+]", "ctrl+tab"]) assert.equal(run(chord), "tab.next");
   for (const chord of ["cmd+left", "shift+cmd+[", "ctrl+shift+tab"]) assert.equal(run(chord), "tab.prev");
   // Only the defaults moved: someone who bound ⌘1 to Changes keeps it.
@@ -110,7 +110,7 @@ test("off macOS: views on Alt+1–4, tabs on Ctrl+Tab (the Super key is the OS's
   const run = (chord: string, overrides = {}) => commandFor(chord, overrides, false)?.id;
   assert.equal(run("cmd+1"), "tab.goto1", "Ctrl+1");
   assert.equal(run("alt+1"), "view.changes");
-  assert.equal(run("alt+4"), "view.issues");
+  assert.equal(run("alt+2"), "view.history");
   assert.equal(run("ctrl+1"), undefined, "Super+1");
   assert.equal(run("cmd+tab"), "tab.next");
   assert.equal(run("shift+cmd+tab"), "tab.prev");

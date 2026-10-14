@@ -6,11 +6,10 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { api, type Commit, errorMessage, LOG_PAGE } from "@/lib/api";
 import { copyText } from "@/lib/app/clipboard";
 import type { Selection } from "@/lib/repo/selection";
-import { commitUrl } from "@/features/history/commitActions";
 import { arrows } from "./arrows";
 
 /** The commits `head` has that `base` doesn't (commit ids), a page at a time. Opening one shows its changes. */
-export function CommitList({ base, head, count, empty, webUrl, onOpen }: { base: string; head: string; count: number; empty: string; webUrl: string | null; onOpen: (s: Selection, pin?: boolean) => void }) {
+export function CommitList({ base, head, count, empty, onOpen }: { base: string; head: string; count: number; empty: string; onOpen: (s: Selection, pin?: boolean) => void }) {
   const [log, setLog] = useState<{ commits: Commit[]; hasMore: boolean; error: string | null } | null>(null);
   const current = useRef(log);
   current.current = log;
@@ -45,7 +44,7 @@ export function CommitList({ base, head, count, empty, webUrl, onOpen }: { base:
   return (
     <div role="list" aria-label="Commits" onKeyDown={arrows} className="min-h-0 flex-1 overflow-y-auto pb-2">
       {log.commits.map((c, i) => {
-        const open = (pin: boolean) => onOpen({ kind: "changes", list: "commit", commit: c, url: commitUrl(c, { webUrl, everyOnWeb: false }) }, pin);
+        const open = (pin: boolean) => onOpen({ kind: "changes", list: "commit", commit: c }, pin);
         return (
           <ContextMenu key={c.sha}>
             <ContextMenuTrigger asChild>

@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useCi } from "@/lib/github/ci";
 import { api, type Commit, errorMessage, type GraphRefs, type RepoStatus, type Worktree } from "@/lib/api";
 import { type GraphRow, graphRows } from "@/lib/git/commitGraph";
 import { pointerMoved } from "@/lib/ui/pointer";
@@ -9,7 +8,7 @@ import { failed, toast } from "@/lib/app/toast";
 import { useListNav } from "@/lib/ui/useListNav";
 import { folderName } from "@/lib/path";
 import { useGitAction } from "@/hooks/useGitAction";
-import { type Actions, commitUrl, type RefMenu } from "./commitActions";
+import { type Actions, type RefMenu } from "./commitActions";
 import { CommitDrag } from "./commitDrag";
 import { CommitMenu, PickedMenu } from "./CommitMenu";
 import { CommitFileMenu } from "./CommitFileMenu";
@@ -27,8 +26,6 @@ interface Props {
   status: RepoStatus | null;
   /** Remote-tracking branch names (origin/main…), to group decorations. */
   remotes: Set<string>;
-  /** origin's page on GitHub; null: not on GitHub. */
-  webUrl: string | null;
   hasMore: boolean;
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -37,10 +34,6 @@ interface Props {
   onHover: (s: Selection) => void;
   /** HEAD, when the list is another branch's history (a fork's original) rather than HEAD's. */
   headSha?: string;
-  /** Where these commits live on GitHub, when that's not origin: a fork's original has them all. */
-  web?: string;
-  /** That repository, owner/name, for its checks. */
-  ciTarget?: string;
   /** What an empty list says. */
   empty?: string;
   /** Draw branches and merges; off for search results, whose neighbours aren't parent and child. */
@@ -66,7 +59,7 @@ interface Props {
   filterAuthor?: AuthorFilter;
 }
 
-export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMore, refresh, activeKey, onOpen, onHover, headSha, web, ciTarget, empty = "No commits yet.", graph = true, reveal = null, worktrees = [], onOpenRepo, pinHead = false, jump = null, onJumped, refMenu, showRefs, onComparePoints, filterAuthor }: Props) {
+export function HistoryPanel({ commits, status, remotes, hasMore, loadMore, refresh, activeKey, onOpen, onHover, headSha, empty = "No commits yet.", graph = true, reveal = null, worktrees = [], onOpenRepo, pinHead = false, jump = null, onJumped, refMenu, showRefs, onComparePoints, filterAuthor }: Props) {
   const [open, setOpen] = useState<string | null>(reveal?.sha ?? null);
   // On a new reveal only: an effect would run again each time the kept panel shows, reopening it.
   const [revealed, setRevealed] = useState(reveal);
@@ -106,13 +99,10 @@ export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMo
   const bySha = (sha: string | undefined) => commits.find((x) => x.sha === sha);
   const { selection, many, pickedSet, click, onMove, onEscape, clear } = usePickedCommits(commits, open);
   const { rewrite, squash, reword, messaging, closeMessage, submit } = useHistoryEdits({ commits, head, graph, run });
-  // Only commits GitHub has have checks: origin's, or all of a fork's original.
-  const ci = useCi(ciTarget ?? null, commits.filter((c) => c.onOrigin || !!web).slice(0, 100).map((c) => c.sha));
 
   const actions: Actions = {
     status,
     headSha: head,
-    webUrl: web ?? webUrl,
     locked: !!busy || picking || !!status?.operation,
     run,
     runNet,
@@ -121,9 +111,8 @@ export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMo
     reword,
     squash,
     refresh,
-    openAll: (c) => onOpen({ kind: "changes", list: "commit", commit: c, url: commitUrl(c, { webUrl: web ?? webUrl, everyOnWeb: !!web }) }, true),
+    openAll: (c) => onOpen({ kind: "changes", list: "commit", commit: c }, true),
     explain: (c) => openGuide({ kind: "guide", of: "commit", commit: c }, status, onOpen),
-    everyOnWeb: !!web,
     pickTargets: worktrees.filter((w) => !w.current && !w.bare && !w.prunable && w.branch),
     pickInto,
     pickMany: (cs) => {
@@ -253,8 +242,6 @@ export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMo
                 activeKey={activeKey}
                 onOpen={onOpen}
                 onHover={onHover}
-                url={commitUrl(c, actions)}
-                ci={ci[c.sha]}
                 fileMenu={(f, sel) => <CommitFileMenu commit={c} file={f} sel={sel} refresh={refresh} onOpen={onOpen} />}
                 menu={many && pickedSet.has(c.sha) ? <PickedMenu commits={selection} all={!hasMore && selection.length === commits.length} actions={actions} /> : <CommitMenu commit={c} head={c.sha === head} actions={actions} />}
               />

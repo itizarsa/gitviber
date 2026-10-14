@@ -4,13 +4,13 @@ import type { Components } from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tip } from "@/components/ui/tooltip";
-import { github } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useCommands } from "@/lib/commands/keybindings";
 import { failed } from "@/lib/app/toast";
 import { percent } from "@/lib/app/updateState";
 import { checkForUpdates, downloadUpdate, RELEASES_URL, restartToUpdate, shareUpdates, showUpdate, startUpdates, useUpdateMode, useUpdates, useUpdateShown } from "@/lib/app/updates";
 import { followLink, MarkdownBody } from "@/features/viewer/MarkdownView";
-import { markdownLink } from "@/lib/github/markdown";
+import { markdownLink } from "@/lib/markdown/render";
 import { REPO } from "./AboutDialog";
 
 const NOTES_PREFIX = "release-notes-";
@@ -52,7 +52,7 @@ export function UpdateDialog() {
             Later
           </Button>
           {mode === "download" ? (
-            <Button onClick={() => github.openUrl(RELEASES_URL).catch(failed("Could not open the link"))}>Open Releases Page</Button>
+            <Button onClick={() => api.openUrl(RELEASES_URL).catch(failed("Could not open the link"))}>Open Releases Page</Button>
           ) : download === "ready" ? (
             <Button disabled={restarting} onClick={() => void restartToUpdate()}>
               {restarting ? "Restarting…" : "Restart to Update"}

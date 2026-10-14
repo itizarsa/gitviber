@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { findTerminalLinks, githubItem } from "./links.ts";
+import { findTerminalLinks } from "./links.ts";
 
 // What a terminal shows that isn't a commit or an issue, and lines too big to look at slowly.
 const refs = (line: string) => findTerminalLinks(line).flatMap((l) => (l.kind === "commit" || l.kind === "issue" ? [l.spec] : []));
@@ -65,17 +65,3 @@ test("a line of 1000 candidates, and lines far too long, are read fast", () => {
   assert.ok(performance.now() - t < 1000, "windowed, not the whole line");
 });
 
-test("a repo's pull request and issue URLs in odd spellings", () => {
-  const repos = ["https://github.com/ada/repo"];
-  const url = (spec: string) => githubItem({ spec, kind: "url" }, repos);
-  assert.deepEqual(url("https://github.com/ADA/Repo/issues/3"), { number: 3, pull: false, repo: repos[0] });
-  assert.deepEqual(url("https://github.com/ada/repo/pull/3/commits/9a1c2e4"), { number: 3, pull: true, repo: repos[0] });
-  assert.equal(url("https://github.com/ada/repo/pull/0"), null);
-  assert.equal(url("https://github.com/ada/repo/pull/-3"), null);
-  assert.equal(url("https://github.com/ada/repo/pull/99999999999"), null);
-  assert.equal(url("https://github.com.evil.example/ada/repo/pull/3"), null);
-  assert.equal(url("https://gist.github.com/ada/repo/pull/3"), null);
-  assert.equal(url("http://github.com/ada/repo/pull/3"), null);
-  assert.equal(url("https://github.com/ada/repo/discussions/3"), null);
-  assert.equal(githubItem({ spec: "#3", kind: "issue" }, []), null);
-});

@@ -18,7 +18,6 @@ use std::time::{Duration, Instant};
 
 /// Enough for a focused change; past it the model gets the file list and the start of the diff.
 pub const MAX_DIFF: usize = 100 * 1024;
-const TIMEOUT: Duration = Duration::from_secs(90);
 /// A guide is a much longer answer than a commit message: a section per part of the change.
 /// An agent reading a big change's patch file takes longer: a second more per 4 KB of it, up to
 /// MAX_GUIDE_TIMEOUT.
@@ -29,34 +28,16 @@ const MAX_GUIDE_TIMEOUT: Duration = Duration::from_secs(600);
 pub const MAX_GUIDE_INPUT: usize = 400 * 1024;
 /// A pull request's commit subjects past this many go: the newest are kept, and room for the diff.
 const MAX_SUBJECTS: usize = 200;
-/// The file list kept whole past MAX_DIFF, when it alone is: about 3,000 files.
-const MAX_LIST: usize = 2 * MAX_DIFF;
 /// No answer asked for comes near this; past it the command is reading something back to us.
 const MAX_OUTPUT: usize = 1024 * 1024;
 /// How every diff sent is written: no colors or external tools, renames found.
 const DIFF_OPTS: [&str; 3] = ["--no-color", "--no-ext-diff", "-M"];
-/// A file list ahead of the patch, with whole paths: git shortens them to fit 80 columns.
-const WITH_STAT: [&str; 3] = ["--patch-with-stat", "--stat=1000", "--stat-graph-width=20"];
 pub const CANCELLED: &str = "cancelled";
 
-/// What the commit would contain, as the commit button decides it.
-#[derive(Deserialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum Scope {
-    Staged,
-    /// Nothing staged: "Commit all" stages every change, untracked files too.
-    All,
-    /// HEAD's own changes plus whatever is staged, from HEAD's parent.
-    Amend,
-}
-
-/// Which suggestion a run is for: the commit box's, the pull request dialog's, a guided review's
-/// and its risks' run side by side.
+/// Which run it is: a guided review's and its risks' run side by side.
 #[derive(Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
-    Message,
-    Pull,
     Guide,
     Risks,
 }
@@ -64,8 +45,6 @@ pub enum Kind {
 /// The run in progress of each kind, so Cancel (or starting another of that kind) can stop it.
 #[derive(Default)]
 pub struct Suggester {
-    message: Mutex<Option<Arc<AtomicBool>>>,
-    pull: Mutex<Option<Arc<AtomicBool>>>,
     guide: Mutex<Option<Arc<AtomicBool>>>,
     risks: Mutex<Option<Arc<AtomicBool>>>,
 }
@@ -73,8 +52,6 @@ pub struct Suggester {
 impl Suggester {
     fn slot(&self, kind: Kind) -> MutexGuard<'_, Option<Arc<AtomicBool>>> {
         match kind {
-            Kind::Message => &self.message,
-            Kind::Pull => &self.pull,
             Kind::Guide => &self.guide,
             Kind::Risks => &self.risks,
         }
@@ -112,114 +89,6 @@ fn pinned_diff(repo: &Path, args: &[&str]) -> Result<String, String> {
     git::run_text(repo, &[&git::PINS[..], &diff, &DIFF_OPTS, args].concat())
 }
 
-/// `pinned_diff` with the file list first.
-fn git_diff(repo: &Path, args: &[&str]) -> Result<String, String> {
-    pinned_diff(repo, &[&WITH_STAT[..], args].concat())
-}
-
-/// The diff to describe, cut as `cut` does.
-fn diff(repo: &Path, scope: Scope) -> Result<(String, Option<&'static str>), String> {
-    let run = |args: &[&str]| git_diff(repo, args);
-    let text = match scope {
-        Scope::Staged => run(&["--cached"])?,
-        Scope::Amend => {
-            let base = git::parent_or_empty(repo, "HEAD")?;
-            run(&["--cached", &base])?
-        }
-        Scope::All => {
-            let mut text = run(&[])?;
-            // `git diff` leaves out untracked files, which "Commit all" takes too.
-            let list = git::run(repo, &["ls-files", "--others", "--exclude-standard", "-z"])?;
-            let list = String::from_utf8_lossy(&list);
-            // A trailing slash is a nested repository, which is never staged.
-            for path in list
-                .split('\0')
-                .filter(|p| !p.is_empty() && !p.ends_with('/'))
-            {
-                if text.len() > MAX_DIFF {
-                    break;
-                }
-                let args = [
-                    &["-c", "core.quotePath=false", "diff", "--no-index"],
-                    &DIFF_OPTS[..],
-                    &["--", "/dev/null", path],
-                ]
-                .concat();
-                let out = git::run_with(repo, &args, &[1], None)?;
-                text.push_str(&String::from_utf8_lossy(&out));
-            }
-            text
-        }
-    };
-    if text.trim().is_empty() {
-        return Err("There are no changes to describe.".into());
-    }
-    Ok(cut(text))
-}
-
-/// `text` cut to MAX_DIFF at a line end, and when it was, what of it is whole, for the prompt to
-/// say. The file list ahead of the patch stays whole past MAX_DIFF, up to MAX_LIST.
-fn cut(mut text: String) -> (String, Option<&'static str>) {
-    if text.len() <= MAX_DIFF {
-        return (text, None);
-    }
-    let list = stat_end(&text).filter(|&end| end <= MAX_LIST);
-    let mut end = list.map_or(MAX_DIFF, |end| end.max(MAX_DIFF));
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    end = text[..end].rfind('\n').map_or(end, |i| i + 1);
-    text.truncate(end);
-    let whole = match list {
-        Some(_) => "everything ahead of the patch, its file list included, is whole",
-        None => "the file list ahead of the patch isn't whole either",
-    };
-    (text, Some(whole))
-}
-
-/// Where the first `--stat` list ends: after its " 3 files changed, …" line.
-fn stat_end(text: &str) -> Option<usize> {
-    let mut at = 0;
-    for line in text.split_inclusive('\n') {
-        at += line.len();
-        let mut words = line.trim_start().split(' ');
-        if line.starts_with(' ')
-            && words.next().is_some_and(|n| n.parse::<u32>().is_ok())
-            && matches!(words.next(), Some("file" | "files"))
-            && words.next().is_some_and(|w| w.starts_with("changed"))
-        {
-            return Some(at);
-        }
-    }
-    None
-}
-
-/// What a pull request from HEAD into `base` (a remote-tracking branch) brings: see
-/// `range_input`, with the repository's PR template if it has one.
-fn pull_input(repo: &Path, base: &str) -> Result<(String, Option<&'static str>), String> {
-    git::check_pull_base(repo, base)?;
-    let template = pull_template(repo, base).map(|t| {
-        format!(
-            "The repository's pull request template; follow its sections:\n{}\n\n",
-            t.trim_end()
-        )
-    });
-    range_input(repo, base, "HEAD", &template.unwrap_or_default())
-}
-
-/// What `to` brings over `from`: its commits' subjects, `extra`, then the diff from where it
-/// left `from`, cut as `cut` does.
-fn range_input(
-    repo: &Path,
-    from: &str,
-    to: &str,
-    extra: &str,
-) -> Result<(String, Option<&'static str>), String> {
-    let mut text = format!("{}\n\n{extra}", subjects(repo, from, to)?);
-    text.push_str(&git_diff(repo, &[&format!("{from}...{to}"), "--"])?);
-    Ok(cut(text))
-}
-
 /// The subjects of the commits `to` has over `from`, oldest first, under a heading.
 fn subjects(repo: &Path, from: &str, to: &str) -> Result<String, String> {
     let range = format!("{from}..{to}");
@@ -242,24 +111,14 @@ fn subjects(repo: &Path, from: &str, to: &str) -> Result<String, String> {
     Ok(format!("{heading}\n{}", subjects.join("\n")))
 }
 
-/// What a guided review is of: a commit, HEAD's branch since it left `base` (a full ref), a
-/// pull request's commits (fetched already) since its head left `base`, whatever HEAD is, or the
+/// What a guided review is of: a commit, HEAD's branch since it left `base` (a full ref), or the
 /// worktree's uncommitted changes.
 #[derive(Deserialize)]
 #[serde(tag = "of", rename_all = "lowercase")]
 pub enum Target {
     Changes,
-    Commit {
-        sha: String,
-    },
-    Branch {
-        base: String,
-    },
-    Pull {
-        base: String,
-        head: String,
-        title: String,
-    },
+    Commit { sha: String },
+    Branch { base: String },
 }
 
 /// A guided review as the command wrote it, and the range it read: `base..head`, a commit's
@@ -359,24 +218,6 @@ fn guide_range(repo: &Path, target: &Target) -> Result<Range, String> {
                 header,
                 from,
                 to: head,
-                stamp: None,
-            })
-        }
-        Target::Pull { base, head, title } => {
-            git::validate_rev(base)?;
-            git::validate_rev(head)?;
-            let to = oid(head)?;
-            let from = git::merge_base(repo, base, &to)?;
-            let header = format!(
-                "The pull request's title: {title}\n\n{}",
-                subjects(repo, &from, &to)?
-            );
-            Ok(Range {
-                base: from.clone(),
-                head: to.clone(),
-                header,
-                from,
-                to,
                 stamp: None,
             })
         }
@@ -502,29 +343,6 @@ fn guide_input(repo: &Path, target: &Target) -> Result<GuideInput, String> {
     })
 }
 
-/// The PR template GitHub would use from `base`: in .github/, the root or docs/, any case.
-fn pull_template(repo: &Path, base: &str) -> Option<String> {
-    let names = git::run_text(
-        repo,
-        &[
-            "ls-tree",
-            "--name-only",
-            base,
-            "--",
-            ".",
-            ".github/",
-            "docs/",
-        ],
-    )
-    .ok()?;
-    let name = [".github/", "", "docs/"].iter().find_map(|dir| {
-        names
-            .lines()
-            .find(|n| n.eq_ignore_ascii_case(&format!("{dir}pull_request_template.md")))
-    })?;
-    git::run_text(repo, &["cat-file", "blob", &format!("{base}:{name}")]).ok()
-}
-
 /// What goes to the command: the prompt as `{prompt}` in its arguments, or ahead of the diff
 /// on stdin when the template has no `{prompt}` (`codex exec` reads stdin only without one).
 fn prepare(template: &str, prompt: &str, diff: &str) -> Result<(Vec<String>, String), String> {
@@ -548,44 +366,6 @@ pub(crate) fn expand_home(program: &str) -> String {
         (Some(rest), Ok(home)) => format!("{home}/{rest}"),
         _ => program.to_string(),
     }
-}
-
-/// A commit message for what `scope` would commit: see `ask`.
-pub fn run(
-    repo: &Path,
-    template: &str,
-    prompt: &str,
-    scope: Scope,
-    cancel: &AtomicBool,
-) -> Result<String, String> {
-    let (diff, whole) = diff(repo, scope)?;
-    ask(
-        repo,
-        template,
-        prompt,
-        &diff,
-        cancel,
-        &Options::new(TIMEOUT, whole),
-    )
-}
-
-/// A pull request's title and description, for HEAD into `base`: see `ask`.
-pub fn run_pull(
-    repo: &Path,
-    template: &str,
-    prompt: &str,
-    base: &str,
-    cancel: &AtomicBool,
-) -> Result<String, String> {
-    let (input, whole) = pull_input(repo, base)?;
-    ask(
-        repo,
-        template,
-        prompt,
-        &input,
-        cancel,
-        &Options::new(TIMEOUT, whole),
-    )
 }
 
 /// A guided review of `target`: see `ask`.
@@ -839,20 +619,14 @@ mod tests {
     #[test]
     fn each_kind_starts_and_cancels_its_own_run() {
         let s = Suggester::default();
-        let message = s.start(Kind::Message);
-        let pull = s.start(Kind::Pull);
         let guide = s.start(Kind::Guide);
         let risks = s.start(Kind::Risks);
-        assert!(!message.load(Ordering::Relaxed));
-        s.cancel(Kind::Pull);
-        assert!(pull.load(Ordering::Relaxed));
-        assert!(!message.load(Ordering::Relaxed) && !guide.load(Ordering::Relaxed));
         // A guide's risks run beside it.
         s.cancel(Kind::Risks);
         assert!(risks.load(Ordering::Relaxed) && !guide.load(Ordering::Relaxed));
         // A second of the same kind stops the first.
-        s.start(Kind::Message);
-        assert!(message.load(Ordering::Relaxed));
+        s.start(Kind::Guide);
+        assert!(guide.load(Ordering::Relaxed));
     }
 
     #[test]

@@ -114,7 +114,7 @@ export function commandLine(command: string, models: Models, efforts: Models, re
   return [command.trim(), lean && leanFlags(preset, reads), model && `${SUGGEST_PRESETS[preset].modelFlag} ${model}`, effort && effortArg(preset, effort)].filter(Boolean).join(" ");
 }
 
-/** What a guided review runs: its own command, models and efforts, or Commit Messages' where it has none. */
+/** What a guided review runs: its own command, models and efforts, or the Agent section's where it has none. */
 export function reviewAgent(s: { suggestCommand: string; suggestModels: Models; suggestEfforts: Models; reviewCommand: string | null; reviewModels: Models; reviewEfforts: Models }) {
   return { command: s.reviewCommand ?? s.suggestCommand, models: { ...s.suggestModels, ...s.reviewModels }, efforts: { ...s.suggestEfforts, ...s.reviewEfforts } };
 }
@@ -155,16 +155,6 @@ export function runDetails(line: string) {
   return [value(["--model", "-m"]), value(["--effort", "--thinking", "--variant"])].filter(Boolean);
 }
 
-/** Sent ahead of the diff, word for word; Settings shows it. */
-export const SUGGEST_PROMPT =
-  "Write a git commit message for this diff: a summary line under 72 characters, a blank line, then a short body saying what changed and why. Output only the commit message, with no quotes or code fences.";
-
-/** Sent ahead of the branch's commits, its PR template if any, and its diff; Settings shows it. */
-export const PULL_PROMPT =
-  "Write a GitHub pull request title and description for this branch: a title under 72 characters on the first line, a blank line, then a description in Markdown of what changed and why. Output only the title and the description, with no quotes or code fences around them.";
-
-/** suggest.rs MAX_DIFF. */
-export const SUGGEST_LIMIT_KB = 100;
 /** suggest.rs MAX_GUIDE_INPUT. */
 export const GUIDE_LIMIT_KB = 400;
 

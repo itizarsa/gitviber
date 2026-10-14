@@ -2,9 +2,8 @@ import { Cloud, Tag } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { CiBadge } from "@/components/CiBadge";
 import { RowFilter } from "@/components/RowFilter";
-import { api, type CiState, type Commit, errorMessage, type FileChange, type GraphRefs } from "@/lib/api";
+import { api, type Commit, errorMessage, type FileChange, type GraphRefs } from "@/lib/api";
 import type { GraphRow, Lane } from "@/lib/git/commitGraph";
 import { type Selection, selectionKey } from "@/lib/repo/selection";
 import { toast } from "@/lib/app/toast";
@@ -44,8 +43,6 @@ export function CommitRow({
   activeKey,
   onOpen,
   onHover,
-  url,
-  ci,
   menu,
   fileMenu,
 }: {
@@ -69,8 +66,6 @@ export function CommitRow({
   activeKey: string | null;
   onOpen: (s: Selection, pin?: boolean) => void;
   onHover: (s: Selection) => void;
-  url: string | undefined;
-  ci?: CiState;
   menu: React.ReactNode;
   /** A changed file's right-click menu. */
   fileMenu: (file: FileChange, sel: Selection) => React.ReactNode;
@@ -91,22 +86,22 @@ export function CommitRow({
         if (reveal && revealed.current !== reveal.id) return;
         // Jump straight into the file (a file's history: that one) so one click shows code.
         const file = f.find((x) => x.path === commit.file) ?? f[0];
-        if (file) onOpen({ kind: "commit", commit, file, url });
+        if (file) onOpen({ kind: "commit", commit, file });
       })
       .catch((e) => alive && toast("error", "Could not load commit", errorMessage(e)));
     // Collapsing (or opening another commit) cancels the auto-open of a late reply.
     return () => {
       alive = false;
     };
-  }, [open, files, commit, url, onOpen, reveal]);
+  }, [open, files, commit, onOpen, reveal]);
 
   // Each blame click opens its file, also on a row that's open already or was loaded before.
   useEffect(() => {
     if (!reveal || !open || !files || revealed.current === reveal.id) return;
     revealed.current = reveal.id;
     const file = files.find((x) => x.path === reveal.path) ?? files[0];
-    if (file) onOpen({ kind: "commit", commit, file, url });
-  }, [reveal, open, files, commit, url, onOpen]);
+    if (file) onOpen({ kind: "commit", commit, file });
+  }, [reveal, open, files, commit, onOpen]);
 
   const { add, del } = sumLines(files ?? []);
   const mark = commit.unpushed ? "Not pushed yet" : commit.notInHead ? "Not in your branch yet" : null;
@@ -169,8 +164,7 @@ export function CommitRow({
                   )}
                   <span>·</span>
                   <CommitTime commit={commit} />
-                  <CiBadge state={ci} className="ml-auto" />
-                  <span className={cn("shrink-0 font-mono", !ci && "ml-auto")}>{commit.shortSha}</span>
+                  <span className="ml-auto shrink-0 font-mono">{commit.shortSha}</span>
                 </div>
                 <RefBadges refs={commit.refs} remotes={remotes} show={showRefs} />
               </div>
@@ -187,14 +181,14 @@ export function CommitRow({
             <div className="flex h-6 items-center gap-2 pr-2 pl-8 text-[10.5px] text-subtle">
               <span className="font-semibold tracking-[0.08em] uppercase">Changed files</span>
               <span className="font-mono text-muted-foreground">{files.length}</span>
-              {files.length > 0 && <SectionBtn onClick={() => onOpen({ kind: "changes", list: "commit", commit, url }, true)}>Open All</SectionBtn>}
+              {files.length > 0 && <SectionBtn onClick={() => onOpen({ kind: "changes", list: "commit", commit }, true)}>Open All</SectionBtn>}
               <span className="ml-auto font-mono">
                 <span className="text-added">+{add}</span> <span className="text-removed">-{del}</span>
               </span>
             </div>
           )}
           {files?.map((f) => {
-            const sel: Selection = { kind: "commit", commit, file: f, url };
+            const sel: Selection = { kind: "commit", commit, file: f };
             const key = selectionKey(sel);
             const active = activeKey === key;
             return (

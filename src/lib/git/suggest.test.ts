@@ -57,7 +57,7 @@ test("a preset runs with its model and effort", () => {
   assert.equal(commandLine("llm", {}, { llm: "high" }), "llm -m gpt-6-luna");
 });
 
-test("a guided review runs Commit Messages' agent, model and effort, unless it has its own", () => {
+test("a guided review runs the Agent section's agent, model and effort, unless it has its own", () => {
   const commit = { suggestCommand: "codex exec", suggestModels: { codex: "gpt-x", claude: "opus" }, suggestEfforts: { codex: "high" } };
   const line = (own: Partial<Parameters<typeof reviewAgent>[0]>) => {
     const { command, models, efforts } = reviewAgent({ ...commit, reviewCommand: null, reviewModels: {}, reviewEfforts: {}, ...own });
@@ -65,12 +65,12 @@ test("a guided review runs Commit Messages' agent, model and effort, unless it h
   };
   // All the same.
   assert.equal(line({}), "codex exec -m gpt-x -c model_reasoning_effort=high");
-  // Its own effort, Commit Messages' model; and the other way round.
+  // Its own effort, the Agent section's model; and the other way round.
   assert.equal(line({ reviewEfforts: { codex: "xhigh" } }), "codex exec -m gpt-x -c model_reasoning_effort=xhigh");
   assert.equal(line({ reviewModels: { codex: "gpt-y" } }), "codex exec -m gpt-y -c model_reasoning_effort=high");
   // Its own effort "", the CLI's default, passes none.
   assert.equal(line({ reviewEfforts: { codex: "" } }), "codex exec -m gpt-x");
-  // Its own command takes Commit Messages' model for that preset, and the preset's default effort.
+  // Its own command takes the Agent section's model for that preset, and the preset's default effort.
   assert.equal(line({ reviewCommand: "claude -p" }), `claude -p ${LEAN.replace('""', "Read,Grep,Glob")} --model opus --effort medium`);
   assert.equal(line({ reviewCommand: "claude -p", reviewEfforts: { claude: "max" }, reviewModels: { claude: "sonnet" } }), `claude -p ${LEAN.replace('""', "Read,Grep,Glob")} --model sonnet --effort max`);
   // A custom one carries its own; the same-as entries of other presets don't reach it.
@@ -80,11 +80,11 @@ test("a guided review runs Commit Messages' agent, model and effort, unless it h
 });
 
 test("a guided review's model or effort for another preset doesn't reach the one it runs", () => {
-  // Left from when its own command was Claude Code; it's back to Commit Messages' codex.
+  // Left from when its own command was Claude Code; it's back to the Agent section's codex.
   const s = { suggestCommand: "codex exec", suggestModels: {}, suggestEfforts: {}, reviewCommand: null, reviewModels: { claude: "opus" }, reviewEfforts: { claude: "max" } };
   const { command, models, efforts } = reviewAgent(s);
   assert.equal(commandLine(command, models, efforts, true), commandLine("codex exec", {}, {}, true));
-  // Its own command "" is its own, not Commit Messages'.
+  // Its own command "" is its own, not the Agent section's.
   assert.equal(reviewAgent({ ...s, reviewCommand: "" }).command, "");
 });
 

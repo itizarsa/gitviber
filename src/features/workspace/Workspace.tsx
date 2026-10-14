@@ -5,7 +5,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Tip } from "@/components/ui/tooltip";
 import { KeptPanel } from "@/components/KeptPanel";
 import { find } from "@/lib/ui/find";
-import { resetGitHubCache, setGitHubOrigin } from "@/lib/github/githubCache";
 import { warmHighlighter } from "@/lib/editor/highlight";
 import { setLinkHost } from "@/lib/links/linkHost";
 import { prepare } from "@/lib/editor/monaco";
@@ -34,14 +33,12 @@ import { BranchReview, useBranchReview } from "@/features/changes/BranchReview";
 import { showQuickOpen, useQuickOpenSource } from "@/features/palette/CommandPalette";
 import { FileTree, type FileTreeHandle } from "@/features/explorer/FileTree";
 import { type HistorySearch, NO_SEARCH, SearchableHistory } from "@/features/history/HistorySearch";
-import { IssuesPanel } from "@/features/github/issues/IssuesPanel";
 import { selectedText } from "@/features/viewer/activeEditor";
 import { StatusBar } from "./StatusBar";
 import { useTabs } from "./useTabs";
 import { useViewed } from "./useViewed";
 import { CollapseButton, ListTabButton, PanelHeader } from "./PanelHeader";
 import { headerWidth } from "./headerWidth";
-import { PullsPanel } from "@/features/github/pulls/PullsPanel";
 import { SearchView } from "@/features/explorer/SearchView";
 import { TerminalPanel, useTerminalSetup } from "@/features/terminal/TerminalPanel";
 import { TerminalRestoreOffer } from "@/features/terminal/TerminalFind";
@@ -54,7 +51,7 @@ import { openNotes, useNoteCheck } from "@/lib/review/noteStore";
 import { copyNotes, pendingNotes, sendNotes } from "@/features/review/ReviewNotes";
 import { openGuide } from "@/features/review/guides";
 
-const LIST_TABS = ["changes", "history", "pulls", "issues"] as const;
+const LIST_TABS = ["changes", "history"] as const;
 type ListTab = (typeof LIST_TABS)[number];
 // The sidebars and the terminal: their sizes until the user sets them, and their bounds.
 const SIDES = { list: { base: 320, min: 240, max: "45", collapsible: true }, files: { base: 260, min: 200, max: "40", collapsible: true } };
@@ -80,7 +77,7 @@ interface Props {
 }
 
 /**
- * Diffs are cached by revision, which restarts per repo, and GitHub data, unsaved file edits and
+ * Diffs are cached by revision, which restarts per repo, and unsaved file edits and
  * review notes are per repo: they start over with each repo, during its first render, before
  * anything in it reads them.
  */
@@ -89,7 +86,6 @@ function useFreshCaches(root: string) {
   if (cleared.current === root) return;
   cleared.current = root;
   resetPairCache();
-  resetGitHubCache();
   openEdits(root);
   openNotes(root);
 }
@@ -106,14 +102,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
   useFreshCaches(root);
   const repo = useRepo(root, () => onRepoGone({ root, main }));
   const { status } = repo;
-  const origin = status?.origin;
-  // origin's page on GitHub, for links; kept while git couldn't read the remotes, as the origin is.
-  const [webUrl, setWebUrl] = useState<string | null>(null);
-  const web = status?.webUrl;
-  useEffect(() => {
-    if (origin !== undefined) setGitHubOrigin(origin);
-    if (web !== undefined) setWebUrl(web);
-  }, [origin, web]);
   const title = windowTitle(root, status?.branch ?? null, status?.head ?? null);
   useEffect(() => setWindowTitle(title), [title]);
   useEffect(() => () => setWindowTitle(windowTitle(null, null, null)), []);
@@ -308,7 +296,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
   const ofRange = shown?.kind === "pr-file" ? shown.range : null;
   useCommands({
     "git.compareBranches": () => openCompare(),
-    "review.openAllCommit": ofCommit ? () => openAll({ kind: "changes", list: "commit", commit: ofCommit.commit, url: ofCommit.url }) : undefined,
+    "review.openAllCommit": ofCommit ? () => openAll({ kind: "changes", list: "commit", commit: ofCommit.commit }) : undefined,
     "review.openAllComparison": ofRange ? () => openAll({ kind: "changes", list: "range", range: ofRange }) : undefined,
     "review.nextFile": () => step(1),
     "review.prevFile": () => step(-1),
@@ -342,8 +330,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
     },
     "view.changes": () => showList("changes"),
     "view.history": () => showList("history"),
-    "view.pulls": () => showList("pulls"),
-    "view.issues": () => showList("issues"),
     "history.search": () => {
       setListTab("history");
       sidebars.expand("list");
@@ -430,11 +416,9 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
         if (show) revealInExplorer(path);
         else if (!sidebars.isCollapsed("files")) fileTree.current?.reveal(path, false);
       },
-      github: webUrl,
       showCommit,
-      openItem: (item) => open(item, true),
     });
-  }, [root, repo.worktrees, repo.revision, open, revealInExplorer, webUrl, showCommit]);
+  }, [root, repo.worktrees, repo.revision, open, revealInExplorer, showCommit]);
   useEffect(() => () => setLinkHost(null), []);
 
   const changeCount = uncommitted.length;
@@ -442,7 +426,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
   return (
     <div className="flex h-full flex-col">
       <TopBar
-        webUrl={webUrl}
         repo={repo}
         root={root}
         main={main}
@@ -451,7 +434,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
         onForgetRepo={onForgetRepo}
         onReorderRepos={onReorderRepos}
         onLocateRepo={onLocateRepo}
-        onOpenPull={(pull) => open({ kind: "pull", pull }, true)}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => toggle("list", "git")}
@@ -477,12 +459,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                     </ListTabButton>
                     <ListTabButton active={listTab === "history"} onClick={() => setListTab("history")}>
                       History
-                    </ListTabButton>
-                    <ListTabButton active={listTab === "pulls"} onClick={() => setListTab("pulls")}>
-                      PRs
-                    </ListTabButton>
-                    <ListTabButton active={listTab === "issues"} onClick={() => setListTab("issues")}>
-                      Issues
                     </ListTabButton>
                   </>
                 }
@@ -524,24 +500,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                     <ChangesPanel status={status} activeKey={activeKey} onOpen={open} onHover={prefetch} refresh={() => repo.refresh(false)} viewed={viewed} setViewed={setViewed} onRevealInExplorer={revealInExplorer} onShowHistory={(path) => showHistory(path, true)} mtimes={mtimes} />
                   </KeptPanel>
                 )}
-                {seenTabs.has("pulls") && (
-                  <KeptPanel shown={listTab === "pulls"}>
-                    <PullsPanel
-                      status={status}
-                      branches={repo.branches}
-                      lastCommit={repo.commits[0] ?? null}
-                      repoKey={main}
-                      activeKey={activeKey}
-                      onOpen={open}
-                      refreshRepo={() => repo.refresh()}
-                    />
-                  </KeptPanel>
-                )}
-                {seenTabs.has("issues") && (
-                  <KeptPanel shown={listTab === "issues"}>
-                    <IssuesPanel repoKey={main} activeKey={activeKey} onOpen={open} />
-                  </KeptPanel>
-                )}
                 {seenTabs.has("history") && (
                   <KeptPanel shown={listTab === "history"}>
                     <SearchableHistory
@@ -555,7 +513,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                       branches={repo.branches}
                       status={status}
                       remotes={remoteNames}
-                      webUrl={webUrl}
                       hasMore={repo.hasMore}
                       loadMore={repo.loadMore}
                       refresh={() => repo.refresh()}
@@ -606,7 +563,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                     onShowHistory={(path) => showHistory(path, true)}
                     onRevealInExplorer={revealInExplorer}
                     onShowCommit={showCommit}
-                    webUrl={webUrl}
                   />
                 </div>
               </ResizablePanel>
@@ -692,7 +648,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                   onHover={prefetch}
                   onPathMoved={onPathMoved}
                   onShowHistory={showHistory}
-                  webUrl={webUrl}
                 />
               </div>
             </div>

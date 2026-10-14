@@ -2,18 +2,17 @@ import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { github } from "@/lib/api";
+import { api } from "@/lib/api";
 import { updateSettings, useSettings } from "@/lib/settings";
-import { ALL_MODELS, effortArg, effortLevels, effortOf, leanFlags, modelOf, presetOf, PULL_PROMPT, SUGGEST_LIMIT_KB, SUGGEST_PRESETS, SUGGEST_PROMPT, type SuggestPreset as Preset } from "@/lib/git/suggest";
+import { ALL_MODELS, effortArg, effortLevels, effortOf, leanFlags, modelOf, presetOf, SUGGEST_PRESETS, type SuggestPreset as Preset } from "@/lib/git/suggest";
 import { failed } from "@/lib/app/toast";
 import { cn } from "@/lib/utils";
 import { segmentClass } from "@/components/ui/segmented";
-import { Switch } from "@/components/ui/switch";
 import { Field, Group, OptionSelect } from "@/features/settings/controls";
 
 export function ModelsLink({ label, url }: { label: string; url: string }) {
   return (
-    <button type="button" onClick={() => github.openUrl(url).catch(failed("Could not open the link"))} className="text-foreground underline underline-offset-2 hover:text-primary">
+    <button type="button" onClick={() => api.openUrl(url).catch(failed("Could not open the link"))} className="text-foreground underline underline-offset-2 hover:text-primary">
       {label}
     </button>
   );
@@ -122,75 +121,46 @@ function EffortField({ preset }: { preset: Preset }) {
   );
 }
 
+/** The agent CLI Explain Commit and Guided Review run; Guided Review can give them a command of their own. */
 export function CommitSection() {
   const s = useSettings();
   const preset = presetOf(s.suggestCommand);
   return (
-    <>
-      <Group title="Suggestions">
+    <Group title="Agent CLI">
+      <Field
+        label="Command"
+        hint="Your own agent CLI, which Explain Commit and Guided Review run. It runs in the repository's folder, directly, not through a shell; the prompt and the diff arrive on stdin, or put {prompt} in the command to pass the prompt as an argument. If it isn't found, give its full path (`which claude` in Terminal prints it). GitViber sends nothing itself and keeps no keys."
+      >
+        <CommandPicker command={s.suggestCommand} onChange={(suggestCommand) => updateSettings({ suggestCommand })} />
+      </Field>
+      {preset ? (
         <Field
-          label="Suggest commit messages"
-          hint="Adds a ✦ button to the commit box that asks your own agent CLI to write the message, and one to New pull request for its title and description. GitViber sends nothing itself and keeps no keys: the command runs on this Mac, and it decides where the diff goes."
+          label="Model"
+          hint={
+            <>
+              Passed as <code className="font-mono text-foreground">{`${SUGGEST_PRESETS[preset].modelFlag} ${SUGGEST_PRESETS[preset].model}`}</code>; empty uses the CLI's own default. New models come out often, and <ModelsLink {...SUGGEST_PRESETS[preset].models} /> has the current IDs.
+              {leanFlags(preset, false) && (
+                <>
+                  {" "}
+                  Every run also gets <code className="font-mono text-foreground">{leanFlags(preset, false)}</code> (a guided review <code className="font-mono text-foreground">--tools Read,Grep,Glob</code>, to read
+                  the patch): no MCP servers, skills, saved session or tools beyond reading files, so it starts and answers faster.
+                </>
+              )}
+            </>
+          }
         >
-          <Switch checked={s.suggestEnabled} onChange={(v) => updateSettings({ suggestEnabled: v })} />
+          <Input
+            value={modelOf(preset, s.suggestModels)}
+            onChange={(e) => updateSettings({ suggestModels: { ...s.suggestModels, [preset]: e.target.value.replace(/\s/g, "") } })}
+            placeholder="CLI default"
+            spellCheck={false}
+            className="w-80 font-mono"
+          />
         </Field>
-        <Field
-          label="Command"
-          hint="Runs in the repository's folder, directly, not through a shell. The prompt and the diff arrive on stdin; put {prompt} in the command to pass the prompt as an argument instead. If it isn't found, give its full path (`which claude` in Terminal prints it)."
-          commands={["git.suggestMessage"]}
-        >
-          <CommandPicker command={s.suggestCommand} onChange={(suggestCommand) => updateSettings({ suggestCommand })} />
-        </Field>
-        {preset ? (
-          <Field
-            label="Model"
-            hint={
-              <>
-                Passed as <code className="font-mono text-foreground">{`${SUGGEST_PRESETS[preset].modelFlag} ${SUGGEST_PRESETS[preset].model}`}</code>; empty uses the CLI's own default. New models come out often, and <ModelsLink {...SUGGEST_PRESETS[preset].models} /> has the current IDs.
-                {leanFlags(preset, false) && (
-                  <>
-                    {" "}
-                    Every run also gets <code className="font-mono text-foreground">{leanFlags(preset, false)}</code> (a guided review <code className="font-mono text-foreground">--tools Read,Grep,Glob</code>, to read
-                    the patch): no MCP servers, skills, saved session or tools beyond reading files, so it starts and answers faster.
-                  </>
-                )}
-              </>
-            }
-          >
-            <Input
-              value={modelOf(preset, s.suggestModels)}
-              onChange={(e) => updateSettings({ suggestModels: { ...s.suggestModels, [preset]: e.target.value.replace(/\s/g, "") } })}
-              placeholder="CLI default"
-              spellCheck={false}
-              className="w-80 font-mono"
-            />
-          </Field>
-        ) : (
-          <CustomModelField />
-        )}
-        {preset && <EffortField preset={preset} />}
-      </Group>
-      <Group title="What the command gets">
-        <div className="py-3.5">
-          <div className="text-[11.5px] leading-relaxed text-muted-foreground">Only when you click ✦, and nothing else from the app (Guided Review shows what a guided review gets):</div>
-          <pre className="mt-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
-            {SUGGEST_PROMPT}
-            {"\n\n"}
-            <span className="text-subtle">
-              [the diff: the staged changes, or every change when nothing is staged (Commit all), or the whole commit when amending; up to {SUGGEST_LIMIT_KB} KB, with a note in the
-              prompt when it's cut]
-            </span>
-          </pre>
-          <div className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">For a pull request:</div>
-          <pre className="mt-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
-            {PULL_PROMPT}
-            {"\n\n"}
-            <span className="text-subtle">
-              [the subjects of the branch's commits, the repository's pull request template if it has one, and the branch's diff since it left the base; up to {SUGGEST_LIMIT_KB} KB in all]
-            </span>
-          </pre>
-        </div>
-      </Group>
-    </>
+      ) : (
+        <CustomModelField />
+      )}
+      {preset && <EffortField preset={preset} />}
+    </Group>
   );
 }

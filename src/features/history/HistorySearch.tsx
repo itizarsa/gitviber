@@ -1,13 +1,12 @@
 import { CircleHelp, FileClock, FolderClock, Loader2, Search, X } from "lucide-react";
 import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tip } from "@/components/ui/tooltip";
-import { api, type Commit, errorMessage, type GraphRefs, LOG_PAGE } from "@/lib/api";
+import { api, type Branch, type Commit, errorMessage, type GraphRefs, LOG_PAGE } from "@/lib/api";
 import { useFind } from "@/lib/ui/find";
 import { isTyping, matchesCommand, useShortcut } from "@/lib/commands/keybindings";
 import { authorTerm, isEmptyFilter, parseLogQuery, withAuthor } from "@/lib/git/logQuery";
 import { toast } from "@/lib/app/toast";
 import { BisectBar } from "./BisectBar";
-import { ForkHistory } from "./ForkHistory";
 import { CompareHistory } from "./CompareHistory";
 import { ComparePoints } from "./ComparePoints";
 import type { Points } from "@/lib/repo/compareMark";
@@ -32,7 +31,8 @@ export interface HistorySearch {
 
 export const NO_SEARCH: HistorySearch = { query: "", scope: null, reveal: null };
 
-type Props = ComponentProps<typeof ForkHistory> & {
+type Props = ComponentProps<typeof HistoryPanel> & {
+  branches: Branch[];
   search: HistorySearch;
   onSearch: (search: HistorySearch) => void;
   /** The search command asked for the box; `onFocused` says it has it. */
@@ -193,7 +193,7 @@ export function SearchableHistory({ search, onSearch, focusRequested, onFocused,
             onClose={() => setComparing(null)}
           />
         ) : !allBranches ? (
-          <ForkHistory {...list} filterAuthor={filterAuthor} />
+          <HistoryPanel {...list} filterAuthor={filterAuthor} />
         ) : all.error && !all.commits?.length ? (
           <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">{all.error}</div>
         ) : (

@@ -1,10 +1,8 @@
-//! Remotes: listing and editing them, their URLs, and the github.com token git stores.
+//! Remotes: listing and editing them, and their URLs.
 
-use super::{command, run, run_text, run_with, validate_remote_name, validate_url};
-use crate::process::exec;
+use super::{run, run_text, run_with, validate_remote_name, validate_url};
 use serde::Serialize;
 use std::path::Path;
-use std::time::Duration;
 
 #[derive(Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -90,29 +88,6 @@ pub fn remote_url(repo: &Path, remote: &str) -> Option<String> {
     run_text(repo, &["remote", "get-url", remote])
         .ok()
         .map(|s| s.trim().to_string())
-}
-
-/// The token git already stores for github.com (osxkeychain, GitHub Desktop, GCM…). Never from a
-/// screen load: the macOS Keychain asks its own password dialog when another app made the item,
-/// which no setting here can switch off.
-pub fn credential_token(repo: &Path) -> Option<String> {
-    let mut cmd = command(repo, &["-c", "core.askPass=", "credential", "fill"]);
-    // No window of ours or the helper's: no stored credential means "none".
-    cmd.env("GCM_INTERACTIVE", "never")
-        .env_remove("GIT_ASKPASS")
-        .env_remove("SSH_ASKPASS");
-    let out = exec(
-        cmd,
-        "git credential",
-        &[],
-        Some(b"protocol=https\nhost=github.com\n\n"),
-        Some(Duration::from_secs(10)),
-    )
-    .ok()?;
-    String::from_utf8_lossy(&out)
-        .lines()
-        .find_map(|l| l.strip_prefix("password=").map(str::to_string))
-        .filter(|t| !t.is_empty())
 }
 
 pub fn remotes(repo: &Path) -> Vec<String> {

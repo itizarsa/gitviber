@@ -1,11 +1,11 @@
 import { Children, type ComponentProps, isValidElement, type ReactNode, use, useMemo } from "react";
 import Markdown, { type Components } from "react-markdown";
 import { PageFind } from "@/components/FindBox";
-import { github } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useHighlight } from "@/lib/editor/highlight";
 import { copyNarrowed, indentUnit, TAB, widen } from "@/lib/editor/indent";
 import { languageFor } from "@/lib/editor/language";
-import { type Flavor, markdownLink, markdownOptions, markdownSource, safeDecode } from "@/lib/github/markdown";
+import { type Flavor, markdownLink, markdownOptions, markdownSource, safeDecode } from "@/lib/markdown/render";
 import type { Selection } from "@/lib/repo/selection";
 import { useSettings } from "@/lib/settings";
 import { failed, toast } from "@/lib/app/toast";
@@ -82,7 +82,7 @@ export function followLink(href: string, local: (href: string) => void, idPrefix
     } catch {
       // Left as written; the backend refuses it and it's copied instead.
     }
-    github.openUrl(url).catch(() => navigator.clipboard.writeText(href).then(() => toast("info", "Link copied", "It can't be opened from here."), failed("Could not copy")));
+    api.openUrl(url).catch(() => navigator.clipboard.writeText(href).then(() => toast("info", "Link copied", "It can't be opened from here."), failed("Could not copy")));
   } else if (isExternal(href)) {
     void copyText(href, "Link copied");
   } else {

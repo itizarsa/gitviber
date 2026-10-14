@@ -1,5 +1,5 @@
 use crate::state::{blocking, in_repo, repo, watch_network, AppState, Res};
-use crate::{fs, git, github, network, shell, watch};
+use crate::{fs, git, network, shell, watch};
 use std::path::{Path, PathBuf};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
@@ -30,13 +30,6 @@ pub async fn open_repo(
     // one watching nothing (inotify).
     let watcher = watch::start(app, root_path.clone())?;
     *state.watcher.lock().unwrap_or_else(|e| e.into_inner()) = Some(watcher);
-    // gh's active account until the page sends this project's own (gh_use_account): one
-    // project's pick never carries into the next. Before the repo switches, so none goes out as both.
-    // Already open (`gitviber .` in its own terminal), it keeps its account.
-    let open = state.repo.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    if open.as_ref() != Some(&root_path) {
-        github::use_account(&state.github, None)?;
-    }
     *state.repo.lock().unwrap_or_else(|e| e.into_inner()) = Some(root_path);
     Ok(OpenedRepo { root, main })
 }
@@ -82,8 +75,6 @@ pub async fn install_git() -> Res<()> {
 #[derive(serde::Serialize)]
 pub struct IdentityCheck {
     current: git::Identity,
-    /// From the GitHub account, when one is signed in already.
-    suggested: Option<git::Identity>,
 }
 
 #[tauri::command]
@@ -91,12 +82,9 @@ pub async fn git_identity(app: AppHandle) -> Res<IdentityCheck> {
     blocking(move || {
         let state = app.state::<AppState>();
         let r = repo(&state)?;
-        let current = git::identity(&r);
-        let complete = current.name.is_some() && current.email.is_some();
-        let suggested = (!complete)
-            .then(|| github::profile(&state.github, &r))
-            .flatten();
-        Ok(IdentityCheck { current, suggested })
+        Ok(IdentityCheck {
+            current: git::identity(&r),
+        })
     })
     .await
 }
@@ -176,23 +164,16 @@ pub async fn set_repo_identity(
 pub struct ProjectInfo {
     /// False once the folder was moved or deleted.
     exists: bool,
-    /// owner/name of its GitHub origin
-    github: Option<String>,
 }
 
-/// For the projects list: which saved folders are still there, and where each lives on GitHub.
+/// For the projects list: which saved folders are still there.
 #[tauri::command]
 pub async fn project_info(paths: Vec<String>) -> Res<Vec<ProjectInfo>> {
     blocking(move || {
         Ok(paths
             .iter()
-            .map(|p| {
-                let path = Path::new(p);
-                let exists = path.is_dir();
-                ProjectInfo {
-                    exists,
-                    github: exists.then(|| github::origin_repo(path)).flatten(),
-                }
+            .map(|p| ProjectInfo {
+                exists: Path::new(p).is_dir(),
             })
             .collect())
     })

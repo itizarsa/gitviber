@@ -2,23 +2,14 @@ use crate::state::{
     acting, blocking, in_repo, indexed, indexed_once, read_repo, watch_network, with_index_lock,
     AppState, Res,
 };
-use crate::{git, github, handoff, lines, network, suggest};
+use crate::{git, handoff, lines, network, suggest};
 use std::path::Path;
 use tauri::ipc::Channel;
 use tauri::State;
 
 #[tauri::command]
 pub async fn status(state: State<'_, AppState>) -> Res<git::RepoStatus> {
-    read_repo(&state, |r| {
-        let mut st = git::status(r)?;
-        st.web_url = st.origin.as_ref().map(|url| {
-            url.as_deref()
-                .and_then(github::parse_remote)
-                .map(|g| format!("https://github.com/{}/{}", g.owner, g.name))
-        });
-        Ok(st)
-    })
-    .await
+    read_repo(&state, git::status).await
 }
 
 #[tauri::command]
@@ -99,42 +90,6 @@ pub async fn commit_template(state: State<'_, AppState>) -> Res<Option<String>> 
 #[tauri::command]
 pub async fn recent_authors(state: State<'_, AppState>) -> Res<Vec<String>> {
     in_repo(&state, git::recent_authors).await
-}
-
-/// Runs the user's own agent CLI for a commit message (off unless they set one up).
-#[tauri::command]
-pub async fn suggest_message(
-    state: State<'_, AppState>,
-    command: String,
-    prompt: String,
-    scope: suggest::Scope,
-) -> Res<String> {
-    let cancel = state.suggest.start(suggest::Kind::Message);
-    let flag = cancel.clone();
-    let out = in_repo(&state, move |r| {
-        suggest::run(r, &command, &prompt, scope, &flag)
-    })
-    .await;
-    state.suggest.finish(suggest::Kind::Message, &cancel);
-    out
-}
-
-/// The same, for a pull request's title and description from HEAD into `base`.
-#[tauri::command]
-pub async fn suggest_pull(
-    state: State<'_, AppState>,
-    command: String,
-    prompt: String,
-    base: String,
-) -> Res<String> {
-    let cancel = state.suggest.start(suggest::Kind::Pull);
-    let flag = cancel.clone();
-    let out = in_repo(&state, move |r| {
-        suggest::run_pull(r, &command, &prompt, &base, &flag)
-    })
-    .await;
-    state.suggest.finish(suggest::Kind::Pull, &cancel);
-    out
 }
 
 /// The same, for a guided review of a commit, a pull request or the branch since it left its

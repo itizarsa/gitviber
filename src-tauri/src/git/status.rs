@@ -92,10 +92,6 @@ pub struct RepoStatus {
     pub origin: Option<Option<String>>,
     /// Where Publish sends a branch with no upstream; None when that's the user's choice.
     pub publish: Option<String>,
-    /// origin's page on GitHub, from `origin` (commands::changes::status); None off github.com.
-    /// Left out with `origin`, when git couldn't say.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub web_url: Option<Option<String>>,
     pub staged: Vec<FileChange>,
     pub unstaged: Vec<FileChange>,
     pub conflicted: Vec<FileChange>,
@@ -249,7 +245,6 @@ pub fn status(repo: &Path) -> Result<RepoStatus, String> {
         remotes: vec![],
         origin: None,
         publish: None,
-        web_url: None,
         ahead: 0,
         behind: 0,
         staged: vec![],

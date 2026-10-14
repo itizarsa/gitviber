@@ -18,7 +18,7 @@ export function CommitFileMenu({ commit: c, file: f, sel, refresh, onOpen }: { c
       <ContextMenuItem onSelect={() => onOpen({ kind: "file", path: f.path }, true)}>
         <File /> Open File
       </ContextMenuItem>
-      <ContextMenuItem onSelect={() => onOpen({ kind: "changes", list: "commit", commit: c, url: sel.kind === "commit" ? sel.url : undefined }, true)}>
+      <ContextMenuItem onSelect={() => onOpen({ kind: "changes", list: "commit", commit: c }, true)}>
         <Files /> Open All Changes in Commit
       </ContextMenuItem>
       <ContextMenuSeparator />

@@ -70,8 +70,6 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
     if (sel.of === "changes") return !!stamp && !!read.stamp && read.stamp !== stamp;
     // status.head is HEAD's short id.
     if (sel.of === "branch") return !!status?.head && !read.head.startsWith(status.head);
-    // As the PR list last read its head.
-    if (sel.of === "pull") return read.head !== sel.pull.headSha;
     return false;
   };
   const moved = saved && movedFrom(saved);
@@ -86,13 +84,10 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
         ? NO_FILES
         : sel.of === "commit"
           ? { kind: "changes", list: "commit", commit: sel.commit }
-          : sel.of === "pull"
-            ? // As the PR's page opens its files, so they share its tabs and viewed marks.
-              { kind: "changes", list: "range", range: { number: sel.pull.number, pullUrl: sel.pull.url, base, head } }
-            : sel.of === "changes"
-              ? // `head` is a snapshot's tree, which reads back as a commit's would.
-                { kind: "changes", list: "range", range: { base, head, label: "Uncommitted" } }
-              : { kind: "changes", list: "range", range: { base, head, label: `${sel.label}...${head.slice(0, 7)}` } },
+          : sel.of === "changes"
+            ? // `head` is a snapshot's tree, which reads back as a commit's would.
+              { kind: "changes", list: "range", range: { base, head, label: "Uncommitted" } }
+            : { kind: "changes", list: "range", range: { base, head, label: `${sel.label}...${head.slice(0, 7)}` } },
     [sel, base, head],
   );
   const fixed = useFixedFiles(changes);
@@ -252,16 +247,6 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
               <span>
                 <span className="font-mono">{sel.commit.shortSha}</span> by {sel.commit.authorName}, {relativeTime(sel.commit.timestamp)}
               </span>
-            ) : sel.of === "pull" ? (
-              <span>
-                #{sel.pull.number} by {sel.pull.author}: <span className="font-mono">{sel.pull.headRef}</span> into <span className="font-mono">{sel.pull.baseRef}</span>
-                {saved && (
-                  <>
-                    {" "}
-                    at <span className="font-mono">{saved.head.slice(0, 7)}</span>
-                  </>
-                )}
-              </span>
             ) : sel.of === "changes" ? (
               <span>
                 Uncommitted changes{branch && <> on <span className="font-mono">{branch}</span></>}
@@ -319,7 +304,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
               "Outdated: the changes have moved since this review read them. Regenerate to review them as they are now."
             ) : (
               <>
-                Outdated: {sel.of === "pull" ? `#${sel.pull.number}` : (branch ?? "HEAD")} has moved since this review read it at <span className="font-mono">{saved.head.slice(0, 7)}</span>. Regenerate to review where it is now.
+                Outdated: {branch ?? "HEAD"} has moved since this review read it at <span className="font-mono">{saved.head.slice(0, 7)}</span>. Regenerate to review where it is now.
               </>
             )}
           </Notice>

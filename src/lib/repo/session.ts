@@ -1,6 +1,6 @@
 import { isComparePoint, type Selection, selectionKey } from "./selection";
 import { getSettings } from "../settings";
-import { isRecord, putRecent, readJson, stringList, writeJson } from "../storage";
+import { isRecord, putRecent, readJson, stringList } from "../storage";
 import { folderName, joinPath } from "../path";
 import { isNote, type ReviewNote } from "../review/notes";
 import { type HueChoice, isHueChoice } from "../git/worktrees";
@@ -32,11 +32,7 @@ const EDITS_KEY = "gitviber.fileEdits";
 const NOTES_KEY = "gitviber.reviewNotes";
 const WORKTREE_DIRS_KEY = "gitviber.worktreeDirs";
 const WORKTREE_RUN_KEY = "gitviber.worktreeRun";
-const ISSUE_BRANCHES_KEY = "gitviber.issueBranches";
-const ISSUE_RUN_KEY = "gitviber.issueRun";
 const PINNED_BRANCHES_KEY = "gitviber.pinnedBranches";
-const GITHUB_ACCOUNTS_KEY = "gitviber.githubAccounts";
-const GITHUB_STORE_KEY = "gitviber.githubStore";
 const COLORS_KEY = "gitviber.worktreeColors";
 // Agent worktrees come and go; keep only the most recently used.
 const MAX = 30;
@@ -46,7 +42,7 @@ const all = (key: string) => readJson(key, {}, isRecord);
 const put = (key: string, root: string, value: unknown) => putRecent(key, root, value, MAX);
 
 /** Tabs of features this fork removed: an upstream build's saved window may still hold them. */
-const GONE_KINDS = ["browser", "vault"];
+const GONE_KINDS = ["browser", "vault", "pull", "issue"];
 
 export function loadWorkspace(root: string): WorkspaceSnapshot | null {
   const s = all(KEY)[root] as WorkspaceSnapshot | undefined;
@@ -58,7 +54,7 @@ export function loadWorkspace(root: string): WorkspaceSnapshot | null {
       // The key doesn't read a comparison's sides, but its tab and screen do.
       if (sel.kind === "compare" && !(isComparePoint(sel.base) && isComparePoint(sel.head))) return null;
       // Kinds of tab this build no longer has, saved by an older one.
-      if (GONE_KINDS.includes(sel.kind as string)) return null;
+      if (GONE_KINDS.includes(sel.kind as string) || (sel.kind === "guide" && (sel.of as string) === "pull")) return null;
       return selectionKey(sel);
     } catch {
       return null;
@@ -148,34 +144,15 @@ export function saveWorktreeDir(main: string, dir: string | null) {
   put(WORKTREE_DIRS_KEY, main, dir);
 }
 
-/**
- * The command the project `main` last ran in a new worktree's terminal. `forIssue`: one started
- * from an issue, kept apart as its {issue} means nothing elsewhere; the plain one until there is one.
- */
-export function loadWorktreeRun(main: string, forIssue = false): string {
-  const r = forIssue ? (all(ISSUE_RUN_KEY)[main] ?? all(WORKTREE_RUN_KEY)[main]) : all(WORKTREE_RUN_KEY)[main];
+/** The command the project `main` last ran in a new worktree's terminal. */
+export function loadWorktreeRun(main: string): string {
+  const r = all(WORKTREE_RUN_KEY)[main];
   return typeof r === "string" ? r : "";
 }
 
 /** "" forgets it. */
-export function saveWorktreeRun(main: string, run: string, forIssue = false) {
-  put(forIssue ? ISSUE_RUN_KEY : WORKTREE_RUN_KEY, main, run || null);
-}
-
-/**
- * The issue (its url) `branch` was started for from the issue view, by origin's owner/name: a PR
- * from it closes that issue. Kept here, never in the repo's config.
- */
-export function loadBranchIssue(repo: string, branch: string): string | null {
-  const r = all(ISSUE_BRANCHES_KEY)[repo.toLowerCase()];
-  const url = isRecord(r) ? r[branch] : null;
-  return typeof url === "string" ? url : null;
-}
-
-export function saveBranchIssue(repo: string, branch: string, url: string) {
-  const r = all(ISSUE_BRANCHES_KEY)[repo.toLowerCase()];
-  const { [branch]: _, ...rest } = isRecord(r) ? r : {};
-  put(ISSUE_BRANCHES_KEY, repo.toLowerCase(), Object.fromEntries([...Object.entries(rest), [branch, url]].slice(-MAX)));
+export function saveWorktreeRun(main: string, run: string) {
+  put(WORKTREE_RUN_KEY, main, run || null);
 }
 
 /** The branches pinned to the top of the project `main`'s branch picker, in pin order. */
@@ -190,25 +167,6 @@ export function renamePinnedBranch(main: string, from: string, to: string) {
   const pins = loadPinnedBranches(main);
   if (pins.includes(from)) savePinnedBranches(main, pins.map((p) => (p === from ? to : p)));
 }
-
-/**
- * The gh account the project `main` uses for GitHub, when it isn't gh's active one. Kept here,
- * never in the repo's config; the backend is told as the project opens (lib/github/account).
- */
-export function loadGitHubAccount(main: string): string | null {
-  const login = all(GITHUB_ACCOUNTS_KEY)[main];
-  return typeof login === "string" ? login : null;
-}
-
-/** null goes back to gh's active account. */
-export function saveGitHubAccount(main: string, login: string | null) {
-  put(GITHUB_ACCOUNTS_KEY, main, login);
-}
-
-/** Whether the user connected GitHub through git's credential store, which is then asked once a session by itself. */
-export const loadGitHubStore = () => readJson<unknown>(GITHUB_STORE_KEY, false) === true;
-
-export const saveGitHubStore = (on: boolean) => writeJson(GITHUB_STORE_KEY, on);
 
 /** The project's own subfolder of the worktree folder set in Settings, or null while that's off. */
 export function sharedWorktreeDir(main: string): string | null {

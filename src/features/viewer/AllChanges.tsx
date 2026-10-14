@@ -28,7 +28,7 @@ interface Props {
 
 function filesOf(changes: ChangesSelection, status: RepoStatus | null, branchRows: BranchChange[] | null, fixed: FileChange[] | null): ListFile[] | null {
   const { list } = changes;
-  if (list === "commit") return fixed && fixed.map((file) => ({ kind: "commit", commit: changes.commit, file, url: changes.url }));
+  if (list === "commit") return fixed && fixed.map((file) => ({ kind: "commit", commit: changes.commit, file }));
   if (list === "range") return fixed && fixed.map((file) => ({ kind: "pr-file", range: changes.range, file }));
   if (list === "branch") return branchRows;
   if (!status) return null;

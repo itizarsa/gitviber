@@ -236,25 +236,6 @@ pub fn log_compare(
     )
 }
 
-/// The commits `head` has that `base` doesn't, oldest first as GitHub lists a pull request's:
-/// the newest `limit` of them.
-pub fn log_range(repo: &Path, base: &str, head: &str, limit: u32) -> Result<Vec<Commit>, String> {
-    validate_rev(base)?;
-    validate_rev(head)?;
-    let range = format!("{base}..{head}");
-    let mut list = commits(
-        repo,
-        &[&range],
-        false,
-        true,
-        0,
-        limit,
-        &LogFilter::default(),
-    )?;
-    list.reverse();
-    Ok(list)
-}
-
 /// The commits `head` has that `base` doesn't, newest first, a page of them: the Compare screen's
 /// lists. Both are commit ids (its comparison names them).
 pub fn log_between(

@@ -1,4 +1,4 @@
-import { api, errorMessage, github } from "../api";
+import { api, errorMessage } from "../api";
 import { explainGitError, type GitFix, SIGNING_HELP } from "../git/gitErrors";
 import { runCommand } from "../commands/keybindings";
 import { askForIdentity } from "./identity";
@@ -11,7 +11,7 @@ export type GitFixes = Partial<Record<GitFix, ToastAction[] | ((message: string)
 const always = (target = ""): Partial<Record<GitFix, ToastAction[]>> => ({
   conflicted: [{ label: "Open Changes", run: () => runCommand("view.changes") }],
   identity: [{ label: "Set name and email", run: askForIdentity }],
-  signing: [{ label: "Signing guide", run: () => void github.openUrl(SIGNING_HELP).catch(failed("Could not open the link")) }],
+  signing: [{ label: "Signing guide", run: () => void api.openUrl(SIGNING_HELP).catch(failed("Could not open the link")) }],
   "index-lock": [
     {
       label: "Remove lock",
@@ -19,7 +19,7 @@ const always = (target = ""): Partial<Record<GitFix, ToastAction[]>> => ({
         void api.removeIndexLock(target).then(() => toast("success", "Index lock removed", "Try again now."), failed("Could not remove the lock")),
     },
   ],
-  secret: target ? [{ label: "Open on GitHub", run: () => void github.openUrl(target).catch(failed("Could not open the link")) }] : [],
+  secret: target ? [{ label: "Open on GitHub", run: () => void api.openUrl(target).catch(failed("Could not open the link")) }] : [],
 });
 
 /**

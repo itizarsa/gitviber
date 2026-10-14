@@ -170,20 +170,6 @@ function cssColor(line: string, at: number, ref: string) {
 }
 
 /**
- * The pull request or issue a link opens in the app: #123, or a URL of one in `repos` (each
- * https://github.com/owner/name, as GitHub spells it in any case), a tab of it or a comment in it
- * included. `pull`: the URL said it's a pull request; else it's either (GitHub sends an issue's
- * URL on to the pull request of that number). `repo`: which of `repos` it's in.
- */
-export function githubItem(link: Pick<Link, "spec" | "kind">, repos: readonly string[]): { number: number; pull: boolean; repo: string } | null {
-  if (link.kind === "issue") return repos[0] ? { number: Number(link.spec.slice(1)), pull: false, repo: repos[0] } : null;
-  if (link.kind !== "url") return null;
-  const m = /^(https:\/\/github\.com\/[^/]+\/[^/]+)\/(pull|issues)\/([1-9]\d{0,8})(?=$|[/?#])/i.exec(link.spec);
-  const repo = m && repos.find((r) => r.toLowerCase() === m[1].toLowerCase());
-  return repo ? { number: Number(m[3]), pull: m[2].toLowerCase() === "pull", repo } : null;
-}
-
-/**
  * Rows of terminal cells as one line, and each character's cell (along the rows, `cols` to a row)
  * then the one past the last; `starts[r]` is where row `r` starts in the text. Offsets and cells
  * part at wide characters (two cells) and past U+FFFF (two UTF-16 units).

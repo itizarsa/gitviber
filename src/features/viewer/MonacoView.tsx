@@ -9,10 +9,7 @@ import { type CodeReveal, onReveal, takeReveal } from "@/lib/editor/reveal";
 import { codeWantsFocus, setCodeEditor } from "@/lib/ui/panels";
 import { followDefinitions } from "@/lib/editor/definitions";
 import { followLineActions, type LineAction, type LineActions, type StagingSide } from "@/lib/editor/lineActions";
-import { followGitHubLinks, type GitHubLinks, linkSelection } from "@/lib/editor/githubLinks";
-import type { GitHubSide } from "@/lib/github/permalink";
 import { codeEditor, type Editor, hideEditor, hideFile, isDiff, showEditor, showFile } from "./activeEditor";
-import { followReviewThreads, type Review } from "@/features/github/pulls/ReviewThreads";
 import { followReviewNotes } from "@/features/review/NoteThreads";
 import type { LinkSide } from "@/lib/links/linkHost";
 import { colorThrough, createModels, followComments, monaco, prepare, redrawWhenColored, releaseModels, unitOf } from "@/lib/editor/monaco";
@@ -26,8 +23,6 @@ export interface CodeViewHandle {
   prev(): void;
   /** Stage, unstage or discard the selected lines, else the change at the cursor. */
   lineAction(action: LineAction): void;
-  /** Copies or opens the GitHub link to the selected lines, else the file. */
-  gitHubLink(open: boolean): void;
   /** Starts a review note on the selected lines, else the cursor's. */
   addNote(): void;
 }
@@ -50,14 +45,10 @@ interface Props {
   links?: { original: LinkSide | null; modified: LinkSide } | null;
   /** A working-tree diff whose changes can be staged, unstaged or discarded from here, or a commit's, whose lines revert. */
   staging?: StagingSide | null;
-  /** A PR file's line comments, drawn under their lines. */
-  review?: Review | null;
   /** Review notes can be written here and show under their lines: the old side's path, and a commit's version (`at`). */
   notes?: { oldPath: string; at?: string } | null;
   /** The file on disk (the file view, or the new side of an unstaged diff) can be typed into and saved (lib/editor/edits). */
   editable?: boolean;
-  /** Where each side is on GitHub, for its permalinks; none: not there. */
-  github?: { original: GitHubSide | null; modified: GitHubSide | null } | null;
 }
 
 type FindState = { searchString: string; replaceString: string; isReplaceRevealed: boolean; searchScope: null };
@@ -77,7 +68,7 @@ const DIFF_WAIT = 300;
 const SCREEN = 150;
 
 /** The code view on Monaco (VS Code's editor): a diff editor for changes, a plain one for files. */
-export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView({ pair, path, mode, collapse, wrap, scrollKey, onDisk = true, blame = null, blameColumn = false, onBlameClick, links = null, staging = null, review = null, notes = null, editable = false, github = null }, ref) {
+export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView({ pair, path, mode, collapse, wrap, scrollKey, onDisk = true, blame = null, blameColumn = false, onBlameClick, links = null, staging = null, notes = null, editable = false }, ref) {
   const s = useSettings();
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<Editor | null>(null);
@@ -112,15 +103,9 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
   const stagingRef = useRef(staging);
   // Its lines are the file's saved ones: not once it has been typed into.
   stagingRef.current = dirty ? null : staging;
-  const reviewRef = useRef(review);
-  reviewRef.current = review;
-  const threads = useRef<ReturnType<typeof followReviewThreads> | null>(null);
   const notesRef = useRef(notes);
   notesRef.current = notes;
   const noteThreads = useRef<ReturnType<typeof followReviewNotes> | null>(null);
-  const githubRef = useRef(github);
-  githubRef.current = github;
-  const githubLinks = useRef<GitHubLinks | null>(null);
   const lines = useRef<LineActions | null>(null);
   // The diff on show, which a newer `pair` replaces only once it's ready.
   const shownPair = useRef<{ pair: DiffPair; path: string } | null>(null);
@@ -173,14 +158,6 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
           return s && on ? { ...s, ...on } : null;
         })
       : null;
-    const sides = isDiff(e) ? ([[e.getOriginalEditor(), "original"], [e.getModifiedEditor(), "modified"]] as const) : ([[e, "modified"]] as const);
-    githubLinks.current = followGitHubLinks(sides, (side) => githubRef.current?.[side] ?? null);
-    threads.current = isDiff(e)
-      ? followReviewThreads(e, () => {
-          const [r, on] = [reviewRef.current, shownPair.current];
-          return r && on ? { review: r, rows: on.pair.rows, unified: !split.current } : null;
-        })
-      : null;
     noteThreads.current = followReviewNotes(e, () => {
       const [n, on] = [notesRef.current, shownPair.current];
       return n && on ? { ...n, path: on.path, pair: on.pair, unified: !split.current } : null;
@@ -193,12 +170,8 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
       marks?.dispose();
       lines.current?.dispose();
       lines.current = null;
-      threads.current?.dispose();
-      threads.current = null;
       noteThreads.current?.dispose();
       noteThreads.current = null;
-      githubLinks.current?.dispose();
-      githubLinks.current = null;
       if (shown.current) viewStates.set(shown.current, e.saveViewState()!);
       shown.current = null;
       const models = modelsOf(e);
@@ -249,10 +222,7 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
     else e.updateOptions(fileOptions(s, wrap, blameColumn, editable));
   }, [s, mode, collapse, wrap, diff, blameColumn, editable]);
 
-  useEffect(() => githubLinks.current?.update(), [github]);
-
-  // New comments, or the other layout (unified view puts old-side threads on the new side).
-  useEffect(() => threads.current?.update(), [review, mode]);
+  // New notes, or the other layout (unified view puts old-side threads on the new side).
   useEffect(() => noteThreads.current?.update(), [notes, mode]);
 
   // A blame that lands after the file shows (the swap below marks the one it finds), and goes
@@ -312,7 +282,6 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
       releaseModels(old);
       shown.current = scrollKey;
       shownPair.current = { pair, path };
-      threads.current?.update();
       noteThreads.current?.update();
       const code = codeEditor(e);
       // Opened from the code view (J/K, a tab switch) or sent here before it was ready: take the keys.
@@ -415,14 +384,7 @@ export const MonacoView = forwardRef<CodeViewHandle, Props>(function MonacoView(
         const to = dir === 1 ? starts.find((l) => l > at) : [...starts].reverse().find((l) => l < at);
         if (to != null) goToLine(code, to);
       };
-      // The old side only while it has focus (the palette takes it) or for a deleted file.
-      const gitHubLink = (open: boolean) => {
-        const e = editor.current;
-        const old = e && isDiff(e) && (e.getOriginalEditor().hasWidgetFocus() || !githubRef.current?.modified);
-        const side = githubRef.current?.[old ? "original" : "modified"];
-        if (e && side) linkSelection(side, old ? e.getOriginalEditor() : codeEditor(e), open);
-      };
-      return { next: () => go(1), prev: () => go(-1), lineAction: (action) => lines.current?.act(action), gitHubLink, addNote: () => noteThreads.current?.add() };
+      return { next: () => go(1), prev: () => go(-1), lineAction: (action) => lines.current?.act(action), addNote: () => noteThreads.current?.add() };
     },
     [],
   );

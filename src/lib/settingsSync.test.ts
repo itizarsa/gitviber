@@ -200,7 +200,7 @@ test("saved efforts are checked as they load", async () => {
   }
 });
 
-test("guided review settings are checked as they load, and reset to Commit Messages'", async () => {
+test("guided review settings are checked as they load, and reset to the Agent section's", async () => {
   reset();
   store.set(
     "gitviber.settings.v2",
@@ -238,7 +238,7 @@ test("guided review settings changed in the settings window reach main, null inc
   assert.equal(stored().reviewCommand, null);
 });
 
-test("a guided review's model or effort taken back to Commit Messages' in the settings window is gone in main too", async () => {
+test("a guided review's model or effort taken back to the Agent section's in the settings window is gone in main too", async () => {
   reset();
   const main = await boot("main");
   const win = await boot("settings");

@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
-import { api, type Branch, type Pull, type Worktree, type WorktreeState } from "@/lib/api";
+import { api, type Branch, type Worktree, type WorktreeState } from "@/lib/api";
 import { REVEAL_LABEL } from "@/lib/platform";
 import { matchesCommand, useCommands, useShortcut } from "@/lib/commands/keybindings";
 import { pointerMoved } from "@/lib/ui/pointer";
@@ -19,9 +19,6 @@ import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
 import { RowAction } from "@/components/RowAction";
 import { StatusDot } from "@/components/StatusDot";
-import { CiBadge, ciLabel } from "@/components/CiBadge";
-import { PullStateIcon } from "@/features/github/shared/StateBadges";
-import { type BranchPull, useWorktreePulls } from "./useWorktreePulls";
 import { openWorktreeDialog, useWorktreeDialog } from "./WorktreeDialogs";
 import { WorktreeColorMenu } from "./WorktreeColorMenu";
 import { usePickerIndex } from "@/hooks/usePickerIndex";
@@ -46,10 +43,6 @@ interface Props {
   onNew: () => void;
   /** Hands the default branch back to the main folder (asks first). */
   onMainBack: (branch: string) => void;
-  /** Origin is on GitHub: its pull requests show. */
-  onGitHub: boolean;
-  /** Opens a pull request in the app. */
-  onOpenPull: (p: Pull) => void;
 }
 
 /** Each worktree's most urgent look of the terminals in it, by its path. */
@@ -68,7 +61,7 @@ function looksIn(worktrees: Worktree[], panes: [string, Look][]) {
  * Rows lead with the branch, the name people know a worktree by; the folder comes second.
  * In a linked worktree the button names both, so a folder that no longer says what it holds shows.
  */
-export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerge, onRemove, onRename, onLock, onUnlock, onNew, onMainBack, onGitHub, onOpenPull }: Props) {
+export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerge, onRemove, onRename, onLock, onUnlock, onNew, onMainBack }: Props) {
   const [open, setOpen] = useState(false);
   const paneLooks = usePaneLooks();
   const [list, setList] = useState(worktrees);
@@ -124,13 +117,11 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
 
   const current = list.find((w) => w.current);
   const linked = !!current && !current.main;
-  const pullOf = useWorktreePulls(list, open, onGitHub);
   const colors = useWorktreeColors();
 
   if (!list.length) return null;
   const extra = list.filter((w) => !w.main).length;
   const main = list.find((w) => w.main && !w.bare);
-  const here = linked ? pullOf(current.branch) : undefined;
   const named = linked ? worktreeName(current) : null;
   const offer = mainBackOffer(list, branches);
   const hues = worktreeHues(list, colors);
@@ -153,12 +144,8 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
     setOpen(false);
   };
   const remove = then(onRemove);
-  const openPull = (p: Pull) => {
-    setOpen(false);
-    onOpenPull(p);
-  };
   const rename = thenDialog(onRename);
-  const merged = cleanable(list, states, (b) => pullOf(b)?.pull, terminalsIn);
+  const merged = cleanable(list, states, terminalsIn);
   const lock = thenDialog((w) => (w.locked ? onUnlock(w) : onLock(w)));
   // revealProject, not revealPath: that one only reaches inside the open worktree.
   const resume = thenDialog((w) => showConversations(w.path));
@@ -262,8 +249,6 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
                 state={states[w.path]}
                 hue={hues.get(w.path) ?? null}
                 look={looks.get(w.path) ?? null}
-                pull={pullOf(w.branch)}
-                onOpenPull={openPull}
                 into={current?.branch ?? null}
                 renameKey={renameKey}
                 onHover={setIndex}
@@ -337,7 +322,6 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
           </div>
         </PopoverContent>
       </Popover>
-      {here && <PullChip bp={here} hot={false} onClick={() => onOpenPull(here.pull)} className="h-7 rounded-md px-1.5 text-[11px]" />}
     </>
   );
 }
@@ -355,8 +339,6 @@ function WorktreeRow({
   state,
   hue,
   look,
-  pull,
-  onOpenPull,
   into,
   renameKey,
   onHover,
@@ -374,9 +356,6 @@ function WorktreeRow({
   hue: Hue | null;
   /** The most urgent look of the terminals in it. */
   look: Look | null;
-  /** Its branch's pull request, when a cached PR list has one. */
-  pull: BranchPull | undefined;
-  onOpenPull: (p: Pull) => void;
   /** The current worktree's branch; null when detached. */
   into: string | null;
   renameKey: string | undefined;
@@ -441,16 +420,6 @@ function WorktreeRow({
                 <Lock className="size-3 shrink-0 opacity-60" />
               </Tip>
             )
-          )}
-          {pull && (
-            <PullChip
-              bp={pull}
-              hot={hot}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenPull(pull.pull);
-              }}
-            />
           )}
         </div>
         <div className={cn("flex min-w-0 items-center gap-1 text-[10.5px]", hot ? "opacity-80" : "text-subtle")}>
@@ -521,11 +490,6 @@ function WorktreeRow({
             <History /> Resume a conversation…
           </ContextMenuItem>
         )}
-        {pull && (
-          <ContextMenuItem onSelect={() => onOpenPull(pull.pull)}>
-            <PullStateIcon pull={pull.pull} className="text-current" /> Open pull request #{pull.pull.number}
-          </ContextMenuItem>
-        )}
         {can.merge && (
           <ContextMenuItem onSelect={() => a.merge(w)}>
             <GitMerge /> Merge into {into}
@@ -542,7 +506,7 @@ function WorktreeRow({
           </ContextMenuItem>
         )}
         {!w.bare && <WorktreeColorMenu path={w.path} hue={hue} />}
-        {(usable || onDisk || pull || can.merge || can.rename || can.lock || !w.bare) && <ContextMenuSeparator />}
+        {(usable || onDisk || can.merge || can.rename || can.lock || !w.bare) && <ContextMenuSeparator />}
         {onDisk && (
           <ContextMenuItem onSelect={() => a.reveal(w)}>
             <FolderOpen /> {REVEAL_LABEL}
@@ -600,22 +564,5 @@ function Chip({ hot, tone, className, ...props }: React.ComponentProps<"span"> &
         className,
       )}
     />
-  );
-}
-
-/** A branch's PR: its state, number and checks; opens it in the app. */
-function PullChip({ bp: { pull, ci }, hot, onClick, className }: { bp: BranchPull; hot: boolean; onClick: (e: React.MouseEvent) => void; className?: string }) {
-  const state = pull.state === "open" && pull.draft ? "draft" : pull.state;
-  return (
-    <Tip label={`Open pull request #${pull.number} (${state}${ci ? ` · ${ciLabel(ci).toLowerCase()}` : ""}): ${pull.title}`}>
-      <button
-        aria-label={`Open pull request #${pull.number}, ${state}${ci ? `, ${ciLabel(ci).toLowerCase()}` : ""}`}
-        onClick={onClick}
-        className={cn("flex h-5 shrink-0 items-center gap-1 rounded-sm px-1 font-mono text-[10.5px]", hot ? "hover:bg-white/20" : "text-muted-foreground hover:bg-hover hover:text-foreground", className)}
-      >
-        <PullStateIcon pull={pull} className={cn("size-3", hot && "text-current")} />#{pull.number}
-        <CiBadge state={ci} bare className={cn(hot && "text-current")} />
-      </button>
-    </Tip>
   );
 }

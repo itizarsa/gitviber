@@ -21,7 +21,7 @@ import { Wordmark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DisabledTip, Tip } from "@/components/ui/tooltip";
-import { api, cancelNetwork, type Pull } from "@/lib/api";
+import { api, cancelNetwork } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
 import { folderName } from "@/lib/path";
 import { IS_MAC } from "@/lib/platform";
@@ -43,11 +43,7 @@ import { WorktreePicker } from "@/features/worktrees/WorktreePicker";
 import { StatusDot } from "@/components/StatusDot";
 import { AgentsMenu } from "@/features/terminal/AgentsMenu";
 
-type Props = ProjectSwitcherProps & {
-  onOpenPull: (p: Pull) => void;
-  /** Origin's GitHub page as last known: a failed remote read doesn't drop the PR badges. */
-  webUrl: string | null;
-};
+type Props = ProjectSwitcherProps;
 
 interface LayoutProps {
   leftOpen: boolean;
@@ -84,7 +80,7 @@ function useFullscreen() {
  * divided by --ui-scale to stay in points (the height only grows: at 150% a 40pt bar can't
  * fit its buttons).
  */
-export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onReorderRepos, onLocateRepo, onOpenPull, webUrl, leftOpen, rightOpen, onToggleLeft, onToggleRight }: Props & LayoutProps) {
+export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onReorderRepos, onLocateRepo, leftOpen, rightOpen, onToggleLeft, onToggleRight }: Props & LayoutProps) {
   const { status, branches, worktrees } = repo;
   const [branchDialog, setBranchDialog] = useState<BranchDialog | null>(null);
   const net = useNetActivity();
@@ -171,10 +167,8 @@ export function TopBar({ repo, root, main, recent, onOpenRepo, onForgetRepo, onR
         onUnlock={unlockWorktree}
         onNew={() => openWorktreeDialog({ kind: "new" })}
         onMainBack={moveMainBack}
-        onGitHub={!!webUrl}
-        onOpenPull={onOpenPull}
       />
-      <WorktreeDialogs branches={branches} main={main} run={run} runNet={runNet} onOpen={onOpenRepo} />
+      <WorktreeDialogs branches={branches} main={main} run={run} onOpen={onOpenRepo} />
       {status && !tracked && !status.follows && status.branch && (
         <span className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-subtle select-none">
           <CloudOff className="size-3" /> Not published

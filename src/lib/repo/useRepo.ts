@@ -1,7 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Branch, type Commit, errorMessage, LOG_PAGE, type RepoStatus, type Worktree } from "../api";
-import { recheckPullsSoon } from "../github/githubCache";
 import { useBackgroundFetch } from "./backgroundFetch";
 import { toast } from "../app/toast";
 
@@ -127,7 +126,6 @@ export function useRepo(root: string, onGone: () => void) {
       if (e.payload.root !== root) return;
       if (e.payload.worktree) written.current = true;
       refresh(e.payload.git);
-      if (e.payload.git) recheckPullsSoon();
     });
     return () => {
       live.current = null;

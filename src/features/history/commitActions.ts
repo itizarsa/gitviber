@@ -15,7 +15,6 @@ export interface Actions {
   status: RepoStatus | null;
   /** HEAD as the history shows it; the backend refuses to move HEAD if it has changed since. */
   headSha: string;
-  webUrl: string | null;
   /** An action is running or a merge/rebase/revert waits: nothing else may move HEAD. */
   locked: boolean;
   run: GitRun;
@@ -28,8 +27,6 @@ export interface Actions {
   /** Makes `commits` one with `onto`, where it is; `message` asks for the message, else the oldest one's stays. */
   squash: (commits: Commit[], onto: string, message: boolean) => void;
   refresh: () => unknown;
-  /** `webUrl` has every listed commit, not only those reached from origin's branches. */
-  everyOnWeb: boolean;
   /** Other worktrees with a branch checked out, to cherry-pick onto. */
   pickTargets: Worktree[];
   pickInto: (w: Worktree, commit: Commit) => Promise<void>;
@@ -54,9 +51,6 @@ export interface AuthorFilter {
   has: (c: Commit) => boolean;
 }
 
-/** GitHub only has commits that reached one of origin's branches (or all, for a fork's original). */
-export const commitUrl = (c: Commit, { webUrl, everyOnWeb }: Pick<Actions, "webUrl" | "everyOnWeb">) =>
-  webUrl && (c.onOrigin || everyOnWeb) ? `${webUrl}/commit/${c.sha}` : undefined;
 
 export const PUSHED_WARNING = "Some of these commits are already pushed, so you'd have to force-push, which rewrites history for everyone else on this branch.";
 export const MERGE_WARNING = "This is a merge: the merged-in commits leave the branch too, and all of their changes end up staged together.";

@@ -1,5 +1,5 @@
 import { ask } from "@/lib/app/ask";
-import { ChevronRight, Copy, ExternalLink, File, FilePlus, FolderPlus, FolderSearch, GitCompare, History, Link, Pencil, SquareDashedMousePointer, Trash2, Undo2 } from "lucide-react";
+import { ChevronRight, Copy, File, FilePlus, FolderPlus, FolderSearch, GitCompare, History, Pencil, SquareDashedMousePointer, Trash2, Undo2 } from "lucide-react";
 import { Fragment, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useListFilter } from "@/components/ListFilter";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -14,7 +14,6 @@ import { toast } from "@/lib/app/toast";
 import { cn } from "@/lib/utils";
 import { copyFiles, copyLabel, copyText } from "@/lib/app/clipboard";
 import { revealPath } from "@/lib/app/openIn";
-import { gitHubLink } from "@/lib/github/url";
 import { basename, childPath, dirname } from "@/lib/path";
 import { MAX_MATCHES, matchingTree } from "@/lib/repo/matchingTree";
 import { FileIcon, FolderIcon } from "@/components/FileIcon";
@@ -42,8 +41,6 @@ interface Props {
   onPathMoved: (from: string, to: string | null) => void;
   /** History, filtered to a file's commits (followed through renames) or a folder's. */
   onShowHistory: (path: string, file: boolean) => void;
-  /** origin's page on GitHub, for links to a file or folder there; null: not on GitHub. */
-  webUrl: string | null;
   ref?: React.Ref<FileTreeHandle>;
 }
 
@@ -55,7 +52,7 @@ const isInside = (path: string, dir: string) => path === dir || path.startsWith(
 const topmost = (list: Entry[]) => list.filter((e) => !list.some((d) => d !== e && d.isDir && isInside(e.path, d.path)));
 
 /** Lazy tree of the working directory, like VS Code's explorer, annotated with git status. */
-export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathMoved, onShowHistory, webUrl, ref }: Props) {
+export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathMoved, onShowHistory, ref }: Props) {
   const { children, expanded, setExpanded, loadDir, setOpen } = useLazyTree<Entry>({
     list: api.listDir,
     revision,
@@ -356,9 +353,6 @@ export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathM
   const targetFiles = targets.filter((e) => !e.isDir);
   const targetDiscardable = targets.filter((e) => discardable.has(e.path));
   const menuDir = t ? (t.isDir && !multi ? t.path : null) : "";
-  // Untracked or ignored: GitHub has no copy, as History has none.
-  const offGitHub = !!t && (t.ignored || fileStatus.get(t.path) === "?");
-  const gitHubItem = (open: boolean) => webUrl && void gitHubLink({ web: webUrl, path: t?.path ?? "", sha: null }, null, open);
   // Two files picked compare with each other, as listed; one compares with the file Select for Compare picked.
   const pair = multi && targets.length === 2 && targetFiles.length === 2 ? targetFiles : null;
   const marked = mark && mark.path !== t?.path ? mark.path : null;
@@ -501,16 +495,6 @@ export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathM
               <FolderSearch /> {REVEAL_LABEL}
             </ContextMenuItem>
             <OpenInMenuItem path={t?.path ?? ""} />
-            {webUrl && (
-              <>
-                <ContextMenuItem disabled={offGitHub} onSelect={() => gitHubItem(false)}>
-                  <Link /> Copy GitHub Link
-                </ContextMenuItem>
-                <ContextMenuItem disabled={offGitHub} onSelect={() => gitHubItem(true)}>
-                  <ExternalLink /> Open on GitHub
-                </ContextMenuItem>
-              </>
-            )}
           </>
         )}
         {IS_MAC && targetFiles.length > 0 && status && (

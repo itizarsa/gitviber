@@ -1,6 +1,6 @@
 // Two points of history against each other, as a screen of its own: the commits one has that the
 // other lacks, the files between them (one scroll of diffs, or a file at a time), and merging.
-import { ArrowLeftRight, ExternalLink, Files } from "lucide-react";
+import { ArrowLeftRight, Files } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -9,8 +9,6 @@ import { FileIcon } from "@/components/FileIcon";
 import { LineCounts, PathLabel, StatusLetter } from "@/components/StatusBadge";
 import { Windowed } from "@/components/Windowed";
 import { api, type Branch, type Comparison, errorMessage, type RepoStatus } from "@/lib/api";
-import { githubCompareUrl } from "@/lib/git/comparePoints";
-import { openOnGitHub } from "@/lib/github/url";
 import { plural } from "@/lib/format";
 import { compareLabel, type Selection } from "@/lib/repo/selection";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
@@ -29,15 +27,13 @@ interface Props {
   sel: CompareSelection;
   branches: Branch[];
   status: RepoStatus | null;
-  /** origin's page on GitHub; null: not on GitHub. */
-  webUrl: string | null;
   /** The screen's own tab, to be shown with other points. */
   onChange: (sel: CompareSelection) => void;
   onOpen: (s: Selection, pin?: boolean) => void;
   refresh: () => unknown;
 }
 
-export function CompareView({ sel, branches, status, webUrl, onChange, onOpen, refresh }: Props) {
+export function CompareView({ sel, branches, status, onChange, onOpen, refresh }: Props) {
   const { base, head, mergeBase } = sel;
   const key = `${base.ref}\0${head.ref}\0${mergeBase}`;
   // Where the branches stand: a fetch or a commit moves them, and the comparison is read again.
@@ -86,7 +82,7 @@ export function CompareView({ sel, branches, status, webUrl, onChange, onOpen, r
       ) : "error" in shown ? (
         <Centered>{shown.error}</Centered>
       ) : (
-        <Result sel={sel} comparison={shown.comparison} tips={tips} status={status} webUrl={webUrl} onOpen={onOpen} refresh={refresh} />
+        <Result sel={sel} comparison={shown.comparison} tips={tips} status={status} onOpen={onOpen} refresh={refresh} />
       )}
       {/* Kept for the screen reader while a new comparison loads. */}
       <span className="sr-only" aria-live="polite">
@@ -100,13 +96,12 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-center text-[12.5px] text-muted-foreground">{children}</div>;
 }
 
-function Result({ sel, comparison: c, tips, status, webUrl, onOpen, refresh }: { sel: CompareSelection; comparison: Comparison; tips: string; status: RepoStatus | null; webUrl: string | null; onOpen: Props["onOpen"]; refresh: () => unknown }) {
-  const { base, head, mergeBase } = sel;
+function Result({ sel, comparison: c, tips, status, onOpen, refresh }: { sel: CompareSelection; comparison: Comparison; tips: string; status: RepoStatus | null; onOpen: Props["onOpen"]; refresh: () => unknown }) {
+  const { base, head } = sel;
   const label = compareLabel(sel);
   // What opening the files all at once, or one, shows: from the merge base, or from Base itself.
   const range = useMemo(() => ({ label, base: c.from, head: c.head }), [label, c.from, c.head]);
   const { add, del } = sumLines(c.files);
-  const url = githubCompareUrl(webUrl, base, head, mergeBase);
 
   if (c.base === c.head) {
     return (
@@ -144,11 +139,6 @@ function Result({ sel, comparison: c, tips, status, webUrl, onOpen, refresh }: {
           )}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          {url && (
-            <Button variant="ghost" size="sm" onClick={() => openOnGitHub(url)}>
-              <ExternalLink /> Open on GitHub
-            </Button>
-          )}
           <Button variant="secondary" size="sm" disabled={!c.files.length} onClick={() => onOpen({ kind: "changes", list: "range", range }, true)}>
             <Files /> Open All
           </Button>
@@ -156,13 +146,13 @@ function Result({ sel, comparison: c, tips, status, webUrl, onOpen, refresh }: {
         {c.unrelated && <div className="basis-full text-[11.5px] text-modified">These have no commit in common, so what's listed is every difference between them.</div>}
         <MergeBar head={head} headSha={c.head} tips={tips} status={status} refresh={refresh} />
       </div>
-      <Panes sel={sel} comparison={c} range={range} webUrl={webUrl} onOpen={onOpen} />
+      <Panes sel={sel} comparison={c} range={range} onOpen={onOpen} />
     </>
   );
 }
 
 /** Commits and files side by side when there's the room, one above the other when there isn't. */
-function Panes({ sel, comparison: c, range, webUrl, onOpen }: { sel: CompareSelection; comparison: Comparison; range: { label: string; base: string; head: string }; webUrl: string | null; onOpen: Props["onOpen"] }) {
+function Panes({ sel, comparison: c, range, onOpen }: { sel: CompareSelection; comparison: Comparison; range: { label: string; base: string; head: string }; onOpen: Props["onOpen"] }) {
   // Ahead first, as it's what a pull request is made of; Behind when that's empty.
   const [picked, setPicked] = useState<"ahead" | "behind" | null>(null);
   const tab = picked ?? (!c.ahead && c.behind ? "behind" : "ahead");
@@ -183,7 +173,7 @@ function Panes({ sel, comparison: c, range, webUrl, onOpen }: { sel: CompareSele
             <span className="min-w-0 truncate text-[11px] text-subtle">{tab === "ahead" ? `in ${head.label}, not ${base.label}` : `in ${base.label}, not ${head.label}`}</span>
           </div>
           {/* Keyed: the other side's list starts over, and a comparison moved on reads its own. */}
-          <CommitList key={`${tab}:${c.base}:${c.head}`} base={tab === "ahead" ? c.base : c.head} head={tab === "ahead" ? c.head : c.base} count={tab === "ahead" ? c.ahead : c.behind} empty={tab === "ahead" ? `${head.label} has nothing ${base.label} lacks.` : `${base.label} has nothing ${head.label} lacks.`} webUrl={webUrl} onOpen={onOpen} />
+          <CommitList key={`${tab}:${c.base}:${c.head}`} base={tab === "ahead" ? c.base : c.head} head={tab === "ahead" ? c.head : c.base} count={tab === "ahead" ? c.ahead : c.behind} empty={tab === "ahead" ? `${head.label} has nothing ${base.label} lacks.` : `${base.label} has nothing ${head.label} lacks.`} onOpen={onOpen} />
         </section>
         <section aria-label="Changed files" className="flex min-h-0 flex-1 flex-col">
           <div className="flex h-8 shrink-0 items-center gap-2 px-3 text-[10.5px] text-subtle">

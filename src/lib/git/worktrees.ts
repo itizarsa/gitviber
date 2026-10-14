@@ -1,4 +1,4 @@
-import type { Branch, FileChange, Pull, Worktree, WorktreeState } from "../api";
+import type { Branch, FileChange, Worktree, WorktreeState } from "../api";
 import { folderName, isInside } from "../path.ts";
 
 /** Where a worktree sits, as short as it can be said: inside the main one, or beside it. */
@@ -85,14 +85,12 @@ export interface Cleanable {
  * no terminal in it, not locked, not the main or the open one, and no other worktree inside it,
  * which removing it would take along. Those whose state isn't read yet aren't offered.
  */
-export function cleanable(list: Worktree[], states: Record<string, WorktreeState>, pullOf: (branch: string | null) => Pull | undefined, terminalsIn: (path: string) => number): Cleanable[] {
+export function cleanable(list: Worktree[], states: Record<string, WorktreeState>, terminalsIn: (path: string) => number): Cleanable[] {
   return list.flatMap((w) => {
     const s = states[w.path];
-    const pull = pullOf(w.branch);
-    const pulled = pull?.state === "merged";
-    if (!s || w.main || w.current || w.locked || w.prunable || w.bare || s.uncommitted || !(s.merged || pulled)) return [];
+    if (!s || w.main || w.current || w.locked || w.prunable || w.bare || s.uncommitted || !s.merged) return [];
     if (terminalsIn(w.path) || list.some((o) => isInside(o.path, w.path))) return [];
-    return [{ worktree: w, why: s.merged ? "merged" : `#${pull!.number} merged`, mergedHead: pulled ? pull!.headSha : null }];
+    return [{ worktree: w, why: "merged", mergedHead: null }];
   });
 }
 

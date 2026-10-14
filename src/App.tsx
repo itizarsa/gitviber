@@ -24,7 +24,6 @@ import { useCommands } from "@/lib/commands/keybindings";
 import { useRecentMenu } from "@/lib/commands/menu";
 import { stepUiScale } from "@/lib/settings";
 import { fallbackFor, latestOnly } from "@/lib/repo/opening";
-import { applyProjectAccount } from "@/lib/github/account";
 import { forgetRepo, lastRepo, recentRepos, rememberRepo, setLastRepo, setRepoOrder } from "@/lib/repo/recent";
 import { gitFailed } from "@/lib/app/gitFailed";
 import { failed, toast } from "@/lib/app/toast";
@@ -73,12 +72,7 @@ export function App() {
   const openRepo = useCallback(async (path?: string, quiet = false, replacing?: string, offerInit = true): Promise<string | false | undefined> => {
     const target = path ?? (await open({ directory: true, title: "Open a git repository" }));
     if (typeof target !== "string") return;
-    // Before the workspace shows: its first GitHub calls go out as the project's account.
-    const { turn, latest } = opens.run(async () => {
-      const repo = await api.openRepo(target);
-      await applyProjectAccount(repo.main).catch(failed("Could not use this project's GitHub account"));
-      return repo;
-    });
+    const { turn, latest } = opens.run(() => api.openRepo(target));
     try {
       const repo = await turn;
       if (!repo) return;

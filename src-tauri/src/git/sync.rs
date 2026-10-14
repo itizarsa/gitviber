@@ -49,45 +49,6 @@ pub(super) fn push_target(repo: &Path, branch: &str) -> Option<PushTarget> {
     })
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PullDraft {
-    /// Commits HEAD has that `base` doesn't: what the PR would bring.
-    pub commits: u32,
-    /// The one commit's message, when there's exactly one: GitHub titles the PR with it.
-    pub subject: Option<String>,
-    pub body: Option<String>,
-}
-
-/// What a PR from HEAD into `base` (a remote-tracking branch) would carry, to fill its title
-/// and description the way GitHub does.
-pub fn pull_draft(repo: &Path, base: &str) -> Result<PullDraft, String> {
-    check_pull_base(repo, base)?;
-    let range = format!("{base}..HEAD");
-    let commits = run_text(repo, &["rev-list", "--count", &range, "--"])?
-        .trim()
-        .parse()
-        .unwrap_or(0);
-    let one =
-        |fmt: &str| run_text(repo, &["log", "-1", fmt, "HEAD", "--"]).map(|s| s.trim().to_string());
-    Ok(PullDraft {
-        subject: (commits == 1).then(|| one("--format=%s")).transpose()?,
-        body: (commits == 1).then(|| one("--format=%b")).transpose()?,
-        commits,
-    })
-}
-
-/// A pull request's `base`: a remote-tracking branch (refs/remotes/…) that exists, never an option.
-pub fn check_pull_base(repo: &Path, base: &str) -> Result<(), String> {
-    let r = base
-        .strip_prefix("refs/remotes/")
-        .filter(|r| !r.starts_with('-') && r.contains('/'))
-        .ok_or_else(|| format!("not a remote-tracking branch: {base}"))?;
-    run(repo, &["rev-parse", "--verify", "-q", base])
-        .map(|_| ())
-        .map_err(|_| format!("unknown branch: {r}"))
-}
-
 /// What counts as pushed for HEAD: the branch `git push` lands on (a fork pushes to origin
 /// while pulling from upstream), else the upstream.
 pub(super) fn pushed_base(repo: &Path) -> String {
@@ -105,26 +66,6 @@ pub fn set_push_default(repo: &Path, remote: &str) -> Result<(), String> {
         return Err(format!("no remote named {remote}"));
     }
     run(repo, &["config", "remote.pushDefault", remote]).map(|_| ())
-}
-
-/// Fetches `refspecs` from a remote without FETCH_HEAD, which any other fetch (the background
-/// one, a terminal) may rewrite before it's read. A refspec without a destination only brings
-/// in objects (a configured remote-tracking ref like origin/<base> may still update).
-pub fn fetch_objects(
-    repo: &Path,
-    remote: &str,
-    refspecs: &[String],
-    net: &Net,
-) -> Result<(), String> {
-    let mut args = vec![
-        "fetch",
-        "--quiet",
-        "--no-write-fetch-head",
-        "--no-tags",
-        remote,
-    ];
-    args.extend(refspecs.iter().map(String::as_str));
-    run_network(repo, &args, net).map(|_| ())
 }
 
 /// `force`: after a rebase or amend the remote has the branch's old commits; replace them,
@@ -261,12 +202,4 @@ pub fn last_fetch(repo: &Path) -> Option<u64> {
     .filter_map(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
     .map(|d| d.as_secs())
     .max()
-}
-
-/// Fetches one configured remote, e.g. a fork's upstream.
-pub fn fetch_remote(repo: &Path, name: &str, net: &Net) -> Result<(), String> {
-    if remote_url(repo, name).is_none() {
-        return Err(format!("no remote named {name}"));
-    }
-    run_network(repo, &["fetch", "--prune", name], net).map(|_| ())
 }

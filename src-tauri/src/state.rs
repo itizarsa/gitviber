@@ -1,16 +1,15 @@
 //! What every command shares: the open repo, the locks around it, and the blocking pool.
 
-use crate::{agents, git, github, network, pty, suggest};
+use crate::{agents, git, network, pty, suggest};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State};
+use tauri::State;
 
 #[derive(Default)]
 pub(crate) struct AppState {
     pub(crate) repo: Mutex<Option<PathBuf>>,
     pub(crate) watcher: Mutex<Option<notify::RecommendedWatcher>>,
-    pub(crate) github: github::Session,
     pub(crate) ptys: pty::Ptys,
     /// The agents running in terminals, and their state files watched.
     pub(crate) agents: agents::Agents,
@@ -57,19 +56,6 @@ pub(crate) async fn read_repo<T: Send + 'static>(
     f: impl FnOnce(&Path) -> Res<T> + Send + 'static,
 ) -> Res<T> {
     in_repo(state, move |r| git::reading(|| f(r))).await
-}
-
-/// `f` with the GitHub session and the open repo, on the blocking pool. Tauri's `State` is
-/// borrowed, so this gets there through the app handle.
-pub(crate) async fn with_github<T: Send + 'static>(
-    app: AppHandle,
-    f: impl FnOnce(&github::Session, &Path) -> Res<T> + Send + 'static,
-) -> Res<T> {
-    blocking(move || {
-        let state = app.state::<AppState>();
-        f(&state.github, &repo(&state)?)
-    })
-    .await
 }
 
 /// Runs an index-writing git command one at a time. An agent or the terminal can hold

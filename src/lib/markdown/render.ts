@@ -5,7 +5,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { remarkCallouts, remarkFrontmatterTable, remarkMathGuard, remarkObsidian, remarkSection, stripComments } from "../markdown/syntax.ts";
+import { remarkCallouts, remarkFrontmatterTable, remarkMathGuard, remarkObsidian, remarkSection, stripComments } from "./syntax.ts";
 
 // The markdown pipeline without JSX or app imports, so node tests render through the real thing.
 

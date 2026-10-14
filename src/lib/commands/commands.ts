@@ -33,16 +33,12 @@ export const COMMANDS = [
   // Elsewhere "ctrl" is the Super key, which the OS takes; Alt+1–4 is the usual there.
   { id: "view.changes", title: "Focus Changes", category: "View", keys: ["ctrl+1"], keysOther: ["alt+1"] },
   { id: "view.history", title: "Focus History", category: "View", keys: ["ctrl+2"], keysOther: ["alt+2"] },
-  { id: "view.pulls", title: "Focus Pull Requests", category: "View", keys: ["ctrl+3"], keysOther: ["alt+3"] },
-  { id: "view.issues", title: "Focus Issues", category: "View", keys: ["ctrl+4"], keysOther: ["alt+4"] },
   // ⌘F is Find, which searches the history list too while focus is there.
   { id: "history.search", title: "Search History", category: "View", keys: ["alt+cmd+f"] },
   { id: "view.toggleGitPanel", title: "Toggle Git Panel", category: "View", keys: ["cmd+b"] },
   { id: "view.toggleExplorer", title: "Toggle Explorer", category: "View", keys: ["alt+cmd+b"] },
   { id: "view.focusGitPanel", title: "Focus Git Panel", category: "View", keys: ["shift+cmd+g"] },
   { id: "view.focusCode", title: "Focus Code View", category: "View", keys: ["cmd+e"] },
-  // GitHub Desktop's Go to Commit Message. Not its ⌘G, macOS's Find Next: ⌃⌘, as fetch, pull and push,
-  // which neither macOS, Monaco nor the terminal uses with C. Elsewhere ⌃ is the Super key: unbound.
   // The id is from when it only showed the panel; kept so a user's binding for it still applies.
   { id: "view.showExplorer", title: "Focus Explorer", category: "View", keys: ["shift+cmd+e"] },
   { id: "view.focusNextPanel", title: "Focus Next Panel", category: "View", keys: ["f6"] },
@@ -103,9 +99,6 @@ export const COMMANDS = [
   { id: "diff.toggleWhitespace", title: "Toggle Ignore Whitespace", category: "Diff", keys: ["alt+w"] },
   { id: "editor.toggleWrap", title: "Toggle Word Wrap", category: "Editor", keys: ["alt+z"], inEditor: true },
   { id: "editor.toggleBlame", title: "Toggle Blame", category: "Editor", keys: [] },
-  // A permalink to the selected lines, else the file, at a commit GitHub has (lib/github/permalink).
-  { id: "editor.copyGitHubLink", title: "Copy GitHub Link", category: "Editor", keys: [] },
-  { id: "editor.openOnGitHub", title: "Open on GitHub", category: "Editor", keys: [] },
   { id: "editor.fontZoomIn", title: "Increase Code Font Size", category: "Editor", keys: ["alt+cmd+="] },
   { id: "editor.fontZoomOut", title: "Decrease Code Font Size", category: "Editor", keys: ["alt+cmd+-"] },
   { id: "editor.fontZoomReset", title: "Reset Code Font Size", category: "Editor", keys: ["alt+cmd+0"] },
@@ -194,9 +187,7 @@ export const COMMANDS = [
   { id: "worktree.rename", title: "Rename Worktree", category: "Git", keys: ["f2"], local: "the worktree picker" },
   { id: "worktree.remove", title: "Remove Worktree", category: "Git", keys: ["backspace", "delete"], local: "the worktree picker" },
   { id: "project.forget", title: "Remove from Projects", category: "General", keys: ["backspace", "delete"], local: "the project list" },
-  { id: "github.postComment", title: "Post Comment", category: "GitHub", keys: ["cmd+enter", "ctrl+enter"], local: "an issue comment" },
   // Only while suggestions are set up in Settings.
-  { id: "git.suggestMessage", title: "Suggest Commit Message", category: "Git", keys: [] },
 ] as const satisfies readonly {
   id: string;
   title: string;

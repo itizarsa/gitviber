@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { type About, api, errorMessage, github } from "@/lib/api";
+import { type About, api, errorMessage } from "@/lib/api";
 import { useCommands } from "@/lib/commands/keybindings";
 import { failed, toast } from "@/lib/app/toast";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,7 @@ const open = createStore(false);
 const setOpen = open.set;
 export const openAbout = () => setOpen(true);
 
-const openLink = (url: string) => github.openUrl(url).catch(failed("Could not open the link"));
+const openLink = (url: string) => api.openUrl(url).catch(failed("Could not open the link"));
 
 /** GitViber → About GitViber in the menu bar, and the version in the status bar. */
 export function AboutDialog() {

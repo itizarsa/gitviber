@@ -5,8 +5,6 @@ export function guideCopy(sel: GuideSelection, branch: string | null) {
   switch (sel.of) {
     case "commit":
       return { what: "this commit", title: sel.commit.subject, reads: "the commit's message and diff" };
-    case "pull":
-      return { what: "this pull request", title: sel.pull.title, reads: "the pull request's commits and their diff, fetching them first when they're missing," };
     case "changes":
       return { what: "these changes", title: "Uncommitted changes", reads: "the uncommitted changes (staged, unstaged and new files)" };
     case "branch":

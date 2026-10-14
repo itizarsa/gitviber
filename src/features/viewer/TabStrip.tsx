@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { useEdited } from "@/lib/editor/edits";
 import { basename, distinctFolders } from "@/lib/path";
 import { SortableList, useSortableItem } from "@/components/Sortable";
-import { IssueStateIcon, PullStateIcon } from "@/features/github/shared/StateBadges";
 import { FileIcon } from "@/components/FileIcon";
 import { type Tab, type TabGroup, tabGroup } from "./tabs";
 
@@ -170,11 +169,7 @@ function TabItem({
     >
       {isActive && <span className="absolute inset-x-0 top-0 h-px bg-primary" />}
       {isActive && !dragging && <span className="absolute inset-x-0 -bottom-px h-px bg-background" />}
-      {t.sel.kind === "pull" ? (
-        <PullStateIcon pull={t.sel.pull} />
-      ) : t.sel.kind === "issue" ? (
-        <IssueStateIcon issue={t.sel.issue} />
-      ) : t.sel.kind === "changes" ? (
+      {t.sel.kind === "changes" ? (
         <Files className="size-4 shrink-0 text-subtle" />
       ) : t.sel.kind === "compare" ? (
         <GitCompareArrows className="size-4 shrink-0 text-subtle" />
@@ -251,6 +246,6 @@ function TabItem({
 function TabKind({ sel }: { sel: Selection }) {
   const labels: Partial<Record<Selection["kind"], string>> = { staged: "staged", unstaged: "diff", conflict: "conflict" };
   const label =
-    sel.kind === "commit" ? sel.commit.shortSha : sel.kind === "pr-file" ? [sel.range.number && `#${sel.range.number}`, sel.range.label].filter(Boolean).join(" ") || "compare" : sel.kind === "branch" ? `vs ${sel.label}` : sel.kind === "files" ? `vs ${basename(sel.file.oldPath ?? "")}` : labels[sel.kind];
+    sel.kind === "commit" ? sel.commit.shortSha : sel.kind === "pr-file" ? sel.range.label || "compare" : sel.kind === "branch" ? `vs ${sel.label}` : sel.kind === "files" ? `vs ${basename(sel.file.oldPath ?? "")}` : labels[sel.kind];
   return label ? <span className="shrink-0 font-mono text-[10px] text-subtle">{label}</span> : null;
 }

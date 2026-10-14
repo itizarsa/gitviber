@@ -1,7 +1,6 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RepoStatus } from "@/lib/api";
-import { newerCopy, useGitHubCacheVersion } from "@/lib/github/githubCache";
 import { editPath, type Selection, selectionKey, selectionPath } from "@/lib/repo/selection";
 import type { loadWorkspace } from "@/lib/repo/session";
 import { isChange, relocate } from "@/features/changes/changeList";
@@ -157,29 +156,6 @@ export function useTabs(saved: ReturnType<typeof loadWorkspace>, status: RepoSta
     const rows = new Map(review.map((r) => [r.file.path, r]));
     follow((sel) => (sel.kind === "branch" && !sel.fixed ? (rows.get(sel.file.path) ?? null) : sel));
   }, [review, follow]);
-
-  // Issue and PR tabs hold the item as it was when opened, saved across restarts too. When a
-  // list or detail read brings a newer copy (closed, renamed), the tab's title and icon follow.
-  const gitHubVersion = useGitHubCacheVersion();
-  useEffect(() => {
-    setTabState((st) => {
-      let changed = false;
-      const tabs = st.tabs.map((t): Tab => {
-        let sel: Selection | null = null;
-        if (t.sel.kind === "issue") {
-          const issue = newerCopy(t.sel.issue);
-          if (issue) sel = { kind: "issue", issue };
-        } else if (t.sel.kind === "pull") {
-          const pull = newerCopy(t.sel.pull);
-          if (pull) sel = { kind: "pull", pull };
-        }
-        if (!sel) return t;
-        changed = true;
-        return { ...t, sel };
-      });
-      return changed ? { ...st, tabs } : st;
-    });
-  }, [gitHubVersion]);
 
   return { tabs, activeKey, setActiveKey, open, update, closeTabs, close, closeAround, reopen, canReopen: closed.length > 0, moveTab, goTab, stepTab, pin, onPathMoved };
 }

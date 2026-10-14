@@ -4,12 +4,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
 import { IS_MAC } from "@/lib/platform";
-import type { MarkdownHome } from "@/features/github/shared/GitHubMarkdown";
-import { MarkdownInput } from "@/features/github/shared/MarkdownInput";
 
-/** A new comment on GitHub (`pull`: where it's posted, its markdown previewed there), or without `pull` a review note kept here. */
+/** A new review note, kept here. */
 export function Composer({
-  pull,
   label,
   initial = "",
   onDraft,
@@ -17,7 +14,6 @@ export function Composer({
   onCancel,
   bare = false,
 }: {
-  pull?: MarkdownHome;
   label: string;
   /** What was typed before it was drawn again; `onDraft` hears each change to it. */
   initial?: string;
@@ -36,7 +32,7 @@ export function Composer({
       setBody("");
       onCancel();
     } catch (e) {
-      toast("error", "Could not post the comment", errorMessage(e));
+      toast("error", "Could not add the note", errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -57,17 +53,17 @@ export function Composer({
       } else if (e.key === "Escape") onCancel();
     },
     rows: 3,
-    placeholder: `${label}… (${pull ? "Markdown; " : ""}${IS_MAC ? "⌘↵" : "Ctrl+Enter"} to ${pull ? "post" : "add"})`,
+    placeholder: `${label}… (${IS_MAC ? "⌘↵" : "Ctrl+Enter"} to add)`,
   };
   const box = (
     <div className="flex flex-col gap-2">
-      {pull ? <MarkdownInput pull={pull} {...input} /> : <Textarea {...input} />}
+      <Textarea {...input} />
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
         <Button size="sm" disabled={!body.trim() || busy} onClick={() => void submit()}>
-          {pull ? (busy ? "Posting…" : "Comment") : "Add Note"}
+          Add Note
         </Button>
       </div>
     </div>

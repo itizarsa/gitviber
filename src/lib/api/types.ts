@@ -505,10 +505,10 @@ export interface AskPrompt {
 export type ResetMode = "soft" | "mixed" | "hard";
 
 /** Which suggestion a run is for: the commit box's message, the pull request dialog's, a guided review or its risks; each runs and cancels apart. */
-export type SuggestKind = "message" | "pull" | "guide" | "risks";
+export type SuggestKind = "guide" | "risks";
 
 /** What a guided review is of: a commit, HEAD's branch since it left `base` (a full ref), a pull request's fetched commits, or the uncommitted changes. */
-export type GuideTarget = { of: "commit"; sha: string } | { of: "branch"; base: string } | { of: "pull"; base: string; head: string; title: string } | { of: "changes" };
+export type GuideTarget = { of: "commit"; sha: string } | { of: "branch"; base: string } | { of: "changes" };
 
 /**
  * What a guide's command gets besides its line: `args` added as they are (no splitting), and the

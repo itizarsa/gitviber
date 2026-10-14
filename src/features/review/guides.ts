@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { api, errorMessage, github, type GuideAgent, type Guided, type GuideTarget, type RepoStatus, SUGGEST_CANCELLED } from "@/lib/api";
+import { api, errorMessage, type GuideAgent, type Guided, type GuideTarget, type RepoStatus, SUGGEST_CANCELLED } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
 import { presetOf, programOf, reviewAgent, runDetails, withLeanFallback } from "@/lib/git/suggest";
 import { type GuideSelection, type Selection, selectionPath } from "@/lib/repo/selection";
@@ -33,10 +33,9 @@ const isRun = (v: unknown): v is SavedRun =>
   (v.stamp === undefined || typeof v.stamp === "string") &&
   (v.details === undefined || (Array.isArray(v.details) && v.details.every((d) => typeof d === "string")));
 
-/** Where a guide, and its risks, are kept: per worktree, then per commit, per pull request, its uncommitted changes, or per branch (`branch`: HEAD's, null detached) and base. */
+/** Where a guide, and its risks, are kept: per worktree, then per commit, its uncommitted changes, or per branch (`branch`: HEAD's, null detached) and base. */
 export function guideId(root: string, sel: GuideSelection, branch: string | null) {
   if (sel.of === "commit") return `${root}\0${sel.commit.sha}`;
-  if (sel.of === "pull") return `${root}\0${sel.pull.url}`;
   if (sel.of === "changes") return `${root}\0changes`;
   return `${root}\0${branch ?? "HEAD"}\0${sel.base}`;
 }
@@ -53,13 +52,10 @@ function guideAgent(command: string, lean: boolean, schema: object): GuideAgent 
   return { args: [], reads: preset === "opencode" ? "opencode" : null };
 }
 
-// A pull request's commits are fetched first when they're missing (pr_files), as its page does.
-async function guideTarget(sel: GuideSelection): Promise<GuideTarget> {
+function guideTarget(sel: GuideSelection): GuideTarget {
   if (sel.of === "commit") return { of: "commit", sha: sel.commit.sha };
   if (sel.of === "branch") return { of: "branch", base: sel.base };
-  if (sel.of === "changes") return { of: "changes" };
-  const { base, head } = await github.files(sel.target, sel.pull);
-  return { of: "pull", base, head, title: sel.pull.title };
+  return { of: "changes" };
 }
 
 /** A run on its way, stopped before it was written, or why it failed. */
@@ -145,7 +141,7 @@ function keptRuns<T extends SavedRun>(k: RunKind<T>) {
     active = { sel, token };
     set("running");
     try {
-      const target = await guideTarget(sel);
+      const target = guideTarget(sel);
       // Cancelled, or another started, while the commits were fetched.
       if (active?.token !== token) throw SUGGEST_CANCELLED;
       const { value: guided, old } = await withLeanFallback(command, models, efforts, true, (line, lean) => {

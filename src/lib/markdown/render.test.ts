@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Markdown from "react-markdown";
-import { githubRefs, isGitHubHosted, markdownLink, markdownOptions } from "./markdown.ts";
+import { githubRefs, isGitHubHosted, markdownLink, markdownOptions } from "./render.ts";
 
 const render = (text: string, idPrefix = "d-") =>
   renderToStaticMarkup(createElement(Markdown, { ...markdownOptions({ idPrefix, repo: "https://github.com/o/r" }), components: { a: markdownLink(() => {}) } }, text));

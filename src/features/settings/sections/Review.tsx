@@ -28,7 +28,7 @@ const SAME = "same";
 // The last command of its own, back when "Same as" is undone, until GitViber quits.
 let lastOwn: string | null = null;
 
-/** A preset's entry with `key` taken out: Commit Messages' then applies again. */
+/** A preset's entry with `key` taken out: the Agent section's then applies again. */
 const without = (entries: Partial<Record<Preset, string>>, key: Preset) => Object.fromEntries(Object.entries(entries).filter(([k]) => k !== key));
 
 export function ReviewSection() {
@@ -36,7 +36,7 @@ export function ReviewSection() {
   const { command, models } = reviewAgent(s);
   const preset = presetOf(command);
   const levels = preset ? effortLevels(preset) : [];
-  const same = `Same as Commit Messages (${programOf(s.suggestCommand) || "none"})`;
+  const same = `Same as Agent (${programOf(s.suggestCommand) || "none"})`;
   // Custom stays picked while its text happens to name a listed language.
   const [picked, setPicked] = useState(false);
   const customLanguage = picked || !Object.hasOwn(LANGUAGES, s.reviewLanguage);
@@ -51,7 +51,7 @@ export function ReviewSection() {
             className="w-80"
             value={s.reviewCommand === null ? SAME : "own"}
             options={{ [SAME]: same, own: "Its own command" }}
-            // Its own starts from the one it had, else Commit Messages' command, to change from there.
+            // Its own starts from the one it had, else the Agent section's command, to change from there.
             onChange={(v) => {
               if (s.reviewCommand !== null) lastOwn = s.reviewCommand;
               updateSettings({ reviewCommand: v === SAME ? null : (lastOwn ?? s.suggestCommand) });
@@ -59,7 +59,7 @@ export function ReviewSection() {
           />
         </Field>
         {s.reviewCommand !== null && (
-          <Field label="Command" hint="Runs as Commit Messages' does: in the repository's folder, directly, not through a shell.">
+          <Field label="Command" hint="Runs as the Agent section's does: in the repository's folder, directly, not through a shell.">
             <CommandPicker command={s.reviewCommand} onChange={(reviewCommand) => updateSettings({ reviewCommand })} />
           </Field>
         )}
@@ -68,7 +68,7 @@ export function ReviewSection() {
             label="Model"
             hint={
               <>
-                Empty runs Commit Messages' model for {SUGGEST_PRESETS[preset].label}. <ModelsLink {...SUGGEST_PRESETS[preset].models} /> has the current IDs.
+                Empty runs the Agent section's model for {SUGGEST_PRESETS[preset].label}. <ModelsLink {...SUGGEST_PRESETS[preset].models} /> has the current IDs.
               </>
             }
           >
@@ -79,7 +79,7 @@ export function ReviewSection() {
                 const model = e.target.value.replace(/\s/g, "");
                 updateSettings({ reviewModels: model ? { ...s.reviewModels, [preset]: model } : without(s.reviewModels, preset) });
               }}
-              placeholder={`Same as Commit Messages: ${modelOf(preset, models) || "CLI default"}`}
+              placeholder={`Same as Agent: ${modelOf(preset, models) || "CLI default"}`}
               spellCheck={false}
               className="w-80 font-mono"
             />
@@ -92,14 +92,14 @@ export function ReviewSection() {
             <OptionSelect
               className="w-80"
               value={s.reviewEfforts[preset] ?? SAME}
-              options={{ [SAME]: `Same as Commit Messages (${effortOf(preset, s.suggestEfforts) || "CLI default"})`, "": "CLI default", ...Object.fromEntries(levels.map((l) => [l, l])) }}
+              options={{ [SAME]: `Same as Agent (${effortOf(preset, s.suggestEfforts) || "CLI default"})`, "": "CLI default", ...Object.fromEntries(levels.map((l) => [l, l])) }}
               onChange={(v) => updateSettings({ reviewEfforts: v === SAME ? without(s.reviewEfforts, preset) : { ...s.reviewEfforts, [preset]: v } })}
             />
           </Field>
         )}
       </Group>
       <Group title="Writing">
-        <Field label="Language" hint="Guides and risks are written in it, and Ask Agent asks for replies in it; code, paths and names stay as they are. Commit messages and pull requests stay in English.">
+        <Field label="Language" hint="Guides and risks are written in it, and Ask Agent asks for replies in it; code, paths and names stay as they are.">
           <OptionSelect
             className="w-80"
             value={customLanguage ? CUSTOM : s.reviewLanguage}
@@ -123,7 +123,7 @@ export function ReviewSection() {
             {guidePrompt(s.reviewLanguage)}
             {"\n\n"}
             <span className="text-subtle">
-              [a commit's message, the subjects of the branch's or pull request's commits since it left the base, or for uncommitted changes what they're against (staged, unstaged and
+              [a commit's message, the subjects of the branch's commits since it left the base, or for uncommitted changes what they're against (staged, unstaged and
               new files; new files past the size caps are left out and named); a list of every changed file; then as many whole diffs as fit
               in {GUIDE_LIMIT_KB} KB, lockfiles and generated files left out. When any diff is left out, the whole patch goes in a temporary file only you can read, named in the prompt and
               deleted when the run ends. Claude Code also gets the answer's shape as <span className="font-mono">--json-schema</span>, and it and opencode are let read that file.]

@@ -2,7 +2,7 @@ import { CircleCheck, TriangleAlert } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import { FileIcon } from "@/components/FileIcon";
-import { markdownLink } from "@/lib/github/markdown";
+import { markdownLink } from "@/lib/markdown/render";
 import { type GuideSection, sectionBadge } from "@/lib/review/guide";
 import { cn } from "@/lib/utils";
 import { followLink, MarkdownBody } from "@/features/viewer/MarkdownView";

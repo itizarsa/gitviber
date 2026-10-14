@@ -97,9 +97,3 @@ pub(super) fn parse_name_status(raw: &[u8]) -> Vec<FileChange> {
     }
     files
 }
-
-pub fn merge_base(repo: &Path, a: &str, b: &str) -> Result<String, String> {
-    validate_rev(a)?;
-    validate_rev(b)?;
-    run_text(repo, &["merge-base", a, b]).map(|s| s.trim().to_string())
-}

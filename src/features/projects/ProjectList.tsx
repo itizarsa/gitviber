@@ -1,4 +1,4 @@
-import { ArrowUpToLine, Check, Copy, CornerUpLeft, ExternalLink, FolderOpen, FolderSearch, SquareTerminal, X } from "lucide-react";
+import { ArrowUpToLine, Check, Copy, CornerUpLeft, FolderOpen, FolderSearch, SquareTerminal, X } from "lucide-react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { SortableList, useSortableItem } from "@/components/Sortable";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -7,7 +7,6 @@ import { REVEAL_LABEL } from "@/lib/platform";
 import { matchesCommand } from "@/lib/commands/keybindings";
 import { cn } from "@/lib/utils";
 import { folderName } from "@/lib/path";
-import { openOnGitHub } from "@/lib/github/url";
 import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
 import { RowAction } from "@/components/RowAction";
@@ -130,7 +129,6 @@ function ProjectRow({
   const name = folderName(path);
   // Unknown until project_info answers; treat it as there rather than flash every row dimmed.
   const missing = info?.exists === false;
-  const github = info?.github;
   // Opening the open project does nothing, unless the window is in one of its worktrees.
   const here = current && !away;
   const openLabel = away ? `Open the main folder${away.mainBranch ? `, on ${away.mainBranch}` : ""}` : "Open";
@@ -211,11 +209,6 @@ function ProjectRow({
             <ContextMenuItem onSelect={() => revealProject(path)}>
               <FolderSearch /> {REVEAL_LABEL}
             </ContextMenuItem>
-            {github && (
-              <ContextMenuItem onSelect={() => openOnGitHub(`https://github.com/${github}`)}>
-                <ExternalLink /> Open on GitHub
-              </ContextMenuItem>
-            )}
           </>
         )}
         <ContextMenuSeparator />

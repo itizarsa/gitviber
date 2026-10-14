@@ -14,17 +14,13 @@ import { diffWhitespace, updateSettings, useSettings } from "@/lib/settings";
 import { FIT, type Zoom } from "@/lib/ui/svg";
 import { toast } from "@/lib/app/toast";
 import { cn } from "@/lib/utils";
-import { gitHubLink } from "@/lib/github/url";
 import { type CodeViewHandle, MonacoView } from "./MonacoView";
 import { ConflictView } from "./ConflictView";
-import { IssueView } from "@/features/github/issues/IssueView";
-import { PullView } from "@/features/github/pulls/PullView";
-import { useReview } from "@/features/github/pulls/ReviewThreads";
 import { isImageChange, isSvg, MediaView, mediaKind, SvgView } from "./MediaView";
 import { ImageOverlay, type Overlaid, SvgOverlay } from "./ImageCompare";
 import { isMarkdown, MarkdownView } from "./MarkdownView";
 import { LineCounts, StatusPill } from "@/components/StatusBadge";
-import { type FileSelection, githubSides, linkSides, pairArgs, useBlame, usePair } from "./diffPairs";
+import { type FileSelection, linkSides, pairArgs, useBlame, usePair } from "./diffPairs";
 import type { Tab } from "./tabs";
 import { TabStrip } from "./TabStrip";
 import { CommitBar } from "./CommitBar";
@@ -65,8 +61,6 @@ interface ViewerProps {
   onShowCommit: (sha: string, path: string) => void;
   /** Reads the repo's status again, after staging lines here. */
   refresh: () => unknown;
-  /** origin's page on GitHub; null: not on GitHub. */
-  webUrl: string | null;
 }
 
 export function Viewer(props: ViewerProps) {
@@ -86,14 +80,10 @@ export function Viewer(props: ViewerProps) {
               operation={props.status?.operation ?? null}
               revision={props.revision}
             />
-          ) : active.sel.kind === "pull" ? (
-            <PullView pull={active.sel.pull} onOpen={props.onOpen} />
-          ) : active.sel.kind === "issue" ? (
-            <IssueView issue={active.sel.issue} onDeleted={() => props.onClose(active.key)} />
           ) : active.sel.kind === "changes" ? (
             <AllChanges changes={active.sel} {...props} />
           ) : active.sel.kind === "compare" ? (
-            <CompareView sel={active.sel} branches={props.branches} status={props.status} webUrl={props.webUrl} onChange={props.onOpen} onOpen={props.onOpen} refresh={props.refresh} />
+            <CompareView sel={active.sel} branches={props.branches} status={props.status} onChange={props.onOpen} onOpen={props.onOpen} refresh={props.refresh} />
           ) : active.sel.kind === "guide" ? (
             <GuideView sel={active.sel} {...props} />
           ) : (
@@ -117,11 +107,9 @@ function findChange(status: RepoStatus | null, path: string): Selection | null {
   return staged ? { kind: "staged", file: staged } : null;
 }
 
-function Pane({ tab, sel, status, revision, viewed, toggleViewed, onOpen, onShowCommit, refresh, webUrl }: ViewerProps & { tab: Tab; sel: FileSelection }) {
+function Pane({ tab, sel, status, revision, viewed, toggleViewed, onOpen, onShowCommit, refresh }: ViewerProps & { tab: Tab; sel: FileSelection }) {
   const s = useSettings();
   const { pair, error } = usePair(sel, revision, diffWhitespace(s));
-  const range = sel.kind === "pr-file" ? sel.range : null;
-  const review = useReview(range?.pullUrl, range?.number, range?.head ?? "", selectionPath(sel));
   const view = useRef<CodeViewHandle>(null);
   const isFile = sel.kind === "file";
   const file: FileChange | null = isFile ? null : sel.file;
@@ -161,15 +149,12 @@ function Pane({ tab, sel, status, revision, viewed, toggleViewed, onOpen, onShow
   const onDiskDiff = sel.kind === "unstaged" && !!file && !file.nested && !file.submodule;
   const editable = (isFile || onDiskDiff) && !!pair && pair.modified.exists && !pair.modified.lossy && keepsLineEndings(pair.modified.text);
   const dirty = useEdited().has(selectionPath(sel)) && (isFile || onDiskDiff);
-  const github = useMemo(() => githubSides(sel, webUrl), [sel, webUrl]);
-  // Review notes go on local diffs and the file view (a PR has its own comments); not on a file
+  // Review notes go on local diffs and the file view (not a comparison's); not on a file
   // being typed into, whose lines are no longer the ones on disk.
   const notes = useMemo(
     () => (sel.kind === "pr-file" || sel.kind === "files" || dirty ? null : { oldPath: file?.oldPath ?? selectionPath(sel), at: sel.kind === "commit" ? `commit ${sel.commit.shortSha}` : undefined }),
     [sel, dirty, file],
   );
-  // An image or a preview has no lines to pick: the whole file.
-  const onGitHub = (open: boolean) => () => (view.current ? view.current.gitHubLink(open) : github?.modified && void gitHubLink(github.modified, null, open));
   // A preview shows the file as edited.
   const unsaved = dirty && rendered ? editedText(selectionPath(sel)) : undefined;
   useCommands({
@@ -179,14 +164,12 @@ function Pane({ tab, sel, status, revision, viewed, toggleViewed, onOpen, onShow
     "diff.stageChange": code && sel.kind === "unstaged" ? () => view.current?.lineAction("stage") : undefined,
     "diff.unstageChange": code && sel.kind === "staged" ? () => view.current?.lineAction("unstage") : undefined,
     "diff.discardChange": code && sel.kind === "unstaged" ? () => view.current?.lineAction("discard") : undefined,
-    "editor.copyGitHubLink": github ? onGitHub(false) : undefined,
-    "editor.openOnGitHub": github ? onGitHub(true) : undefined,
     "review.addNote": code && notes ? () => view.current?.addNote() : undefined,
   });
 
   return (
     <>
-      {sel.kind === "commit" && <CommitBar commit={sel.commit} url={sel.url} web={webUrl} />}
+      {sel.kind === "commit" && <CommitBar commit={sel.commit} />}
       {/* At the viewer's narrowest the buttons don't fit: the bar scrolls, not the whole viewer. */}
       <div onWheel={scrollSideways} data-scrollbar="none" className="flex h-9 shrink-0 items-center gap-2 overflow-x-auto overflow-y-hidden border-b border-border pr-2 pl-3">
         <FileHeaderPath path={selectionPath(sel)} />
@@ -352,10 +335,8 @@ function Pane({ tab, sel, status, revision, viewed, toggleViewed, onOpen, onShow
                     ? { kind: "commit", sha: sel.commit.sha, oldPath: sel.file.oldPath, refresh }
                     : null
               }
-              review={review}
               notes={notes}
               editable={editable}
-              github={github}
             />
           )
         )}
@@ -372,7 +353,7 @@ function EmptyViewer({ hasTabs }: { hasTabs: boolean }) {
       <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1.5 text-left text-[11.5px] text-subtle">
         <Kbd ids={["workbench.showCommands"]} /> <span>All commands</span>
         <Kbd ids={["workbench.quickOpen"]} /> <span>Open a file</span>
-        <Kbd ids={["view.changes", "view.history", "view.pulls", "view.issues"]} /> <span>Changes · History · PRs · Issues</span>
+        <Kbd ids={["view.changes", "view.history"]} /> <span>Changes · History</span>
         <Kbd ids={["view.toggleGitPanel", "view.toggleExplorer"]} /> <span>Toggle git panel · explorer</span>
         <Kbd ids={["review.nextFile", "review.prevFile"]} /> <span>Next / previous file</span>
         <Kbd ids={["diff.nextChange", "diff.prevChange"]} /> <span>Next / previous change</span>

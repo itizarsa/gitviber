@@ -6,6 +6,8 @@ import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, 
 export const LOG_PAGE = 200;
 
 export const api = {
+  /** A web page in the system browser. */
+  openUrl: (url: string) => invoke<void>("open_url", { url }),
   openRepo: (path: string) => invoke<OpenedRepo>("open_repo", { path }),
   /** Checked once per launch; `recheck` runs `git --version` again. */
   gitInfo: (recheck = false) => invoke<GitInfo>("git_info", { recheck }),
@@ -205,9 +207,6 @@ export const api = {
    * Runs the user's agent CLI (`command`, e.g. "claude -p") in the repo with `prompt` and the
    * diff `scope` would commit; returns what it printed. Rejects with SUGGEST_CANCELLED on cancel.
    */
-  suggestMessage: (command: string, prompt: string, scope: "staged" | "all" | "amend") => invoke<string>("suggest_message", { command, prompt, scope }),
-  /** The same for a pull request from HEAD into `base` (refs/remotes/…): its commits, PR template and diff. */
-  suggestPull: (command: string, prompt: string, base: string) => invoke<string>("suggest_pull", { command, prompt, base }),
   /** The same for a guided review of `target` (or its risks, `kind`), with the range it read. */
   suggestGuide: (command: string, prompt: string, target: GuideTarget, agent: GuideAgent, kind: "guide" | "risks") => invoke<Guided>("suggest_guide", { command, prompt, target, agent, kind }),
   /** What the uncommitted changes are now, cheaply: a guide of them is outdated once it differs from its `stamp`. */

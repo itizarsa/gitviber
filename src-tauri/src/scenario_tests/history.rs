@@ -525,40 +525,6 @@ fn compare_files_are_what_the_other_branch_changed_since_they_parted() {
     assert!(compare_files(&r, "feature").is_err(), "a full ref only");
 }
 
-/// A PR's commits: what head has since the merge base, oldest first, the newest kept when capped;
-/// a run of them diffs from the first one's parent.
-#[test]
-fn log_range_lists_a_pull_requests_commits_oldest_first() {
-    let sb = Sandbox::new("log-range");
-    let r = sb.path("r");
-    init(&r);
-    write_commit(&r, "a.txt", "a\n", "base");
-    let base = rev(&r, "HEAD");
-    run(&r, &["switch", "-q", "-c", "feature"]).unwrap();
-    write_commit(&r, "b.txt", "b\n", "one");
-    write_commit(&r, "c.txt", "c\n", "two");
-    write_commit(&r, "b.txt", "b2\n", "three");
-    let head = rev(&r, "HEAD");
-    run(&r, &["switch", "-q", "main"]).unwrap();
-
-    let all = log_range(&r, &base, &head, 10).unwrap();
-    let subjects = |l: &[Commit]| l.iter().map(|c| c.subject.clone()).collect::<Vec<_>>();
-    assert_eq!(subjects(&all), ["one", "two", "three"]);
-    assert!(all.iter().all(|c| c.not_in_head), "main has none of them");
-    assert_eq!(
-        subjects(&log_range(&r, &base, &head, 2).unwrap()),
-        ["two", "three"]
-    );
-
-    let run_of = range_files(&r, &all[1].parents[0], &all[2].sha).unwrap();
-    assert_eq!(
-        run_of.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(),
-        ["b.txt", "c.txt"]
-    );
-    assert!(log_range(&r, "main", &head, 10).is_err(), "commit ids only");
-    assert!(range_files(&r, "--output=x", &head).is_err());
-}
-
 /// One picked commit of a PR shows what History shows for it: its range from its parent.
 #[test]
 fn range_of_one_commit_is_what_it_changed() {
@@ -582,48 +548,6 @@ fn range_of_one_commit_is_what_it_changed() {
     assert_eq!(
         one,
         [("a.txt".into(), "M".into()), ("b.txt".into(), "D".into())]
-    );
-}
-
-/// A PR whose head merged in an unrelated history: its root commit is listed, with no parent,
-/// and a merge picked on its own diffs against its first parent.
-#[test]
-fn log_range_lists_a_root_commit_and_a_merge_diffs_against_its_first_parent() {
-    let sb = Sandbox::new("log-range-merge");
-    let r = sb.path("r");
-    init(&r);
-    write_commit(&r, "a.txt", "a\n", "base");
-    let base = rev(&r, "HEAD");
-    run(&r, &["switch", "-q", "--orphan", "other"]).unwrap();
-    write_commit(&r, "o.txt", "o\n", "root");
-    run(&r, &["switch", "-q", "-c", "feature", "main"]).unwrap();
-    write_commit(&r, "b.txt", "b\n", "own");
-    run(
-        &r,
-        &[
-            "merge",
-            "-q",
-            "--no-ff",
-            "--allow-unrelated-histories",
-            "-m",
-            "merge",
-            "other",
-        ],
-    )
-    .unwrap();
-    let head = rev(&r, "HEAD");
-
-    let all = log_range(&r, &base, &head, 10).unwrap();
-    let root = all.iter().find(|c| c.subject == "root").unwrap();
-    assert!(root.parents.is_empty());
-    let merge = all.last().unwrap();
-    assert_eq!(merge.subject, "merge");
-    let own = all.iter().find(|c| c.subject == "own").unwrap();
-    assert_eq!(merge.parents[0], own.sha);
-    let picked = range_files(&r, &merge.parents[0], &merge.sha).unwrap();
-    assert_eq!(
-        picked.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(),
-        ["o.txt"]
     );
 }
 

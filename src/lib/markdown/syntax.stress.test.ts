@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Markdown from "react-markdown";
-import { type Flavor, markdownOptions } from "../github/markdown.ts";
+import { type Flavor, markdownOptions } from "./render.ts";
 import { stripComments } from "./syntax.ts";
 
 const render = (text: string, flavor: Flavor = "obsidian", section?: string) =>

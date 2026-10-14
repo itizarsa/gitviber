@@ -3,50 +3,29 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { api, type Branch, github, type Pull, type Target, type Worktree } from "@/lib/api";
-import { loadWorktreeDir, loadWorktreeRun, moveRoot, saveBranchIssue, saveWorktreeDir, saveWorktreeRun, sharedWorktreeDir } from "@/lib/repo/session";
-import { issueBranchName, withIssue } from "@/lib/github/issueWork";
+import { api, type Branch, type Worktree } from "@/lib/api";
+import { loadWorktreeDir, loadWorktreeRun, moveRoot, saveWorktreeDir, saveWorktreeRun, sharedWorktreeDir } from "@/lib/repo/session";
 import { folderMoved, openTerminal, terminalsIn } from "@/lib/terminal/terminals";
 import { localNames, refNameCheck, worktreeBase, worktreeBranch } from "@/lib/git/refs";
-import { type Cleanable, cleanable, defaultBranch, folderForBranch, shortPath, worktreeHues } from "@/lib/git/worktrees";
+import { type Cleanable, defaultBranch, folderForBranch, shortPath, worktreeHues } from "@/lib/git/worktrees";
 import { keepColorOnRename, pickedColors } from "@/lib/git/worktreeColors";
-import { toast } from "@/lib/app/toast";
 import { plural } from "@/lib/format";
 import { folderName, parentFolder } from "@/lib/path";
 import { createStore } from "@/lib/store";
 import { BaseSelect } from "@/features/branches/BaseSelect";
 import { NameHint } from "@/components/NameHint";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
-import { type GitRun, type NetRun, useSubmit } from "@/hooks/useGitAction";
+import { type GitRun, useSubmit } from "@/hooks/useGitAction";
 import { CleanUpWorktrees } from "./CleanUpWorktrees";
 
-/** A pull request to check out, as PullView's Checkout would. */
-export interface PullSource {
-  target: Target;
-  number: number;
-  headRef: string;
-  sameRepo: boolean;
-  /** The local branch it lands on. */
-  branch: string;
-}
-
-/** An issue to start work on: the branch is named after it, and a PR from it closes it. */
-export interface IssueSource {
-  number: number;
-  title: string;
-  url: string;
-  /** Origin's owner/name, which the branch's issue is remembered under. */
-  origin: string;
-}
-
-/** `base`: a full ref or a commit's full id; `pull`: the new worktree takes a PR's branch instead. */
+/** `base`: a full ref or a commit's full id. */
 export type WorktreeDialog =
-  | { kind: "new"; base?: string; pull?: PullSource; issue?: IssueSource }
+  | { kind: "new"; base?: string }
   | { kind: "rename"; worktree: Worktree }
   | { kind: "lock"; worktree: Worktree }
   | { kind: "cleanup"; list: Cleanable[] };
 
-// Opened from the top bar, History and pull requests alike; the top bar shows it.
+// Opened from the top bar and History alike; the top bar shows it.
 const shown = createStore<WorktreeDialog | null>(null);
 const show = shown.set;
 export const openWorktreeDialog = (d: WorktreeDialog) => show(d);
@@ -54,33 +33,11 @@ export const openWorktreeDialog = (d: WorktreeDialog) => show(d);
 /** The dialog showing now, if any. */
 export const useWorktreeDialog = shown.use;
 
-/**
- * After a pull request merged in the app: the worktree that has its branch out at its head is
- * offered for removal. The head too: a fork's PR may share a branch name (patch-1) with another.
- * Only where Clean up would offer it: nothing uncommitted, no terminal, no worktree inside it.
- */
-export async function offerWorktreeRemoval(branch: string, number: number, head: string) {
-  const list = await api.worktrees().catch(() => []);
-  const at = (w: Worktree) => !!w.head && head.toLowerCase().startsWith(w.head.toLowerCase());
-  const w = list.find((x) => x.branch === branch && at(x));
-  const state = w && (await api.worktreeState(w.path, false).catch(() => null));
-  if (!w || !state) return;
-  const pull = { number, state: "merged", headSha: head } as Pull;
-  const [offer] = cleanable(list, { [w.path]: state }, (b) => (b === branch ? pull : undefined), terminalsIn);
-  if (!offer) return;
-  toast("info", `Remove the worktree of #${number}?`, `${branch} is checked out in ${folderName(w.path)}.`, {
-    label: "Remove…",
-    run: () => openWorktreeDialog({ kind: "cleanup", list: [{ ...offer, why: `#${number} merged` }] }),
-  });
-}
-
 interface Props {
   branches: Branch[];
   /** The main worktree: new worktrees go beside it by default, and paths are shown from it. */
   main: string;
   run: GitRun;
-  /** For a pull request's fetch: its progress shows in the top bar, with Cancel. */
-  runNet: NetRun;
   /** Opens a worktree in this window. */
   onOpen: (path: string) => Promise<unknown>;
 }
@@ -96,7 +53,7 @@ export function WorktreeDialogs(props: Props) {
   return (
     <Dialog open onOpenChange={(o) => !o && inner.onClose()}>
       <DialogContent>
-        {dialog.kind === "new" && <NewWorktree base={dialog.base} pull={dialog.pull} issue={dialog.issue} {...inner} />}
+        {dialog.kind === "new" && <NewWorktree base={dialog.base} {...inner} />}
         {dialog.kind === "rename" && <RenameWorktree worktree={dialog.worktree} {...inner} />}
         {dialog.kind === "lock" && <LockWorktree worktree={dialog.worktree} {...inner} />}
         {dialog.kind === "cleanup" && <CleanUpWorktrees list={dialog.list} {...inner} />}
@@ -105,16 +62,16 @@ export function WorktreeDialogs(props: Props) {
   );
 }
 
-function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, onOpen }: { base?: string; pull?: PullSource; issue?: IssueSource } & Inner) {
+function NewWorktree({ base, branches, main, onClose, run, onOpen }: { base?: string } & Inner) {
   const beside = `${parentFolder(main)}${folderName(main)}.worktrees`;
   const fallback = sharedWorktreeDir(main) ?? beside;
-  const [name, setName] = useState(() => (issue ? issueBranchName(issue.number, issue.title) : ""));
+  const [name, setName] = useState("");
   const [from, setFrom] = useState(() => base ?? worktreeBase(branches));
   // No branch to default to (an unborn or detached repo): HEAD is listed, not silently used.
   const [headOption] = useState(from === "HEAD");
   const [dir, setDir] = useState(() => loadWorktreeDir(main) ?? fallback);
   const [terminal, setTerminal] = useState(true);
-  const [command, setCommand] = useState(() => loadWorktreeRun(main, !!issue));
+  const [command, setCommand] = useState(() => loadWorktreeRun(main));
   const [switchTo, setSwitchTo] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   // Asked once, when Create is pressed on the default branch (see `guarded`).
@@ -123,13 +80,13 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
   // An existing branch (local, or only on a remote) is checked out as it is; the base picked is for a new one.
   const picked = worktreeBranch(name, branches);
   const existing = picked.base !== undefined;
-  const n = pull ? pull.branch : picked.name;
+  const n = picked.name;
   const { pending, send } = useSubmit(onClose);
   // The default branch checked out here would be held by this folder, and git then refuses to
   // switch to it anywhere else, the main folder included.
-  const guarded = !pull && existing && !picked.taken && n === defaultBranch(branches);
+  const guarded = existing && !picked.taken && n === defaultBranch(branches);
   const warning = warned && guarded;
-  const ready = !!n && (!!pull || !picked.taken) && !pending && !warning;
+  const ready = !!n && !picked.taken && !pending && !warning;
   const choose = async () => {
     const picked = await open({ directory: true, defaultPath: dir, title: "Folder for new worktrees" });
     if (typeof picked === "string") setDir(picked);
@@ -148,10 +105,9 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
       made = path;
       // Remembered for the project once it worked, so its next worktree goes there too.
       saveWorktreeDir(main, dir === fallback ? null : dir);
-      if (issue) saveBranchIssue(issue.origin, n, issue.url);
       if (terminal) {
-        saveWorktreeRun(main, command.trim(), !!issue);
-        openTerminal(path, issue ? withIssue(command.trim(), issue.number) : command.trim());
+        saveWorktreeRun(main, command.trim());
+        openTerminal(path, command.trim());
       }
     };
     // Only once the action is through: the refresh reads the repo open now,
@@ -162,12 +118,7 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
       await onOpen(made);
       return ok;
     };
-    if (pull) {
-      // Nothing typed to keep, and the fetch's Cancel is in the top bar behind this dialog.
-      onClose();
-      const p = pull;
-      void runNet("Check out PR", (op) => github.checkoutWorktree(p.target, p.number, p.headRef, p.sameRepo, where, op).then(then), `Checked out #${p.number} in worktree ${folderForBranch(n)}`).then(switched);
-    } else void send(() => run("Create worktree", () => api.addWorktree(n, picked.base === undefined ? from : picked.base, where, picked.track).then(then), existing ? `Checked out ${n} in a new worktree` : `Created worktree ${n}`).then(switched));
+    void send(() => run("Create worktree", () => api.addWorktree(n, picked.base === undefined ? from : picked.base, where, picked.track).then(then), existing ? `Checked out ${n} in a new worktree` : `Created worktree ${n}`).then(switched));
   };
   return (
     <form
@@ -177,20 +128,9 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
         else if (ready) submit();
       }}
     >
-      <DialogTitle>{pull ? `Check out #${pull.number} in a new worktree` : issue ? `Start #${issue.number} in a new worktree` : "New worktree"}</DialogTitle>
-      <DialogDescription>
-        {pull ? (
-          <>
-            The pull request's branch, <span className="font-mono">{pull.branch}</span>, in its own folder; this one stays as it is.
-          </>
-        ) : issue ? (
-          `A new branch for “${issue.title}”, in its own folder; its pull request will close #${issue.number}.`
-        ) : (
-          "A new branch, checked out in its own folder, side by side with this one."
-        )}
-      </DialogDescription>
-      {!pull && (
-        <Input
+      <DialogTitle>New worktree</DialogTitle>
+      <DialogDescription>A new branch, checked out in its own folder, side by side with this one.</DialogDescription>
+      <Input
           ref={nameInput}
           autoFocus
           className="mt-4 font-mono"
@@ -202,10 +142,8 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
           placeholder="Branch name"
           spellCheck={false}
         />
-      )}
-      {!pull && <NameHint {...picked} />}
-      {!pull &&
-        !existing &&
+      <NameHint {...picked} />
+      {!existing &&
         (isCommit(from) ? (
           <div className="mt-3 text-[11.5px] text-muted-foreground">
             From commit <span className="font-mono text-foreground">{from.slice(0, 7)}</span>
@@ -246,24 +184,11 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           disabled={!terminal}
-          placeholder={issue ? 'and run… (e.g. claude "Fix #{issue}")' : "and run… (e.g. claude)"}
+          placeholder="and run… (e.g. claude)"
           aria-label="Command to run in the terminal"
           spellCheck={false}
         />
       </div>
-      {terminal && (issue || command.includes("{issue}")) && (
-        <div className="mt-1.5 text-[11.5px] text-muted-foreground">
-          {issue ? (
-            <>
-              <span className="font-mono">{"{issue}"}</span> in the command becomes {issue.number}, the issue's number.
-            </>
-          ) : (
-            <>
-              <span className="font-mono">{"{issue}"}</span> is filled in only when starting from an issue.
-            </>
-          )}
-        </div>
-      )}
       {warning && (
         <div className="mt-3 rounded-md bg-removed/10 px-2.5 py-2 text-[11.5px]">
           <span className="font-mono">{n}</span> is best kept in the main folder, <span className="font-mono">{folderName(main)}</span>: a worktree that holds it blocks switching to it there.
@@ -282,9 +207,8 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
           <input type="checkbox" checked={switchTo} onChange={(e) => setSwitchTo(e.target.checked)} className="accent-primary" />
           Switch to it
         </label>
-        {/* A pull request has nothing to type, so the button takes the focus. */}
-        <Button type="submit" className="ml-auto" disabled={!ready} autoFocus={!!pull}>
-          {pull ? "Check out" : "Create"}
+        <Button type="submit" className="ml-auto" disabled={!ready}>
+          Create
         </Button>
       </div>
     </form>

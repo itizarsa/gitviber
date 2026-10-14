@@ -236,8 +236,6 @@ export interface Settings {
   cloneParent: string | null;
   /** New worktrees go in `<worktreeRoot>/<project>/` rather than `<project>.worktrees` beside it; null is off. */
   worktreeRoot: string | null;
-  /** A ✦ button in the commit box runs `suggestCommand` for a message. Off: nothing is ever run. */
-  suggestEnabled: boolean;
   /** The user's own agent CLI, split like a shell command line (suggest.rs). */
   suggestCommand: string;
   /** Model ids typed per preset; a preset missing here runs its default, so a newer default reaches it. */
@@ -246,10 +244,10 @@ export interface Settings {
   suggestEfforts: Partial<Record<SuggestPreset, string>>;
   /** Guided reviews' own agent CLI; null runs `suggestCommand`. */
   reviewCommand: string | null;
-  /** Guided reviews' own model and effort per preset; a preset missing here runs Commit Messages' (reviewAgent). */
+  /** Guided reviews' own model and effort per preset; a preset missing here runs the Agent section's (reviewAgent). */
   reviewModels: Partial<Record<SuggestPreset, string>>;
   reviewEfforts: Partial<Record<SuggestPreset, string>>;
-  /** The language guided reviews are written in, by name; commit messages and pull requests stay English. */
+  /** The language guided reviews are written in, by name. */
   reviewLanguage: string;
   /** The app "Open in" runs on a click: a built-in id or a CustomApp's; "" until one is picked. */
   openInApp: string;
@@ -319,7 +317,6 @@ const DEFAULTS: Settings = {
   autoUpdate: true,
   cloneParent: null,
   worktreeRoot: null,
-  suggestEnabled: true,
   suggestCommand: "claude -p",
   suggestModels: {},
   suggestEfforts: {},
@@ -404,7 +401,6 @@ function load(): Settings {
     if (typeof s.shortcutOverlay !== "boolean") s.shortcutOverlay = DEFAULTS.shortcutOverlay;
     s.keybindings = cleanOverrides(s.keybindings);
     if (typeof s.autoUpdate !== "boolean") s.autoUpdate = DEFAULTS.autoUpdate;
-    if (typeof s.suggestEnabled !== "boolean") s.suggestEnabled = DEFAULTS.suggestEnabled;
     if (typeof s.suggestCommand !== "string") s.suggestCommand = DEFAULTS.suggestCommand;
     s.suggestModels = validModels(s.suggestModels);
     s.suggestEfforts = validEfforts(s.suggestEfforts);
