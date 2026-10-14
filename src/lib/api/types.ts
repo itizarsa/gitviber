@@ -335,13 +335,6 @@ export interface RevertLines {
   added: number[];
 }
 
-/** What a patch would do (patch.rs): its files, and whether it applies as it is ("clean"), only merged three ways ("merge"), or not (`error`). */
-export interface PatchPreview {
-  files: { path: string; oldPath: string | null; status: "A" | "D" | "R" | "M"; additions: number | null; deletions: number | null }[];
-  applies: "clean" | "merge" | null;
-  error: string | null;
-}
-
 export interface Entry {
   name: string;
   path: string;

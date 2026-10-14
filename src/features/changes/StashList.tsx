@@ -86,7 +86,7 @@ export function StashList({ stashes, activeKey, onOpen, onHover, refresh }: Prop
     if (ok) await act("Drop", () => api.stashDrop(s.sha), "Stash dropped", `To get it back: git stash apply ${s.sha.slice(0, 10)}`);
   };
 
-  // The file as the stash has it, over the working tree's: its Trash copy and Undo bring the old one back.
+  // The file as the stash has it, over the working tree's, whose old version goes to the Trash.
   const take = (sha: string, path: string, untracked: boolean) =>
     rewriteFiles(`Took ${path} from the stash`, "Could not take the file", () => api.stashRestoreFile(sha, path, untracked), refresh);
 

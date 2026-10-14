@@ -52,12 +52,6 @@ pub fn terminal_paste() -> Res<clipboard::Paste> {
     clipboard::read()
 }
 
-/// The clipboard's text, for Apply Patch from Clipboard. Sync for the same reason as `terminal_paste`.
-#[tauri::command]
-pub fn clipboard_text() -> Res<String> {
-    clipboard::read_text()
-}
-
 /// Text worked out after a click (a patch), onto the clipboard. Sync for the same reason as `terminal_paste`.
 #[tauri::command]
 pub fn clipboard_write(text: String) -> Res<()> {

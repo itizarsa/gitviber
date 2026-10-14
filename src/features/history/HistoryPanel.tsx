@@ -92,7 +92,7 @@ export function HistoryPanel({ commits, status, remotes, webUrl, hasMore, loadMo
     setPicking(true);
     try {
       if (await api.cherryPickInto(w.path, c.sha)) toast("info", `Cherry-pick onto ${branch} stopped on conflicts`, `It waits in ${where}: switch there to resolve them and continue.`, go);
-      else toast("success", `Cherry-picked ${c.shortSha} onto ${branch}`, `In ${where}; undo it from there.`, go);
+      else toast("success", `Cherry-picked ${c.shortSha} onto ${branch}`, `In ${where}.`, go);
     } catch (e) {
       toast("error", `Cherry-pick onto ${branch} failed`, errorMessage(e));
     } finally {

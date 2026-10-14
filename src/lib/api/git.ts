@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { network } from "./network";
-import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, NotifyPermission, OpenInApp, Opened, OpenedRepo, PatchPreview, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
+import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, NotifyPermission, OpenInApp, Opened, OpenedRepo, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
 
 /** Commits per history page: every list asks for this many, and a full page means there may be more. */
 export const LOG_PAGE = 200;
@@ -186,16 +186,11 @@ export const api = {
   /** A stash's changes, its untracked files too. */
   stashPatch: (sha: string) => invoke<string>("stash_patch", { sha }),
   linesPatch: (request: LinesPatch) => invoke<string>("lines_patch", { request }),
-  /** The clipboard's text, read by the app: the webview's own read asks the user first. */
-  clipboardText: () => invoke<string>("clipboard_text"),
   /** Puts text on the clipboard after the click that asked for it is over, which the webview can't. */
   clipboardWrite: (text: string) => invoke<void>("clipboard_write", { text }),
-  patchPreview: (patch: string) => invoke<PatchPreview>("patch_preview", { patch }),
-  /** Applies a patch to the working tree (merging three ways where it must); undoable. Returns the files left with conflict markers. */
-  applyPatch: (patch: string) => invoke<string[]>("apply_patch", { patch }),
-  /** `path` in the working tree as commit `sha` has it; undoable. */
+  /** `path` in the working tree as commit `sha` has it. */
   restoreFile: (sha: string, path: string) => invoke<void>("restore_file", { sha, path }),
-  /** Undoes what commit `sha` did to the file, in the working tree; undoable. Returns the files left with conflicts. */
+  /** Undoes what commit `sha` did to the file, in the working tree. Returns the files left with conflicts. */
   revertFile: (sha: string, path: string, oldPath: string | null) => invoke<string[]>("revert_file", { sha, path, oldPath }),
   revertLines: (request: RevertLines) => invoke<string[]>("revert_lines", { request }),
   /** An empty `message` with `amend` keeps the old one (--no-edit). Watched as a network command: hook output is its progress, and Cancel stops it (once git has moved HEAD, the commit stands). */

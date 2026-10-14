@@ -198,7 +198,6 @@ export const COMMANDS = [
   // VS Code's Sync Changes: what the remote has, then what's here.
   { id: "git.sync", title: "Sync (Pull, then Push)", category: "Git", keys: [] },
   // A patch from Copy as Patch, a mail or a chat: previewed first, then applied to the working tree.
-  { id: "git.applyPatch", title: "Apply Patch from Clipboard", category: "Git", keys: [] },
   // These act on the file open in the viewer. Discard asks first; ⌘⌫ stays line delete in text.
   // A held S would stage file after file as the open one moves on.
   { id: "git.toggleStage", title: "Stage / Unstage Changes", category: "Git", keys: ["s"], noRepeat: true },

@@ -154,7 +154,7 @@ function NewWorktree({ base, pull, issue, branches, main, onClose, run, runNet, 
         openTerminal(path, issue ? withIssue(command.trim(), issue.number) : command.trim());
       }
     };
-    // Only once the action is through: its toast's Undo and the refresh read the repo open now,
+    // Only once the action is through: the refresh reads the repo open now,
     // and the switch changes which one that is. The dialog goes first, not into the new window.
     const switched = async (ok: boolean) => {
       if (!ok || !switchTo || !made) return ok;

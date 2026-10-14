@@ -1,4 +1,4 @@
-import { ChevronsDownUp, ClipboardPaste, GitCompareArrows, Search } from "lucide-react";
+import { ChevronsDownUp, GitCompareArrows, Search } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -31,7 +31,6 @@ import { cn } from "@/lib/utils";
 import { revealPath } from "@/lib/app/openIn";
 import { windowTitle } from "@/lib/app/windowTitle";
 import { ChangesPanel } from "@/features/changes/ChangesPanel";
-import { ApplyPatchDialog, openApplyPatch } from "@/features/changes/ApplyPatchDialog";
 import { changeList } from "@/features/changes/changeList";
 import { changesView, ordered } from "@/features/changes/changesView";
 import { ChangesViewMenu } from "@/features/changes/ChangesViewMenu";
@@ -340,7 +339,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
     "review.branch": startReview,
     // Nested repositories aside, as the Changes list leaves them.
     "review.guideUncommitted": status && uncommitted.length ? () => openGuide({ kind: "guide", of: "changes" }, status, open) : undefined,
-    "git.applyPatch": () => void openApplyPatch(),
     "review.openAll": status?.unstaged.length ? () => openAll("unstaged") : undefined,
     "review.openAllStaged": status?.staged.length ? () => openAll("staged") : undefined,
     "review.openAllBranch": reviewing && branchReview.rows.length ? () => openAll("branch") : undefined,
@@ -514,17 +512,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
                 }
               >
                 {listTab === "changes" && !reviewing && <ChangesViewMenu />}
-                {listTab === "changes" && !reviewing && (
-                  <Tip label="Apply patch from clipboard">
-                    <button
-                      aria-label="Apply patch from clipboard"
-                      onClick={() => void openApplyPatch()}
-                      className="flex size-6 items-center justify-center rounded-sm text-subtle hover:bg-hover focus-visible:bg-hover hover:text-foreground focus-visible:text-foreground"
-                    >
-                      <ClipboardPaste className="size-3.5" />
-                    </button>
-                  </Tip>
-                )}
                 <Tip label={reviewing ? "Back to uncommitted changes" : `Review branch against ${reviewLabel}`}>
                   <button
                     aria-label={reviewing ? "Back to uncommitted changes" : "Review branch"}
@@ -744,7 +731,6 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onReor
       </div>
       <StatusBar repo={repo} reviewed={uncommitted.filter(viewed).length} active={active?.sel} />
       <TerminalRestoreOffer />
-      <ApplyPatchDialog refresh={() => repo.refresh(false)} />
     </div>
   );
 }

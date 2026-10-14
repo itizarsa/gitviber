@@ -45,20 +45,6 @@ fn revert_file(
     )
 }
 
-/// What Apply Patch from Clipboard runs (commands::patch::apply_patch), journaled.
-fn apply_patch(repo: &Path, text: &str) -> Result<Vec<String>, String> {
-    let bytes = text.as_bytes().to_vec();
-    let paths = patch::touched(&patch::files(repo, &bytes, false)?);
-    let list = paths.clone();
-    crate::backup::replace(
-        repo,
-        "before patch",
-        &paths,
-        &Mutex::new(()),
-        move |r: &Path| patch::apply(r, &bytes, false, &list),
-    )
-}
-
 fn restore_file(repo: &Path, sha: &str, path: &str) -> Result<Vec<String>, String> {
     let (sha, p) = (sha.to_string(), path.to_string());
     crate::backup::replace(
@@ -178,30 +164,6 @@ fn a_rename_in_a_patch_lists_both_names() {
     );
 }
 
-#[test]
-fn copying_selected_lines_of_a_renamed_file_makes_a_patch_git_applies() {
-    let (_sb, r) = repo("pe-lines-rename");
-    write_commit(&r, "old.txt", "1\n2\n3\n", "base");
-    run(&r, &["mv", "old.txt", "new.txt"]).unwrap();
-    let req = LinesPatch {
-        path: "new.txt".into(),
-        old_path: Some("old.txt".into()),
-        original: Some("1\n2\n3\n".into()),
-        modified: Some("1\nTWO\n3\n".into()),
-        removed: vec![2],
-        added: vec![2],
-    };
-    let p = patch::lines(&req).unwrap();
-    run(&r, &["reset", "-q", "--hard"]).unwrap();
-    // On the original repo state (old.txt there), the patch renames and edits it.
-    let preview = patch::preview(&r, &p);
-    assert!(
-        preview.is_ok(),
-        "a lines patch of a rename doesn't parse: {preview:?}\n{p}"
-    );
-    let preview = preview.unwrap();
-    assert!(preview.applies.is_some(), "{:?}\n{p}", preview.error);
-}
 
 #[cfg(unix)]
 #[cfg(unix)]
@@ -233,17 +195,6 @@ fn a_tracked_link_that_points_out_of_the_repo_can_be_reverted() {
 }
 
 #[cfg(unix)]
-#[test]
-fn a_patch_through_a_link_out_of_the_repo_is_refused() {
-    let (sb, r) = repo("pe-link-out");
-    write_commit(&r, "a.txt", "a\n", "base");
-    fs::create_dir_all(sb.path("outside")).unwrap();
-    std::os::unix::fs::symlink(sb.path("outside"), r.join("ln")).unwrap();
-    let p = "diff --git a/ln/x.txt b/ln/x.txt\nnew file mode 100644\n--- /dev/null\n+++ b/ln/x.txt\n@@ -0,0 +1 @@\n+x\n";
-    assert!(patch::preview(&r, p).is_err());
-    assert!(apply_patch(&r, p).is_err());
-    assert!(!sb.path("outside/x.txt").exists());
-}
 
 // ---- submodules, LFS, line endings ---------------------------------------------------------
 
@@ -265,18 +216,6 @@ fn reverting_a_submodule_bump_moves_it_back_or_says_it_cannot() {
     );
 }
 
-#[test]
-fn a_patch_with_crlf_line_endings_says_why_it_does_not_apply() {
-    let (_sb, r) = repo("pe-crlf-patch");
-    write_commit(&r, "a.txt", "x\n", "base");
-    let p =
-        "diff --git a/a.txt b/a.txt\r\n--- a/a.txt\r\n+++ b/a.txt\r\n@@ -1 +1,2 @@\r\n x\r\n+y\r\n";
-    let preview = patch::preview(&r, p).unwrap();
-    assert_eq!(preview.files[0].path, "a.txt", "no \\r in the name");
-    if preview.applies.is_none() {
-        assert!(preview.error.is_some());
-    }
-}
 
 #[test]
 fn a_file_without_a_final_newline_reverts_by_line_and_copies_lines() {
@@ -354,85 +293,8 @@ fn copying_a_merge_commit_as_a_patch_never_copies_another_commit() {
 
 // ---- odd paths -----------------------------------------------------------------------------
 
-#[test]
-fn a_new_file_with_an_odd_name_shows_as_added() {
-    let (_sb, r) = repo("pe-odd-added");
-    write_commit(&r, "a.txt", "a\n", "base");
-    fs::write(r.join("ünï with space.txt"), "n\n").unwrap();
-    fs::write(r.join("quo\"te.txt"), "q\n").unwrap();
-    let p = patch::changes(
-        &r,
-        "unstaged",
-        &["ünï with space.txt".into(), "quo\"te.txt".into()],
-        None,
-    )
-    .unwrap();
-    fs::remove_file(r.join("ünï with space.txt")).unwrap();
-    fs::remove_file(r.join("quo\"te.txt")).unwrap();
-    let preview = patch::preview(&r, &p).unwrap();
-    for f in &preview.files {
-        assert_eq!(f.status, "A", "{} reads as {}", f.path, f.status);
-    }
-}
 
 // ---- unsafe patches ------------------------------------------------------------------------
-
-fn new_file(path: &str) -> String {
-    format!(
-        "diff --git a/{path} b/{path}\nnew file mode 100644\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n+x\n"
-    )
-}
-
-#[test]
-fn patches_into_git_internals_or_out_of_the_repo_are_refused() {
-    let (sb, r) = repo("pe-unsafe");
-    write_commit(&r, "a.txt", "a\n", "base");
-    fs::create_dir_all(r.join("sub")).unwrap();
-    for p in [
-        new_file(".GIT/hooks/pre-commit"),
-        new_file(".Git/config2"),
-        new_file("sub/.git/hooks/x"),
-        new_file("sub/../../escape.txt"),
-        new_file("sub/../.git/x"),
-    ] {
-        assert!(patch::preview(&r, &p).is_err(), "previewed:\n{p}");
-        assert!(apply_patch(&r, &p).is_err(), "applied:\n{p}");
-    }
-    // A rename whose old side is in .git: git itself refuses it.
-    let config = fs::read(r.join(".git/config")).unwrap();
-    let steal = "diff --git a/.git/config b/stolen\nsimilarity index 100%\nrename from .git/config\nrename to stolen\n";
-    assert!(apply_patch(&r, steal).is_err());
-    assert_eq!(fs::read(r.join(".git/config")).unwrap(), config);
-    assert!(!sb.path("escape.txt").exists());
-    assert!(!r.join("stolen").exists());
-    assert!(!r.join(".git/hooks/pre-commit").exists());
-    // An absolute name is taken relative to the repo, as git does: inside it, harmless.
-    let abs = "--- /dev/null\n+++ /tmp/abs-gv.txt\n@@ -0,0 +1 @@\n+x\n";
-    if let Ok(pv) = patch::preview(&r, abs) {
-        assert!(!pv.files[0].path.starts_with('/'));
-    }
-}
-
-#[test]
-fn empty_junk_and_huge_clipboards_are_refused_plainly() {
-    let (_sb, r) = repo("pe-junk");
-    write_commit(&r, "a.txt", "a\n", "base");
-    assert!(patch::preview(&r, "").unwrap_err().contains("empty"));
-    assert!(patch::preview(&r, "\n\t \r\n")
-        .unwrap_err()
-        .contains("empty"));
-    assert!(patch::preview(&r, "just some text\nnot a patch\n")
-        .unwrap_err()
-        .contains("no patch"));
-    let mut big = new_file("big.txt");
-    big.push_str(&"+y\n".repeat(patch::MAX_BYTES / 3 + 10));
-    assert!(patch::preview(&r, &big).unwrap_err().contains("10 MB"));
-    // Copying a change over 10 MB is refused the same way.
-    fs::write(r.join("big.txt"), "z\n".repeat(patch::MAX_BYTES / 2 + 10)).unwrap();
-    assert!(patch::changes(&r, "unstaged", &["big.txt".into()], None)
-        .unwrap_err()
-        .contains("10 MB"));
-}
 
 #[test]
 fn non_utf8_files_revert_and_say_why_they_do_not_copy() {

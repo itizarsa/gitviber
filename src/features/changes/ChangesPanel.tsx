@@ -174,7 +174,7 @@ export function ChangesPanel({ status: full, activeKey, onOpen, onHover, refresh
   const viewedPaths = status.unstaged.filter((file) => !file.nested && viewed({ kind: "unstaged", file })).map((f) => f.path);
 
   // Untracked files have nothing to restore; like VS Code, discarding one deletes it (to the Trash here).
-  // Tracked ones keep a copy of what they were in the Trash, which Undo (and ⌘Z) writes back.
+  // Tracked ones keep a copy of what they were in the Trash.
   const discard = async (picked: FileChange[]) => {
     // Submodules: nothing to discard there, or to keep in the Trash.
     const submodules = picked.filter(keptByRestore);

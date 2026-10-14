@@ -201,7 +201,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app::log_error,
             commands::app::show_logs,
-            commands::app::clipboard_text,
             commands::app::clipboard_write,
             commands::app::notification_permission,
             commands::app::notification_request,
@@ -223,8 +222,6 @@ pub fn run() {
             commands::patch::commit_patch,
             commands::patch::stash_patch,
             commands::patch::lines_patch,
-            commands::patch::patch_preview,
-            commands::patch::apply_patch,
             commands::patch::restore_file,
             commands::patch::revert_file,
             commands::patch::revert_lines,

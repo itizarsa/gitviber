@@ -174,31 +174,6 @@ pub fn read() -> Result<Paste, String> {
     })
 }
 
-/// The clipboard's text alone, for Apply Patch from Clipboard: the webview's own read asks the
-/// user first with a Paste button.
-#[cfg(target_os = "macos")]
-pub fn read_text() -> Result<String, String> {
-    Ok(objc2::rc::autoreleasepool(|_| unsafe { pasteboard::read_text() }).unwrap_or_default())
-}
-
-#[cfg(target_os = "linux")]
-pub fn read_text() -> Result<String, String> {
-    // GTK panics off its thread (see `contents`).
-    if !gtk::is_initialized_main_thread() {
-        return Err("The clipboard is unavailable".into());
-    }
-    let clipboard = gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD);
-    Ok(clipboard
-        .wait_for_text()
-        .map(String::from)
-        .unwrap_or_default())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-pub fn read_text() -> Result<String, String> {
-    Err("Reading the clipboard is only supported on macOS and Linux".into())
-}
-
 #[cfg(target_os = "macos")]
 fn contents() -> (Vec<String>, Option<String>, Option<Vec<u8>>) {
     objc2::rc::autoreleasepool(|_| unsafe { pasteboard::read() })
@@ -300,16 +275,6 @@ mod pasteboard {
             png = tiff_to_png(msg_send![pb, dataForType: ns_string(c"public.tiff")]);
         }
         (files, text, png)
-    }
-
-    /// The general pasteboard's text. Call inside an autorelease pool.
-    pub unsafe fn read_text() -> Option<String> {
-        let pb_class = AnyClass::get(c"NSPasteboard")?;
-        let pb: *mut AnyObject = msg_send![pb_class, generalPasteboard];
-        if pb.is_null() {
-            return None;
-        }
-        rust_string(msg_send![pb, stringForType: ns_string(c"public.utf8-plain-text")])
     }
 
     /// Extensions NSImage reads, whose picture goes on the pasteboard next to the file.

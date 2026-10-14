@@ -33,26 +33,6 @@ pub async fn lines_patch(request: patch::LinesPatch) -> Res<String> {
     blocking(move || patch::lines(&request)).await
 }
 
-#[tauri::command]
-pub async fn patch_preview(state: State<'_, AppState>, patch: String) -> Res<patch::Preview> {
-    in_repo(&state, move |r| patch::preview(r, &patch)).await
-}
-
-/// Applies a patch to the working tree (patch::apply); undo puts the files back. Returns the
-/// files left with conflict markers.
-#[tauri::command]
-pub async fn apply_patch(state: State<'_, AppState>, patch: String) -> Res<Vec<String>> {
-    let index = state.index.clone();
-    in_repo(&state, move |r| {
-        let bytes = patch.into_bytes();
-        let paths = patch::touched(&patch::files(r, &bytes, false)?);
-        let list = paths.clone();
-        let write = move |r: &Path| patch::apply(r, &bytes, false, &list);
-        crate::backup::replace(r, "before patch", &paths, &index, write)
-    })
-    .await
-}
-
 /// Puts `path` back as commit `sha` has it, in the working tree only. A link is checked where
 /// it is: git writes the link, not through it.
 #[tauri::command]

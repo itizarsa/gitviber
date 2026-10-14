@@ -201,16 +201,6 @@ pub struct PatchFile {
     pub deletions: Option<u32>,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Preview {
-    pub files: Vec<PatchFile>,
-    /// "clean": it applies as it is; "merge": only with a three-way merge, which may leave
-    /// conflicts; None: not at all, and `error` says why.
-    pub applies: Option<String>,
-    pub error: Option<String>,
-}
-
 /// Refuses a patch that's too large, and git's own words for one that isn't a patch.
 fn readable(patch: &[u8]) -> Result<(), String> {
     if patch.len() > MAX_BYTES {
@@ -382,33 +372,6 @@ pub fn touched(files: &[PatchFile]) -> Vec<String> {
         .flat_map(|f| f.old_path.iter().chain([&f.path]).cloned())
         .collect();
     all.into_iter().collect()
-}
-
-/// What applying `patch` would do, without doing it.
-pub fn preview(repo: &Path, patch: &str) -> Result<Preview, String> {
-    let patch = patch.as_bytes();
-    let files = files(repo, patch, false)?;
-    let clean = git::run_with(repo, &apply_args(false, &["--check"]), &[], Some(patch));
-    let (applies, error) = match clean {
-        Ok(_) => (Some("clean".to_string()), None),
-        Err(_) => {
-            let index = Scratch::index(repo)?;
-            index.sync(repo, &touched(&files))?;
-            match index.git(
-                repo,
-                &apply_args(false, &["--check", "--3way"]),
-                Some(patch),
-            ) {
-                Ok(_) => (Some("merge".to_string()), None),
-                Err(e) => (None, Some(e)),
-            }
-        }
-    };
-    Ok(Preview {
-        files,
-        applies,
-        error,
-    })
 }
 
 /// Applies `patch` (backwards with `reverse`) to the working tree alone, merging three ways
