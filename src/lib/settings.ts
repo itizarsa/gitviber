@@ -232,8 +232,6 @@ export interface Settings {
   signOffRepos: string[];
   /** Minutes between quiet fetches of the open repo (one of FETCH_INTERVALS); 0 is off. */
   backgroundFetch: number;
-  /** Ask GitHub Releases for a newer GitViber at launch and every few hours (updates.ts). */
-  autoUpdate: boolean;
   /** Where the last clone went; the next one offers the same folder. */
   cloneParent: string | null;
   /** New worktrees go in `<worktreeRoot>/<project>/` rather than `<project>.worktrees` beside it; null is off. */
@@ -317,7 +315,6 @@ const DEFAULTS: Settings = {
   signOffRepos: [],
   // Off until asked for: a fetch can prompt for an SSH key (1Password, a hardware key) every few minutes.
   backgroundFetch: 0,
-  autoUpdate: true,
   cloneParent: null,
   worktreeRoot: null,
   suggestCommand: "claude -p",
@@ -404,7 +401,6 @@ function load(): Settings {
     if (!["amount", "all"].includes(s.whitespaceMode)) s.whitespaceMode = DEFAULTS.whitespaceMode;
     if (typeof s.shortcutOverlay !== "boolean") s.shortcutOverlay = DEFAULTS.shortcutOverlay;
     s.keybindings = cleanOverrides(s.keybindings);
-    if (typeof s.autoUpdate !== "boolean") s.autoUpdate = DEFAULTS.autoUpdate;
     if (typeof s.suggestCommand !== "string") s.suggestCommand = DEFAULTS.suggestCommand;
     s.suggestModels = validModels(s.suggestModels);
     s.suggestEfforts = validEfforts(s.suggestEfforts);

@@ -47,7 +47,6 @@ mod titlebar;
 mod translucency;
 #[cfg(target_os = "linux")]
 mod trash;
-mod updates;
 mod watch;
 #[cfg(desktop)]
 mod window_state;
@@ -102,12 +101,6 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.plugin(window_state::plugin());
-    }
-    #[cfg(desktop)]
-    if updates::enabled(context.config()) {
-        builder = builder
-            .plugin(tauri_plugin_updater::Builder::new().build())
-            .plugin(tauri_plugin_process::init());
     }
     builder
         .menu(menu::build)
@@ -358,7 +351,6 @@ pub fn run() {
             commands::app::quit_answer,
             commands::app::show_window,
             commands::app::open_dropped,
-            commands::app::update_mode,
             commands::app::take_opened,
             commands::app::install_cli,
             commands::app::set_translucent,

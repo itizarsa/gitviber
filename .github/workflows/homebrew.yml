@@ -1,6 +1,6 @@
 name: Homebrew
 
-# Publishing a release commits its cask to emircan-sahin/homebrew-tap, so `brew install` gets it
+# Publishing a release commits its cask to itizarsa/homebrew-tap, so `brew install` gets it
 # with no step by hand. The checksum comes from the release's SHA256SUMS. It pushes with a deploy
 # key that can write to the tap and nothing else (the HOMEBREW_TAP_KEY secret, RELEASING.md).
 # Run from the Actions tab with a tag to redo one.
@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: emircan-sahin/homebrew-tap
+          repository: itizarsa/homebrew-tap
           ssh-key: ${{ secrets.HOMEBREW_TAP_KEY }}
           path: tap
 
@@ -67,4 +67,4 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -m "gitviber ${TAG#v}"
           git push
-          echo "Committed gitviber ${TAG#v} to emircan-sahin/homebrew-tap." >> "$GITHUB_STEP_SUMMARY"
+          echo "Committed gitviber ${TAG#v} to itizarsa/homebrew-tap." >> "$GITHUB_STEP_SUMMARY"

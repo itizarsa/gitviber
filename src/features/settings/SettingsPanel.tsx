@@ -1,5 +1,5 @@
 import { ask } from "@/lib/app/ask";
-import { CircleArrowUp, Code2, GitBranch, GitCompareArrows, Keyboard, Palette, RotateCcw, ScanSearch, Sparkles, SquareArrowOutUpRight, SquareTerminal } from "lucide-react";
+import { Code2, GitBranch, GitCompareArrows, Keyboard, Palette, RotateCcw, ScanSearch, Sparkles, SquareArrowOutUpRight, SquareTerminal } from "lucide-react";
 import { IS_MAC } from "@/lib/platform";
 import { resetSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -12,14 +12,12 @@ import { CommitSection } from "./sections/Commit";
 import { ReviewSection } from "./sections/Review";
 import { OpenInSection } from "./sections/OpenIn";
 import { type Recording, ShortcutsSection } from "./sections/Shortcuts";
-import { UpdatesSection } from "./sections/Updates";
 import { TerminalSection } from "./sections/Terminal";
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette, group: "General" },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard, group: "General" },
   { id: "openIn", label: "Open In", icon: SquareArrowOutUpRight, group: "General" },
-  { id: "updates", label: "Updates", icon: CircleArrowUp, group: "General" },
   { id: "editor", label: "Editor", icon: Code2, group: "Workspace" },
   { id: "diff", label: "Diff", icon: GitCompareArrows, group: "Workspace" },
   { id: "terminal", label: "Terminal", icon: SquareTerminal, group: "Workspace" },
@@ -105,7 +103,6 @@ export function SettingsPanel({
           {section === "review" && <ReviewSection />}
           {section === "openIn" && <OpenInSection />}
           {section === "shortcuts" && <ShortcutsSection recording={recording} setRecording={setRecording} />}
-          {section === "updates" && <UpdatesSection />}
         </div>
       </div>
     </>

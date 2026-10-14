@@ -8,7 +8,6 @@ import { Toaster } from "@/components/Toaster";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AboutDialog } from "@/features/app/AboutDialog";
-import { UpdateDialog } from "@/features/app/UpdateDialog";
 import { CloneDialog, openClone } from "@/features/projects/CloneDialog";
 import { CommandPalette, showCommands } from "@/features/palette/CommandPalette";
 import { IdentityDialog } from "@/features/app/IdentityDialog";
@@ -212,7 +211,6 @@ export function App() {
       <AboutDialog />
       <PromptDialog />
       <StackedDialog />
-      <UpdateDialog />
       <CommandPalette />
       <ShortcutOverlay />
       <Toaster />

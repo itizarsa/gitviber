@@ -1,7 +1,6 @@
 use crate::state::{blocking, AppState, Res};
 use crate::{
     agents, cli, clipboard, conversations, errors, git, launch, menu, process, pty, translucency,
-    updates,
 };
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -203,12 +202,6 @@ pub fn show_window(window: tauri::WebviewWindow) {
 #[tauri::command]
 pub fn quit_answer(app: AppHandle, answer: crate::quit::Answer) {
     crate::quit::answer(&app, answer);
-}
-
-/// See updates.rs.
-#[tauri::command]
-pub fn update_mode(app: AppHandle) -> Option<&'static str> {
-    updates::mode(app.config())
 }
 
 /// What a bug report asks for: app version and commit, OS, git, gh and the web view. Nothing
