@@ -6,6 +6,7 @@ import { api, type ProjectInfo } from "@/lib/api";
 import { REVEAL_LABEL } from "@/lib/platform";
 import { matchesCommand } from "@/lib/commands/keybindings";
 import { cn } from "@/lib/utils";
+import { tileInitials, tileStyle } from "@/lib/ui/projectTile";
 import { folderName } from "@/lib/path";
 import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
@@ -241,20 +242,14 @@ function forget(inRow: Element | null, path: string, onForget: (p: string) => vo
   onForget(path);
 }
 
-/** Square letter tile with a stable hue per project, so repos are recognizable at a glance. */
+/** Letter tile with a stable hue per project, as the rail shows it, so repos are recognizable at a glance. */
 export function ProjectTile({ name, large, className }: { name: string; large?: boolean; className?: string }) {
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   return (
     <span
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-[4px] font-bold text-black/80 uppercase",
-        large ? "size-6 text-[11px]" : "size-4 text-[9.5px]",
-        className,
-      )}
-      style={{ background: `hsl(${h} 55% 62%)` }}
+      className={cn("flex shrink-0 items-center justify-center font-mono font-bold tracking-tight", large ? "size-6 rounded-md text-[10px]" : "size-4 rounded-[4px] text-[8px]", className)}
+      style={tileStyle(name)}
     >
-      {name[0]}
+      {large ? tileInitials(name) : tileInitials(name)[0]}
     </span>
   );
 }

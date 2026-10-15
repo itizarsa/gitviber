@@ -11,6 +11,7 @@ import { REVEAL_LABEL } from "@/lib/platform";
 import type { RepoData } from "@/lib/repo/useRepo";
 import { openTerminal, togglePanel, useTerminalsOpen } from "@/lib/terminal/terminals";
 import { cn } from "@/lib/utils";
+import { tileInitials, tileStyle } from "@/lib/ui/projectTile";
 import { changeTotals } from "@/features/changes/changeList";
 import { openSettings } from "@/features/settings/SettingsDialog";
 
@@ -61,15 +62,15 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
                       aria-current={current}
                       onClick={() => (missing ? onLocateRepo(p) : !(current && root === main) && void onOpenRepo(p))}
                       className={cn(
-                        "relative flex size-8 shrink-0 items-center justify-center rounded-md text-[13px] font-bold text-black/80 uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        current ? "ring-2 ring-primary ring-offset-2 ring-offset-sidebar" : "opacity-80 hover:opacity-100",
+                        "relative flex size-8 shrink-0 items-center justify-center rounded-lg font-mono text-[12px] font-bold tracking-tight outline-none transition-[filter,box-shadow] hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring",
+                        current && "shadow-[inset_0_0_0_1.5px_var(--tile)]",
                         missing && "opacity-40",
                       )}
-                      style={{ background: tileColor(name) }}
+                      style={tileStyle(name, current)}
                     >
-                      {name.slice(0, 2)}
+                      {tileInitials(name)}
                       {current && totals.files > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-modified px-1 font-mono text-[9.5px] font-semibold text-white">{totals.files}</span>
+                        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-modified px-[3px] font-mono text-[9px] leading-none font-semibold text-black/85">{totals.files}</span>
                       )}
                     </button>
                   </ContextMenuTrigger>
@@ -97,7 +98,7 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
           );
         })}
         <Tip label="Open repository…" shortcut={openKey} side={side === "left" ? "right" : "left"}>
-          <button aria-label="Open repository" onClick={() => void onOpenRepo()} className="flex size-8 shrink-0 items-center justify-center rounded-md border border-dashed border-border-strong text-subtle hover:text-foreground">
+          <button aria-label="Open repository" onClick={() => void onOpenRepo()} className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-subtle hover:text-foreground">
             <Plus className="size-4" />
           </button>
         </Tip>
@@ -132,11 +133,4 @@ function RailActions({ root, side, sidebarOpen, onToggleSidebar }: { root: strin
       </Tip>
     </div>
   );
-}
-
-/** The project list's tile color, from the name. */
-function tileColor(name: string) {
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return `hsl(${h} 55% 62%)`;
 }
