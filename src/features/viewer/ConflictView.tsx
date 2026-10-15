@@ -7,9 +7,7 @@ import { showLanguage } from "@/lib/editor/shownLanguage";
 import { copyNarrowed, indentUnit } from "@/lib/editor/indent";
 import { languageFor } from "@/lib/editor/language";
 import { basesFor, type Block, endsWithNewline, mergingWhat, oursText, parseConflicts, resolvePrompt, type Segment } from "@/lib/git/conflicts";
-import { forTerminal } from "@/lib/review/notes";
-import { pasteToAgent } from "@/lib/terminal/terminals";
-import { copyText } from "@/lib/app/clipboard";
+import { startAgentWith } from "@/lib/terminal/handoff";
 import { failed, toast } from "@/lib/app/toast";
 import { mergeInTool, toolCanOpen, toolName, useExternalTools, useMergingInTool } from "@/lib/git/externalTools";
 import { cn } from "@/lib/utils";
@@ -157,13 +155,11 @@ export function ConflictView({ file, root, branch, conflicted, operation, revisi
   const mergeTool = (code === "UU" || code === "AA") && toolCanOpen(file.path) ? tools.merge : null;
   const inTool = useMergingInTool(file.path);
 
-  // Into the terminal an agent runs in, here; Enter is left to you. Never a plain shell, where
-  // Enter would run the file names' backticks.
+  // A new session of the review agent (Settings → Agent) in a terminal here, the prompt in its box.
   const askAgent = () => {
     const files = conflicted.length ? conflicted : [file.path];
     const prompt = resolvePrompt(files, mergingWhat(operation?.kind, operation?.subject ?? null, branch, blocks[0]?.theirsLabel || null));
-    if (!pasteToAgent(root, forTerminal(prompt)))
-      toast("info", "No agent running in this worktree", "Start one in a terminal here, or copy the prompt for it.", { label: "Copy prompt", run: () => void copyText(prompt, "Prompt copied") });
+    void startAgentWith(root, prompt, { name: "Resolve conflicts", send: false, copied: "Prompt copied for the agent", failed: "Couldn't start Claude Code" });
   };
 
   const oursName = rebase ? "Current (base)" : "Current";

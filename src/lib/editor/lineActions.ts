@@ -7,7 +7,6 @@ import { api, type DiffPair, errorMessage, type LinesRequest } from "../api";
 import { type Change, changeAt, changes, isEmpty, type Picked, pick, type Side, whole } from "../git/lineStaging";
 import { monaco } from "./monaco";
 import { toast } from "../app/toast";
-import { copyLater } from "../app/clipboard";
 import { rewriteFiles } from "../repo/rewriteFiles";
 
 /**
@@ -136,22 +135,6 @@ export function followLineActions(diff: monaco.editor.IStandaloneDiffEditor, sta
         code.addAction({ id: `gitviber.${action}Lines`, label: lines, contextMenuGroupId: "0_staging", precondition: `${on} && editorHasSelection`, run: go }),
       );
     }
-    subs.push(
-      code.addAction({
-        id: "gitviber.copyLinesPatch",
-        label: "Copy Selected Lines as Patch",
-        contextMenuGroupId: "0_staging",
-        precondition: "gitviberStaging != '' && editorHasSelection",
-        run: () => {
-          const s = staging();
-          const p = s && chosen();
-          if (!s || !p || isEmpty(p)) return;
-          const { original, modified } = s.pair;
-          const request = { path: s.path, oldPath: s.oldPath, original: original.exists ? original.text : null, modified: modified.exists ? modified.text : null, removed: p.removed, added: p.added };
-          void copyLater(() => api.linesPatch(request), "Patch copied");
-        },
-      }),
-    );
     update();
   }
 

@@ -1,5 +1,5 @@
 import { open as pickFolder } from "@tauri-apps/plugin-dialog";
-import { ChevronDown, Columns2, FolderGit2, FolderOpen, History, Maximize2, Minimize2, Plus, Rows2, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronDown, Columns2, FolderGit2, FolderOpen, Maximize2, Minimize2, Plus, Rows2, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -35,7 +35,6 @@ import { folderName, parentFolder } from "@/lib/path";
 import { worktreeHue, worktreeHues } from "@/lib/git/worktrees";
 import { useWorktreeColors } from "@/lib/git/worktreeColors";
 import { ProjectTile } from "@/features/projects/ProjectList";
-import { showConversations } from "@/features/palette/CommandPalette";
 import { GroupTab } from "./GroupTab";
 import { ZoomPager } from "./PaneDots";
 import { LayoutView, renamingPane, shape, showPaneSwitch } from "./PaneLayout";
@@ -51,7 +50,6 @@ export function useTerminalSetup(root: string) {
   useCommands({
     "terminal.toggle": () => toggle(root),
     "terminal.new": () => openTerminal(root),
-    "terminal.resumeConversation": () => showConversations(root),
     "terminal.toggleMaximize": () => toggleMaximize(root),
     "terminal.zoomPane": () => toggleZoom(root),
     "terminal.fontZoomIn": () => stepTerminalFont(1),
@@ -197,7 +195,7 @@ export function TerminalPanel({ root, worktrees, projects }: Props) {
             </Button>
           </Tip>
           <DropdownMenu>
-            <Tip label="New terminal in another folder, or resume a conversation">
+            <Tip label="New terminal in another folder">
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon-sm" className="w-5">
                   <ChevronDown className="size-3" />
@@ -205,10 +203,6 @@ export function TerminalPanel({ root, worktrees, projects }: Props) {
               </DropdownMenuTrigger>
             </Tip>
             <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuItem onSelect={() => showConversations(root)}>
-                <History /> Resume a Conversation…
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               {others.length > 0 && (
                 <>
                   <DropdownMenuLabel>New terminal in worktree</DropdownMenuLabel>

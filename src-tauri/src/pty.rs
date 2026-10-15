@@ -325,12 +325,6 @@ impl Ptys {
         0
     }
 
-    /// The pid of the program a session runs in the foreground (its job's leader), when that
-    /// isn't the shell.
-    pub fn foreground(&self, id: u32) -> Option<u32> {
-        self.with(id, |s| Ok(s.job_leader())).ok()?
-    }
-
     /// The folder a session's shell is in now, asked of the process as VS Code does for a split
     /// (its own, not the foreground job's): once, on a split or a save, never polled.
     pub fn cwd(&self, id: u32) -> Option<PathBuf> {
@@ -430,22 +424,18 @@ mod tests {
         // Read, so the shell's writes never block on a full pty.
         let mut reader = pair.master.try_clone_reader().unwrap();
         std::thread::spawn(move || std::io::copy(&mut reader, &mut std::io::sink()));
-        let argv = || {
-            let pid = crate::procinfo::job_leader(pair.master.process_group_leader(), shell)?;
-            Some(crate::procinfo::process(pid)?.argv)
-        };
-        let wait = |want: Option<Vec<String>>| {
+        let leader = || crate::procinfo::job_leader(pair.master.process_group_leader(), shell);
+        let wait = |running: bool| {
             let until = std::time::Instant::now() + Duration::from_secs(60);
-            while argv() != want && std::time::Instant::now() < until {
+            while leader().is_some() != running && std::time::Instant::now() < until {
                 std::thread::sleep(Duration::from_millis(50));
             }
-            argv()
+            leader().is_some()
         };
         writer.write_all(b"sleep 30\n").unwrap();
-        let sleeping = Some(vec!["sleep".to_string(), "30".to_string()]);
-        assert_eq!(wait(sleeping.clone()), sleeping);
+        assert!(wait(true), "sleep is the job leader");
         writer.write_all(b"\x03").unwrap();
-        assert_eq!(wait(None), None);
+        assert!(!wait(false), "none at the prompt");
         let _ = child.kill();
         let _ = child.wait();
     }

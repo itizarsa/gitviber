@@ -1,5 +1,5 @@
 import { ask } from "@/lib/app/ask";
-import { ArrowDown, ArrowUp, Cherry, Combine, Files, SearchCode, Scissors, GitCommitVertical, Copy, Eye, EyeOff, FileDiff, FolderGit2, GitBranchPlus, GitCommitHorizontal, GitCompare, GitCompareArrows, History, ListFilter, Pencil, RotateCcw, Sparkles, SquareDashedMousePointer, Tag, Trash2, Undo2, UploadCloud } from "lucide-react";
+import { ArrowDown, ArrowUp, Cherry, Combine, Files, SearchCode, Scissors, GitCommitVertical, Copy, Eye, EyeOff, FolderGit2, GitBranchPlus, GitCommitHorizontal, GitCompare, GitCompareArrows, History, ListFilter, Pencil, RotateCcw, Sparkles, SquareDashedMousePointer, Tag, Trash2, Undo2, UploadCloud } from "lucide-react";
 import { Fragment, useRef, useState } from "react";
 import {
   ContextMenuContent,
@@ -13,7 +13,7 @@ import {
 import { api, type Commit, errorMessage, type RemoteTags, type ResetMode } from "@/lib/api";
 import { forgetRemoteTags, remoteTags } from "@/lib/repo/remoteTags";
 import { folderName } from "@/lib/path";
-import { copyLater, copyText } from "@/lib/app/clipboard";
+import { copyText } from "@/lib/app/clipboard";
 import { openWorktreeDialog } from "@/features/worktrees/WorktreeDialogs";
 import { startBisect } from "./BisectBar";
 import { type Actions, checkoutDetached, dropsPushed, MERGE_WARNING, PUSHED_WARNING, undoCommit } from "./commitActions";
@@ -268,9 +268,6 @@ export function CommitMenu({ commit: c, head, actions }: { commit: Commit; head:
       </ContextMenuItem>
       <ContextMenuItem onSelect={() => copyText(c.body ? `${c.subject}\n\n${c.body}` : c.subject, "Message copied")}>
         <Copy /> Copy message
-      </ContextMenuItem>
-      <ContextMenuItem disabled={c.parents.length > 1} onSelect={() => copyLater(() => api.commitPatch(c.sha), "Patch copied")}>
-        <FileDiff /> Copy as Patch
       </ContextMenuItem>
     </ContextMenuContent>
   );

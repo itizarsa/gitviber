@@ -1,9 +1,7 @@
-mod agents;
 pub mod askpass;
 mod backup;
 mod clipboard;
 mod commands;
-mod conversations;
 mod definitions;
 #[cfg(debug_assertions)]
 mod dev_bridge;
@@ -133,7 +131,6 @@ pub fn run() {
                 // What the workspace started goes with its page; the settings window starts none.
                 if webview.label() == "main" {
                     webview.state::<AppState>().ptys.kill_all();
-                    webview.state::<AppState>().agents.forget_all();
                     askpass::decline_all();
                     quit::reset();
                 }
@@ -173,7 +170,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app::log_error,
             commands::app::show_logs,
-            commands::app::clipboard_write,
             commands::repo::open_repo,
             commands::repo::git_info,
             commands::repo::install_git,
@@ -186,10 +182,6 @@ pub fn run() {
             commands::changes::status,
             commands::changes::branch_review,
             commands::history::compare_worktree,
-            commands::patch::changes_patch,
-            commands::patch::commit_patch,
-            commands::patch::stash_patch,
-            commands::patch::lines_patch,
             commands::patch::restore_file,
             commands::patch::revert_file,
             commands::patch::revert_lines,
@@ -342,9 +334,6 @@ pub fn run() {
             commands::app::keep_dropped,
             commands::app::copy_files,
             commands::app::pty_busy,
-            commands::app::pty_agents,
-            commands::app::agent_conversations,
-            commands::app::folders_left,
             commands::app::quit,
             commands::app::quit_answer,
             commands::app::show_window,

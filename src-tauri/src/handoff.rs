@@ -3,7 +3,6 @@
 //! text in its prompt box (sent, for a risk). Only the script's path is typed at the shell's
 //! prompt: no shell reads a word of what a model wrote, and none of it lands in the shell's history.
 
-use crate::agents::quote;
 use crate::scratch::{write_private, ScratchDir};
 use std::path::Path;
 use std::time::Duration;
@@ -69,7 +68,7 @@ fn one_line(given: &str, max: usize) -> String {
     words.chars().take(max).collect()
 }
 
-/// `exec`, so the pane's process is Claude Code itself, as agents.rs finds and resumes it.
+/// `exec`, so the pane's process is Claude Code itself.
 fn script(h: &Handoff, text: &Path) -> String {
     let mut words = vec![program(h.command), "-n".into(), one_line(h.name, MAX_NAME)];
     for (flag, value) in [("--model", h.model), ("--effort", h.effort)] {
@@ -88,6 +87,41 @@ fn script(h: &Handoff, text: &Path) -> String {
         // space after puts the cursor past it, for the question.
         format!("exec {words} --prefill \"$(cat {file}) \"\n")
     }
+}
+
+/// `word` as zsh, bash and fish all read it back: bare when it's plain, else in single quotes,
+/// with `'` and `\` outside them (fish reads `\'` and `\\` inside quotes as escapes).
+pub(crate) fn quote(word: &str) -> String {
+    let plain = |c: char| c.is_ascii_alphanumeric() || "_-.,/:@%+=".contains(c);
+    // zsh expands a word that starts with `=` to a command's path.
+    if !word.is_empty() && !word.starts_with('=') && word.chars().all(plain) {
+        return word.to_string();
+    }
+    let mut out = String::new();
+    let mut open = false;
+    for c in word.chars() {
+        if c == '\'' || c == '\\' {
+            if open {
+                out.push('\'');
+                open = false;
+            }
+            out.push('\\');
+            out.push(c);
+        } else {
+            if !open {
+                out.push('\'');
+                open = true;
+            }
+            out.push(c);
+        }
+    }
+    if open {
+        out.push('\'');
+    }
+    if word.is_empty() {
+        out.push_str("''");
+    }
+    out
 }
 
 #[cfg(test)]

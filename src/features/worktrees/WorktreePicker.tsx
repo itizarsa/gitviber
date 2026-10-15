@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown, Copy, Eraser, FolderGit2, FolderOpen, GitBranch, GitMerge, History, Lock, LockOpen, Pencil, SquareTerminal, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Copy, Eraser, FolderGit2, FolderOpen, GitBranch, GitMerge, Lock, LockOpen, Pencil, SquareTerminal, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,19 +10,16 @@ import { pointerMoved } from "@/lib/ui/pointer";
 import { isMenuKey, openRowMenu } from "@/lib/ui/useListNav";
 import { cn } from "@/lib/utils";
 import { plural, relativeTime } from "@/lib/format";
-import { cleanable, type Hue, hueColor, mainBackOffer, shortPath, worktreeHues, worktreeName, worktreeOf } from "@/lib/git/worktrees";
+import { cleanable, type Hue, hueColor, mainBackOffer, shortPath, worktreeHues, worktreeName } from "@/lib/git/worktrees";
 import { useWorktreeColors } from "@/lib/git/worktreeColors";
 import { folderName } from "@/lib/path";
-import { terminalsIn, usePaneLooks } from "@/lib/terminal/terminals";
-import { isNews, LOOK_LABEL, type Look, mostUrgent } from "@/lib/terminal/agentLook";
+import { terminalsIn } from "@/lib/terminal/terminals";
 import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
 import { RowAction } from "@/components/RowAction";
-import { StatusDot } from "@/components/StatusDot";
 import { openWorktreeDialog, useWorktreeDialog } from "./WorktreeDialogs";
 import { WorktreeColorMenu } from "./WorktreeColorMenu";
 import { usePickerIndex } from "@/hooks/usePickerIndex";
-import { showConversations } from "@/features/palette/CommandPalette";
 
 interface Props {
   worktrees: Worktree[];
@@ -45,16 +42,6 @@ interface Props {
   onMainBack: (branch: string) => void;
 }
 
-/** Each worktree's most urgent look of the terminals in it, by its path. */
-function looksIn(worktrees: Worktree[], panes: [string, Look][]) {
-  const out = new Map<string, Look>();
-  for (const [cwd, look] of panes) {
-    const w = worktreeOf(cwd, worktrees);
-    if (w) out.set(w.path, mostUrgent([out.get(w.path), look])!);
-  }
-  return out;
-}
-
 /**
  * `git worktree list` as a switcher. Always shown, even with only the main worktree, so
  * the feature is found at all; then it says how to make one.
@@ -63,7 +50,6 @@ function looksIn(worktrees: Worktree[], panes: [string, Look][]) {
  */
 export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerge, onRemove, onRename, onLock, onUnlock, onNew, onMainBack }: Props) {
   const [open, setOpen] = useState(false);
-  const paneLooks = usePaneLooks();
   const [list, setList] = useState(worktrees);
   const { index, setIndex, move } = usePickerIndex(list.length);
   const listId = useId();
@@ -126,9 +112,6 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
   const offer = mainBackOffer(list, branches);
   const hues = worktreeHues(list, colors);
   const hue = current ? (hues.get(current.path) ?? null) : null;
-  const looks = looksIn(list, paneLooks);
-  const away = mostUrgent(list.filter((w) => !w.current).map((w) => looks.get(w.path)));
-  const elsewhere = isNews(away) ? ` · a terminal in another worktree: ${LOOK_LABEL[away].toLowerCase()}` : "";
   const usable = (w: Worktree) => !w.current && !w.prunable && !w.bare;
   const then = (fn: (w: Worktree) => void) => (w: Worktree) => {
     setOpen(false);
@@ -148,8 +131,7 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
   const merged = cleanable(list, states, terminalsIn);
   const lock = thenDialog((w) => (w.locked ? onUnlock(w) : onLock(w)));
   // revealProject, not revealPath: that one only reaches inside the open worktree.
-  const resume = thenDialog((w) => showConversations(w.path));
-  const actions = { pick, terminal, resume, merge, rename, lock, remove, reveal: then((w) => void revealProject(w.path)), copy: then((w) => void copyText(w.path, "Path copied")) };
+  const actions = { pick, terminal, merge, rename, lock, remove, reveal: then((w) => void revealProject(w.path)), copy: then((w) => void copyText(w.path, "Path copied")) };
 
   // The hot row's actions, which the mouse finds on the row.
   const hot = list[index];
@@ -180,10 +162,10 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
     <>
       {/* Never over one of its own dialogs, whatever the order things closed in. */}
       <Popover open={open && !dialog} onOpenChange={setOpen}>
-        <Tip label={(linked ? `${named!.branch} in worktree ${folderName(current.path)} (${current.path}) · switch worktree` : extra === 0 ? "Worktrees" : `${plural(extra, "worktree")} besides the main one · switch worktree`) + elsewhere}>
+        <Tip label={(linked ? `${named!.branch} in worktree ${folderName(current.path)} (${current.path}) · switch worktree` : extra === 0 ? "Worktrees" : `${plural(extra, "worktree")} besides the main one · switch worktree`)}>
           <PopoverTrigger asChild>
             <button
-              aria-label={(linked ? `Worktree ${named!.branch}${named!.folder ? ` in ${named!.folder}` : ""}, switch worktree` : extra === 0 ? "Worktrees" : `Switch worktree (${extra} besides the main one)`) + elsewhere}
+              aria-label={(linked ? `Worktree ${named!.branch}${named!.folder ? ` in ${named!.folder}` : ""}, switch worktree` : extra === 0 ? "Worktrees" : `Switch worktree (${extra} besides the main one)`)}
               className={cn(
                 "relative flex h-7 max-w-56 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2 hover:bg-hover focus-visible:bg-hover data-[state=open]:bg-active",
                 linked && !hue && "bg-primary/10",
@@ -204,7 +186,6 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
                 </span>
               )}
               <ChevronsUpDown className="size-3 shrink-0 text-subtle" />
-              {isNews(away) && <StatusDot look={away} className="absolute top-1 right-1" />}
             </button>
           </PopoverTrigger>
         </Tip>
@@ -248,7 +229,6 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
                 time={states[w.path]?.updated ?? branches.find((b) => !b.remote && b.name === w.branch)?.timestamp}
                 state={states[w.path]}
                 hue={hues.get(w.path) ?? null}
-                look={looks.get(w.path) ?? null}
                 into={current?.branch ?? null}
                 renameKey={renameKey}
                 onHover={setIndex}
@@ -326,7 +306,7 @@ export function WorktreePicker({ worktrees, branches, onOpen, onTerminal, onMerg
   );
 }
 
-type RowActions = Record<"pick" | "terminal" | "resume" | "merge" | "rename" | "lock" | "remove" | "reveal" | "copy", (w: Worktree) => void>;
+type RowActions = Record<"pick" | "terminal" | "merge" | "rename" | "lock" | "remove" | "reveal" | "copy", (w: Worktree) => void>;
 
 function WorktreeRow({
   id,
@@ -338,7 +318,6 @@ function WorktreeRow({
   time,
   state,
   hue,
-  look,
   into,
   renameKey,
   onHover,
@@ -354,8 +333,6 @@ function WorktreeRow({
   time: number | undefined;
   state: WorktreeState | undefined;
   hue: Hue | null;
-  /** The most urgent look of the terminals in it. */
-  look: Look | null;
   /** The current worktree's branch; null when detached. */
   into: string | null;
   renameKey: string | undefined;
@@ -403,11 +380,6 @@ function WorktreeRow({
           <span className={cn("truncate font-mono text-[11.5px]", !w.branch && "opacity-70")}>{branch}</span>
           {/* "main" alone read as the branch: the main folder can be on any. */}
           {w.main && <Chip hot={hot}>main folder</Chip>}
-          {look && (
-            <Tip label={`A terminal here: ${LOOK_LABEL[look].toLowerCase()}`}>
-              <StatusDot look={look} className={cn(hot && "text-primary-foreground")} />
-            </Tip>
-          )}
           {w.inUse ? (
             <Tip label={w.lockReason ?? "Locked by a running process"}>
               <Chip hot={hot} tone="live">
@@ -483,11 +455,6 @@ function WorktreeRow({
         {onDisk && (
           <ContextMenuItem onSelect={() => a.terminal(w)}>
             <SquareTerminal /> Open a terminal here
-          </ContextMenuItem>
-        )}
-        {onDisk && (
-          <ContextMenuItem onSelect={() => a.resume(w)}>
-            <History /> Resume a conversation…
           </ContextMenuItem>
         )}
         {can.merge && (

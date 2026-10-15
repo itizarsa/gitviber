@@ -28,8 +28,6 @@ import { cn } from "@/lib/utils";
 import { createStore } from "@/lib/store";
 import { folderName } from "@/lib/path";
 import { NameInput } from "@/components/NameInput";
-import { StatusDot } from "@/components/StatusDot";
-import { lookLabel, paneLook } from "@/lib/terminal/agentLook";
 
 /** A split's structure without its sizes: what a tab re-lays out on (a split or close), not a drag. */
 export const shape = (l: Layout): string => (typeof l === "number" ? String(l) : `${l.dir}(${l.children.map(shape).join()})`);
@@ -183,7 +181,6 @@ function PaneHeader({ pane, focused, number }: { pane: PaneInfo; focused: boolea
   const id = pane.id;
   const renaming = renamingPane.use() === id;
   const title = pane.name ?? (pane.title || folderName(paneDir(id) ?? pane.cwd));
-  const look = paneLook(pane);
   const action = (label: string, Icon: typeof X, run: () => void) => (
     <Tip label={label}>
       <button
@@ -223,11 +220,6 @@ function PaneHeader({ pane, focused, number }: { pane: PaneInfo; focused: boolea
         />
       ) : (
         <span className={cn("min-w-0 truncate", focused ? "text-foreground" : "text-muted-foreground")}>{title}</span>
-      )}
-      {look && (
-        <Tip label={lookLabel(look, pane.agent?.name)}>
-          <StatusDot look={look} />
-        </Tip>
       )}
       <div className={cn("ml-auto flex shrink-0 items-center", !focused && "opacity-0 group-hover/pane:opacity-100")}>
         {action("Split right", Columns2, () => void splitActive("row", id))}

@@ -17,8 +17,6 @@ import { cn } from "@/lib/utils";
 import { folderName } from "@/lib/path";
 import { type Hue, hueColor } from "@/lib/git/worktrees";
 import { NameInput } from "@/components/NameInput";
-import { StatusDot } from "@/components/StatusDot";
-import { lookLabel, mostUrgent, paneLook } from "@/lib/terminal/agentLook";
 import { PaneDots, paneLine } from "./PaneDots";
 
 // Memoized: every title a program sets re-renders the panel, and the other tabs keep their group object.
@@ -42,15 +40,12 @@ export const GroupTab = memo(function GroupTab({
   const cwd = g.panes[0].cwd;
   const split = g.panes.length > 1;
   const ordered = panesInOrder(g);
-  // A split's tooltip has a line per pane, by number as its headers show them: what runs there, and its dot's state.
+  // A split's tooltip has a line per pane, by number as its headers show them: what runs there.
   const lines = split ? ordered.map((p, i) => paneLine(p, i + 1)) : [];
   const title = !split && g.panes[0].title;
   const where = title ? `${cwd} · ${title}` : cwd;
-  // The tab's tooltip says the dot's state too.
-  const look = mostUrgent(g.panes.map(paneLook));
-  const agent = g.panes.find((p) => look && paneLook(p) === look)?.agent?.name;
   const head = g.name ? `${g.name} · ${where}` : where;
-  const label = split ? [head, ...lines].join("\n") : head + (look ? ` · ${lookLabel(look, agent)}` : "");
+  const label = split ? [head, ...lines].join("\n") : head;
   // "/" has no name of its own.
   const shown = g.name ?? (folderName(cwd) || cwd);
   const [splitKey, splitDownKey, clearKey] = [useShortcut("terminal.split"), useShortcut("terminal.splitDown"), useShortcut("terminal.clear")];
@@ -64,7 +59,7 @@ export const GroupTab = memo(function GroupTab({
       role="tab"
       aria-selected={active}
       // "; " between panes, each "pane 2 · api — …": read aloud, one pane doesn't run into the next.
-      aria-label={[head, branch, split ? `${g.panes.length} panes` : look && lookLabel(look, agent)].filter(Boolean).join(" · ") + lines.map((l) => `; pane ${l}`).join("")}
+      aria-label={[head, branch, split && `${g.panes.length} panes`].filter(Boolean).join(" · ") + lines.map((l) => `; pane ${l}`).join("")}
       tabIndex={active ? 0 : -1}
       // A double-click renames: its second click leaves focus for the name field.
       onClick={(e) => activateGroup(g.id, e.detail < 2)}
@@ -93,8 +88,8 @@ export const GroupTab = memo(function GroupTab({
         <span className="truncate">{shown}</span>
       )}
       {branch && <span className="min-w-0 truncate font-mono text-[10.5px] text-subtle">{branch}</span>}
-      {/* A split's dots stand for its count and its tab's dot both: one per pane, by number, the focused one larger. */}
-      {split ? <PaneDots panes={ordered} focused={g.focused} /> : <StatusDot look={look} />}
+      {/* A split's dots stand for its count: one per pane, by number, the focused one larger. */}
+      {split && <PaneDots panes={ordered} focused={g.focused} />}
       <button
         aria-label="Kill terminal"
         // Off the Tab order: ⌫ on the tab kills it.

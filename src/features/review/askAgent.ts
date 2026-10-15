@@ -4,13 +4,12 @@ import { toast } from "@/lib/app/toast";
 import { handoffContext, type HandoffInput, handoffName, placedIn, riskPrompt } from "@/lib/review/handoff";
 import { basename } from "@/lib/path";
 import { getSettings } from "@/lib/settings";
-import { agentFor, asPrompt, busyTitle, startAgentWith } from "@/lib/terminal/handoff";
-import { pasteToAgent } from "@/lib/terminal/terminals";
+import { asPrompt, startAgentWith } from "@/lib/terminal/handoff";
 
 /**
  * A guided review's section, risk or whole change handed to the user's agent CLI in the
  * worktree's terminal, for their own questions there: as a paste would put it, in a new Claude Code
- * session's prompt box (handoff.rs), or the agent already running there. Another CLI gets it on the
+ * session's prompt box (handoff.rs). Another CLI gets it on the
  * clipboard, as it has no way in at start.
  */
 
@@ -48,19 +47,6 @@ export async function askAgent(open: string, ask: Ask, question = "", model?: st
     failed: "Couldn't hand the review to Claude Code",
     model,
   });
-}
-
-/**
- * Into the agent already running in the change's worktree, Enter left to the user: its session is warm.
- * Not while it works or asks something: the paste would land in its dialog or the user's draft.
- */
-export async function pasteToRunningAgent(open: string, ask: Ask) {
-  const { root, a } = await placed(open, ask);
-  const agent = await agentFor(root);
-  if (agent.to === "start") return toast("info", `No agent runs in ${basename(root)}'s terminal`, "Ask Agent starts one in a new terminal tab.");
-  if (agent.to === "wait") return toast("info", busyTitle(agent), "Paste once it's done, or ask in a new session with Ask Agent.");
-  const { context, prompt } = handoff(a);
-  pasteToAgent(root, asPrompt(context, prompt));
 }
 
 export function copyAsPrompt(a: Ask) {

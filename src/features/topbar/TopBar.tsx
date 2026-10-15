@@ -31,7 +31,6 @@ import { PublishButton } from "./PublishButton";
 import { useRepoActions } from "./useRepoActions";
 import { openWorktreeDialog, WorktreeDialogs } from "@/features/worktrees/WorktreeDialogs";
 import { WorktreePicker } from "@/features/worktrees/WorktreePicker";
-import { AgentsMenu } from "@/features/terminal/AgentsMenu";
 
 interface Props {
   repo: RepoData;
@@ -255,8 +254,6 @@ export function TopBar({ repo, root, main, onOpenRepo }: Props) {
           onPublish={publish}
         />
       )}
-      <div className="mx-1 h-4 w-px bg-border-strong" />
-      <AgentsMenu worktrees={worktrees} />
     </header>
   );
 }

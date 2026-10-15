@@ -9,9 +9,7 @@ import { useShortcut } from "@/lib/commands/keybindings";
 import { folderName } from "@/lib/path";
 import { REVEAL_LABEL } from "@/lib/platform";
 import type { RepoData } from "@/lib/repo/useRepo";
-import { openTerminal, togglePanel, usePaneLooks, useTerminalsOpen } from "@/lib/terminal/terminals";
-import { isNews, LOOK_LABEL, mostUrgent } from "@/lib/terminal/agentLook";
-import { StatusDot } from "@/components/StatusDot";
+import { openTerminal, togglePanel, useTerminalsOpen } from "@/lib/terminal/terminals";
 import { cn } from "@/lib/utils";
 import { changeTotals } from "@/features/changes/changeList";
 import { openSettings } from "@/features/settings/SettingsDialog";
@@ -109,12 +107,9 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
   );
 }
 
-/** The window's toggles: the sidebar, the terminal (with a dot when one needs you while hidden) and Settings. */
+/** The window's toggles: the sidebar, the terminal and Settings. */
 function RailActions({ root, side, sidebarOpen, onToggleSidebar }: { root: string; side: "left" | "right"; sidebarOpen: boolean; onToggleSidebar: () => void }) {
   const terminalOpen = useTerminalsOpen();
-  // The panel hidden, its tabs can't show that a terminal needs the user: this button does.
-  const look = mostUrgent(usePaneLooks().map(([, l]) => l));
-  const calling = !terminalOpen && isNews(look);
   const tip = side === "left" ? "right" : "left";
   const button = "flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-foreground";
   const Sidebar = side === "left" ? (sidebarOpen ? PanelLeft : PanelLeftDashed) : sidebarOpen ? PanelRight : PanelRightDashed;
@@ -125,10 +120,9 @@ function RailActions({ root, side, sidebarOpen, onToggleSidebar }: { root: strin
           <Sidebar className="size-4" />
         </button>
       </Tip>
-      <Tip label={terminalOpen ? "Hide terminal" : calling ? `Show terminal · a terminal: ${LOOK_LABEL[look].toLowerCase()}` : "Show terminal"} shortcut={useShortcut("terminal.toggle")} side={tip}>
-        <button aria-label="Toggle terminal" onClick={() => togglePanel(root)} className={cn(button, "relative", terminalOpen && "text-foreground")}>
+      <Tip label={terminalOpen ? "Hide terminal" : "Show terminal"} shortcut={useShortcut("terminal.toggle")} side={tip}>
+        <button aria-label="Toggle terminal" onClick={() => togglePanel(root)} className={cn(button, terminalOpen && "text-foreground")}>
           <SquareTerminal className="size-4" />
-          {calling && <StatusDot look={look} className="absolute top-1 right-1" />}
         </button>
       </Tip>
       <Tip label="Settings" shortcut={useShortcut("workbench.openSettings")} side={tip}>

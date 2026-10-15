@@ -316,16 +316,6 @@ export interface LinesRequest {
   added: number[];
 }
 
-/** Some lines of a diff as a patch: the sides as shown, and the chosen lines as LinesRequest has them. */
-export interface LinesPatch {
-  path: string;
-  oldPath: string | null;
-  original: string | null;
-  modified: string | null;
-  removed: number[];
-  added: number[];
-}
-
 /** Some of a commit's changed lines to undo in the working tree, numbered as its diff shows them. */
 export interface RevertLines {
   sha: string;

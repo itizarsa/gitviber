@@ -3,13 +3,10 @@ import { copyText } from "../app/clipboard";
 import { toast } from "../app/toast";
 import { effortOf, modelOf, presetOf, programOf, reviewAgent, SUGGEST_PRESETS } from "../git/suggest";
 import { getSettings } from "../settings";
-import { refreshAgents } from "./agents";
-import { type Handoff, handoffTo } from "./agentState";
-import { openTerminal, worktreeAgent } from "./terminals";
+import { openTerminal } from "./terminals";
 
 // Text handed to the agent CLI in a worktree's terminal, one way for every caller (a review's Ask
-// Agent): a new session started with it. A review can also paste
-// into the agent already running there, while it's free; never into a plain shell.
+// Agent, a conflict's): a new session started with it.
 
 /** The agent CLI's name for the user: Claude Code, or the program the command runs. */
 export function agentName(command: string) {
@@ -23,16 +20,6 @@ export function agentName(command: string) {
  * that isn't there.
  */
 export const asPrompt = (context: string, prompt: string | null) => `${context}\n\n${prompt ?? "My question follows. If none does, just say in one line that you're ready, and wait for it."}`;
-
-/** What the agent running in `root` can take now (agentState.ts handoffTo). */
-export async function agentFor(root: string): Promise<Handoff> {
-  // A session started a moment ago isn't known until it's looked up.
-  await refreshAgents();
-  return handoffTo(worktreeAgent(root));
-}
-
-/** A busy agent's toast title: "Claude Code is working". */
-export const busyTitle = (h: { name: string; working: boolean }) => `${h.name} is ${h.working ? "working" : "waiting on you"}`;
 
 export interface StartWith {
   /** The session's name in Claude Code. */

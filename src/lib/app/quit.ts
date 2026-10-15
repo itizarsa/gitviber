@@ -9,13 +9,8 @@ import { listenHere } from "./settingsWindow";
 /** Runs what saves on pagehide, for a way out that doesn't unload the page (quit, an update's relaunch). */
 export const saveNow = () => window.dispatchEvent(new Event("pagehide"));
 
-const before: (() => Promise<unknown>)[] = [];
-/** Work the save on ⌘Q waits for (the terminals' agents looked up again); quit.rs ends the app 2 s after the go regardless. */
-export const beforeQuit = (work: () => Promise<unknown>) => void before.push(work);
-const BEFORE_QUIT_MS = 1000;
-
 const stops: (() => Promise<string[]>)[] = [];
-/** What leaving would stop in the terminals ("2 agents working"), registered by them. */
+/** What leaving would stop in the terminals ("2 terminals running a command"), registered by them. */
 export const stoppedByQuit = (what: () => Promise<string[]>) => void stops.push(what);
 
 /** What leaving the app now stops that's worth asking about: a push or pull on its way, the terminals' commands. A quit and an update's restart ask it. */
@@ -46,7 +41,6 @@ try {
     }
     if (leaving) return;
     leaving = true;
-    await Promise.race([Promise.allSettled(before.map((work) => work())), new Promise((done) => setTimeout(done, BEFORE_QUIT_MS))]);
     saveNow();
     void api.quit().catch(() => {});
   }).catch(() => {});

@@ -1,17 +1,15 @@
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { api, type Conversation, errorMessage, pty } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { bindingsFor, COMMANDS, formatChord, isCommandId } from "@/lib/commands/commands";
 import { fuzzyMatch, type Match, matchPath, prepareQuery } from "@/lib/ui/fuzzy";
 import { type Action, hasHandler, MENU_ACTION_INFO, MENU_ACTIONS, matchesCommand, runCommand } from "@/lib/commands/keybindings";
 import { pointerMoved } from "@/lib/ui/pointer";
 import { useSettings } from "@/lib/settings";
-import { openTerminal, revealPane, useTerminalsMaximized, useTerminalsOpen } from "@/lib/terminal/terminals";
-import { paneOfConversation } from "@/lib/terminal/agents";
+import { openTerminal, useTerminalsMaximized, useTerminalsOpen } from "@/lib/terminal/terminals";
 import { cn } from "@/lib/utils";
 import { folderName, splitPath } from "@/lib/path";
-import { relativeTime } from "@/lib/format";
 import { readJson, stringList, writeJson } from "@/lib/storage";
 import { createStore } from "@/lib/store";
 import type { Change } from "@/features/changes/changeList";
@@ -23,11 +21,10 @@ import { ProjectTile } from "@/features/projects/ProjectList";
 /**
  * ⇧⌘P runs any command, ⌘P opens a file, as in VS Code: one box, and a leading ">" in it means
  * commands. "Open Changed File" lists the changes instead, and opens their diffs; "New Terminal in
- * Project…" the other saved projects, to start a terminal in without switching to them; "Resume a
- * Conversation…" an agent's past conversations in a folder, to pick up in a new terminal there.
+ * Project…" the other saved projects, to start a terminal in without switching to them.
  */
 
-type Mode = "files" | "changes" | "projects" | "conversations";
+type Mode = "files" | "changes" | "projects";
 
 /** What the open workspace gives quick open; none on the welcome screen. */
 export interface QuickOpenSource {
@@ -54,20 +51,17 @@ export function useQuickOpenSource(src: QuickOpenSource) {
   );
 }
 
-/** `cwd`: the folder whose conversations "conversations" lists. */
-const shown = createStore<{ mode: Mode; query: string; id: number; cwd?: string } | null>(null);
+const shown = createStore<{ mode: Mode; query: string; id: number } | null>(null);
 const set = shown.set;
 let opens = 0;
 // Where focus was, for Radix to put it back on close; a picked command runs after that.
 let before: Element | null = null;
-function show(mode: Mode, query: string, cwd?: string) {
+function show(mode: Mode, query: string) {
   if (!shown.get()) before = document.activeElement;
-  set({ mode, query, id: ++opens, cwd });
+  set({ mode, query, id: ++opens });
 }
 export const showCommands = () => show("files", ">");
-export const showQuickOpen = (mode: Exclude<Mode, "conversations"> = "files") => show(mode, "");
-/** The agents' past conversations in `cwd`; the one picked resumes in a new terminal there. */
-export const showConversations = (cwd: string) => show("conversations", "", cwd);
+export const showQuickOpen = (mode: Mode = "files") => show(mode, "");
 
 // At most this many rows: the best matches are at the top, and a repo can have 100k files.
 const LIMIT = 200;
@@ -98,7 +92,6 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<Mode>("files");
   const [list, setList] = useState<string[] | null>(null);
-  const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // What was picked runs once the palette has closed and its dialog no longer blocks commands.
   const picked = useRef<(() => void) | null>(null);
@@ -134,22 +127,6 @@ export function CommandPalette() {
       live = false;
     };
   }, [wantsFiles, root, state?.id]);
-
-  // Read each time it's asked for: a conversation started a minute ago is the likely one.
-  const cwd = state?.mode === "conversations" ? state.cwd : undefined;
-  useEffect(() => {
-    if (!cwd) return;
-    let live = true;
-    setConversations(null);
-    setError(null);
-    pty.conversations(cwd).then(
-      (list) => live && setConversations(list),
-      (e) => live && setError(errorMessage(e)),
-    );
-    return () => {
-      live = false;
-    };
-  }, [cwd, state?.id]);
 
   // Straight from the box, not useDeferredValue: ↵ must run what it says now, not what an older render listed.
   const items = useMemo((): Item[] => {
@@ -193,23 +170,6 @@ export function CommandPalette() {
         };
       });
     }
-    if (mode === "conversations" && cwd) {
-      return rank(query, conversations ?? [], (c) => c.title, fuzzyMatch).map(({ item: c, label, match }) => {
-        const pane = paneOfConversation(c.id);
-        return {
-          key: c.id,
-          run: pick(() => (pane === undefined ? openTerminal(cwd, c.command) : revealPane(pane))),
-          row: () => (
-            <>
-              <Highlight text={label} hits={match.hits} className="min-w-0 flex-1 truncate" />
-              {pane !== undefined && <span className="shrink-0 text-[10.5px] text-muted-foreground in-aria-selected:text-primary-foreground/90">open in a terminal</span>}
-              {c.branch && <span className="max-w-32 shrink-0 truncate font-mono text-[10.5px] text-muted-foreground in-aria-selected:text-primary-foreground/90">{c.branch}</span>}
-              <span className="shrink-0 text-[10.5px] text-muted-foreground in-aria-selected:text-primary-foreground/90">{relativeTime(c.modified)}</span>
-            </>
-          ),
-        };
-      });
-    }
     const src = source;
     if (!src) return [];
     if (mode === "projects") {
@@ -246,10 +206,10 @@ export function CommandPalette() {
         </>
       ),
     }));
-  }, [state, query, mode, list, conversations, keybindings, terminalOpen, terminalMaximized]);
+  }, [state, query, mode, list, keybindings, terminalOpen, terminalMaximized]);
   const { index, setIndex, move } = usePickerIndex(items.length, { wrap: true });
 
-  useEffect(() => setIndex(0), [query, mode, state, list, conversations]);
+  useEffect(() => setIndex(0), [query, mode, state, list]);
   useEffect(() => {
     listRef.current?.querySelector(`[data-option="${index}"]`)?.scrollIntoView({ block: "nearest" });
   }, [index]);
@@ -271,11 +231,6 @@ export function CommandPalette() {
 
   const empty = () => {
     if (commands) return "No matching commands";
-    if (mode === "conversations") {
-      if (error) return `Could not read the conversations: ${error}`;
-      if (conversations === null) return "Looking for conversations…";
-      return conversations.length ? "No matching conversations" : `No Claude Code conversations in ${folderName(cwd ?? "") || cwd} yet`;
-    }
     if (!root) return "Open a repository to find its files · type > for commands";
     if (mode === "changes") return source?.changes.length ? "No matching changes" : "No changes";
     if (mode === "projects") return "No matching projects";
@@ -301,7 +256,7 @@ export function CommandPalette() {
           run();
         }}
       >
-        <DialogPrimitive.Title className="sr-only">{commands ? "Command palette" : mode === "changes" ? "Open changed file" : mode === "projects" ? "New terminal in project" : mode === "conversations" ? "Resume a conversation" : "Open file"}</DialogPrimitive.Title>
+        <DialogPrimitive.Title className="sr-only">{commands ? "Command palette" : mode === "changes" ? "Open changed file" : mode === "projects" ? "New terminal in project" : "Open file"}</DialogPrimitive.Title>
         <input
           autoFocus
           role="combobox"
@@ -320,9 +275,7 @@ export function CommandPalette() {
                 ? "Open a changed file's diff · type > for commands"
                 : mode === "projects"
                   ? "Open a terminal in a project · type > for commands"
-                  : mode === "conversations"
-                    ? `Resume a conversation in ${folderName(cwd ?? "")} · type > for commands`
-                    : "Search files by name · type > for commands"
+                  : "Search files by name · type > for commands"
           }
           className="h-10 shrink-0 border-b border-border bg-transparent px-3 text-[13px] outline-none placeholder:text-subtle"
         />

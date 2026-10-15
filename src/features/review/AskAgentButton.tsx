@@ -1,4 +1,4 @@
-import { ChevronDown, Copy, MessageSquareText, SquareTerminal } from "lucide-react";
+import { ChevronDown, Copy, MessageSquareText } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -8,7 +8,7 @@ import { QuestionBox, useAskModel } from "@/components/QuestionBox";
 import { reviewAgent } from "@/lib/git/suggest";
 import { useSettings } from "@/lib/settings";
 import { agentName } from "@/lib/terminal/handoff";
-import { type Ask, askAgent, copyAsPrompt, pasteToRunningAgent } from "./askAgent";
+import { type Ask, askAgent, copyAsPrompt } from "./askAgent";
 
 /**
  * Hands part of a guided review to the user's agent in `root`'s terminal: a new session by
@@ -52,9 +52,6 @@ export function AskAgentButton({ root, ask, label = "Ask Agent", what = "this", 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
-          <DropdownMenuItem onSelect={() => void pasteToRunningAgent(root, ask())}>
-            <SquareTerminal /> Paste into Running Agent
-          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => copyAsPrompt(ask())}>
             <Copy /> Copy as Prompt
           </DropdownMenuItem>

@@ -1,37 +1,7 @@
-use crate::state::{blocking, in_repo, AppState, Res};
+use crate::state::{in_repo, AppState, Res};
 use crate::{fs, git, patch, revert};
 use std::path::Path;
 use tauri::State;
-
-/// Files' changes as a patch, for Copy as Patch (see patch::changes).
-#[tauri::command]
-pub async fn changes_patch(
-    state: State<'_, AppState>,
-    kind: String,
-    paths: Vec<String>,
-    sha: Option<String>,
-) -> Res<String> {
-    in_repo(&state, move |r| {
-        patch::changes(r, &kind, &paths, sha.as_deref())
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn commit_patch(state: State<'_, AppState>, sha: String) -> Res<String> {
-    in_repo(&state, move |r| patch::commit(r, &sha)).await
-}
-
-#[tauri::command]
-pub async fn stash_patch(state: State<'_, AppState>, sha: String) -> Res<String> {
-    in_repo(&state, move |r| patch::stash(r, &sha)).await
-}
-
-/// Off the main thread: it diffs two whole files.
-#[tauri::command]
-pub async fn lines_patch(request: patch::LinesPatch) -> Res<String> {
-    blocking(move || patch::lines(&request)).await
-}
 
 /// Puts `path` back as commit `sha` has it, in the working tree only. A link is checked where
 /// it is: git writes the link, not through it.

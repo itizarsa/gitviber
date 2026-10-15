@@ -23,10 +23,8 @@ import { plural } from "../format";
 import { IS_LINUX, IS_MAC, IS_WINDOWS } from "../platform";
 import { failed, toast } from "../app/toast";
 import { copyText } from "../app/clipboard";
+import { stoppedByQuit } from "../app/quit";
 import { loadSession, type SavedSession, scheduleSave } from "./session";
-import { lookedAt, watchAttention } from "./needsYou";
-import { agentPrompted } from "./agents";
-import { type PaneAgent } from "./agentState";
 import { reportWheelByRow } from "./wheel";
 import { paneKeys } from "./keys";
 import { forgetFind, watchFind } from "./find";
@@ -34,8 +32,7 @@ import { endHints, toggleHints } from "./hints";
 import { copyFromProgram, pasteInto, pasteText } from "./pasteInput";
 import { type Direction, equalize, type Layout, neighbor, paneOrder, removePane, resize, stepIn, type Split, splitPane } from "./layout";
 
-export { dismissRestore, restoreSession, resumable } from "./session";
-export { usePaneLooks } from "./agents";
+export { dismissRestore, restoreSession } from "./session";
 export { clearFind, endFind, findInTerminal } from "./find";
 
 /**
@@ -74,7 +71,7 @@ export interface Pane extends SaveState {
   ptySize: string;
   /** The commands shell integration marks. */
   marks: CommandMarks;
-  /** Typed into the shell once it's up, with its Enter if it ends with one (openTerminal, a restored agent). */
+  /** Typed into the shell once it's up, with its Enter if it ends with one (openTerminal). */
   run?: string;
 }
 
@@ -83,12 +80,8 @@ interface PaneInfo {
   cwd: string;
   /** What the shell set as the window title (OSC 0/2), if anything. */
   title: string;
-  /** It rang or sent a notification while not looked at, and hasn't been since. */
-  needsYou?: boolean;
   /** The user's name for it, over the title in its split header. */
   name?: string;
-  /** The coding agent running in it (agents.ts), until the shell prompts again. */
-  agent?: PaneAgent;
 }
 
 /** A tab: one or more panes, split right and down. */
@@ -168,7 +161,7 @@ export function useTerminals() {
   return useSyncExternalStore(subscribe, () => state);
 }
 
-/** A tab's panes by number (paneOrder): what its headers, its dots, the agents list and ⇧⌘←/→ go by. */
+/** A tab's panes by number (paneOrder): what its headers and ⇧⌘←/→ go by. */
 export const panesInOrder = (g: TerminalGroup) => paneOrder(g.layout).flatMap((id) => g.panes.find((p) => p.id === id) ?? []);
 
 export const activeGroup = () => state.groups.find((g) => g.id === state.active);
@@ -217,11 +210,8 @@ function send(p: Pane, data: string, binary = false) {
 /** How long a pane's size holds still before its program hears of it. */
 const PTY_RESIZE_WAIT = 50;
 
-/**
- * `dir`: where the shell starts, when that's not `cwd` (a split, a restore). `resume`: a restored
- * agent's command for the first prompt, and the line that says so.
- */
-export function createPane(cwd: string, restored?: { history: string; savedAt: number; resume?: { hint: string; run: string } }, dir = cwd): PaneInfo {
+/** `dir`: where the shell starts, when that's not `cwd` (a split, a restore). */
+export function createPane(cwd: string, restored?: { history: string; savedAt: number }, dir = cwd): PaneInfo {
   const id = nextId++;
   // The proposed API is the decorations, which find marks its matches with. The kitty keyboard
   // protocol is for programs that turn it on (Claude Code, Codex, neovim, fish 4): Shift+Enter is its
@@ -241,18 +231,11 @@ export function createPane(cwd: string, restored?: { history: string; savedAt: n
   term.loadAddon(search);
   const host = document.createElement("div");
   host.style.cssText = "width:100%;height:100%";
-  // Each prompt: where a `cd` settled, and the end of any agent that ran.
-  const prompted = () => {
-    void shellDir(p);
-    agentPrompted(p);
-  };
+  // Each prompt: where a `cd` settled.
+  const prompted = () => void shellDir(p);
   const p: Pane = { id, cwd, dir, term, fit, serialize, saved: restored?.history ?? null, serializedAt: 0, dirty: false, wroteAt: 0, search, gl: null, glContext: null, host, pty: null, started: false, pending: [], writing: false, unacked: 0, ptySize: "", marks: new CommandMarks(term, prompted) };
   panes.set(id, p);
   if (restored?.history) term.write(`${restored.history}\x1b[0m\r\n\x1b[2m── Restored from ${new Date(restored.savedAt).toLocaleString()} ──\x1b[0m\r\n`);
-  if (restored?.resume) {
-    p.run = restored.resume.run;
-    term.write(`\x1b[2m${restored.resume.hint}\x1b[0m\r\n`);
-  }
   term.onWriteParsed(() => {
     [p.dirty, p.wroteAt] = [true, Date.now()];
     scheduleSave();
@@ -269,7 +252,6 @@ export function createPane(cwd: string, restored?: { history: string; savedAt: n
     sendSizeSoon(p);
   });
   term.onTitleChange((title) => update(id, (info) => ({ ...info, title })));
-  watchAttention(p);
   watchFind(p);
   // A mouse wheel's notch arrives as ~53-100 px off macOS, so a row per row would scroll vim or
   // htop 3-5 rows a notch where it scrolled one; the replay is for the Mac trackpad it was made on.
@@ -687,15 +669,6 @@ export function pasteIntoPane(id: number) {
   if (p) void pasteInto(p);
 }
 
-/** The pane an agent runs in, in `cwd`'s worktree: the open tab's first, each tab's focused one first. */
-function agentPane(cwd: string) {
-  for (const g of [activeGroup(), ...state.groups]) {
-    const p = g && [g.panes.find((x) => x.id === g.focused), ...g.panes].find((x) => x?.cwd === cwd && x.agent);
-    if (p) return p.id;
-  }
-  return undefined;
-}
-
 function pasteIn(id: number, text: string) {
   const p = panes.get(id);
   if (!p) return false;
@@ -706,25 +679,13 @@ function pasteIn(id: number, text: string) {
 }
 
 /**
- * Pastes `text` into `cwd`'s worktree's terminal, shown and focused, without pressing Enter: a pane
- * an agent runs in, else the one the worktree last had focus in (the open tab's, else its first
- * tab's). False when the worktree has no terminal.
+ * Pastes `text` into `cwd`'s worktree's terminal, shown and focused, without pressing Enter: the
+ * one the worktree last had focus in (the open tab's, else its first tab's). False when the
+ * worktree has no terminal.
  */
 export function pasteToWorktree(cwd: string, text: string) {
   const g = [activeGroup(), ...state.groups].find((x) => x?.panes.some((p) => p.id === x.focused && p.cwd === cwd));
-  const id = agentPane(cwd) ?? g?.focused;
-  return id !== undefined && pasteIn(id, text);
-}
-
-/** The agent `pasteToAgent` would paste into in `cwd`'s worktree, as last looked up (refreshAgents); undefined for none. */
-export function worktreeAgent(cwd: string) {
-  const id = agentPane(cwd);
-  return id === undefined ? undefined : state.groups.flatMap((g) => g.panes).find((p) => p.id === id)?.agent;
-}
-
-/** `pasteToWorktree`, only into a pane an agent runs in: false when none does. */
-export function pasteToAgent(cwd: string, text: string) {
-  const id = agentPane(cwd);
+  const id = g?.focused;
   return id !== undefined && pasteIn(id, text);
 }
 
@@ -781,13 +742,12 @@ export function moveGroup(id: number, dir: 1 | -1) {
 }
 
 function focusPane(id: number) {
-  lookedAt(id);
   const g = state.groups.find((x) => x.panes.some((p) => p.id === id));
   if (!g || (g.focused === id && state.active === g.id)) return;
   set({ active: g.id, groups: state.groups.map((x) => (x === g ? { ...g, focused: id } : x)) });
 }
 
-/** A pane in view with the keys (a notification's, or one picked in the Agents menu): its tab, in the panel opened. */
+/** A pane in view with the keys: its tab, in the panel opened. */
 export function revealPane(id: number) {
   if (!panes.has(id)) return;
   focusPane(id);
@@ -901,3 +861,9 @@ export function useTerminalsMaximized() {
 export function useTerminalTabCount() {
   return useSyncExternalStore(subscribe, () => (state.open ? state.groups.length : 0));
 }
+
+// A quit asks first while a terminal runs a command (Settings → Terminal).
+stoppedByQuit(async () => {
+  const n = await pty.busy();
+  return n ? [`${plural(n, "terminal")} running a command`] : [];
+});

@@ -1,6 +1,6 @@
 //! What every command shares: the open repo, the locks around it, and the blocking pool.
 
-use crate::{agents, git, network, pty, suggest};
+use crate::{git, network, pty, suggest};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -11,8 +11,6 @@ pub(crate) struct AppState {
     pub(crate) repo: Mutex<Option<PathBuf>>,
     pub(crate) watcher: Mutex<Option<notify::RecommendedWatcher>>,
     pub(crate) ptys: pty::Ptys,
-    /// The agents running in terminals, and their state files watched.
-    pub(crate) agents: agents::Agents,
     pub(crate) network: network::Running,
     /// Held by commands that write the index: two `git add`s at once fail on index.lock.
     pub(crate) index: Arc<Mutex<()>>,

@@ -2,7 +2,7 @@
 //! modes, links, submodules, line endings, odd names, merges in progress and long undo chains.
 
 use super::*;
-use crate::patch::{self, LinesPatch};
+use crate::patch;
 use crate::revert::{self, RevertLines};
 
 fn repo(name: &str) -> (Sandbox, PathBuf) {
@@ -212,7 +212,7 @@ fn reverting_a_submodule_bump_moves_it_back_or_says_it_cannot() {
 }
 
 #[test]
-fn a_file_without_a_final_newline_reverts_by_line_and_copies_lines() {
+fn a_file_without_a_final_newline_reverts_by_line() {
     let (_sb, r) = repo("pe-no-eol");
     write_commit(&r, "a.txt", "1\n2\n3", "base");
     write_commit(&r, "a.txt", "1\n2\nTHREE", "edit");
@@ -226,24 +226,12 @@ fn a_file_without_a_final_newline_reverts_by_line_and_copies_lines() {
     };
     assert!(revert::lines(&r, &req).unwrap().is_empty());
     assert_eq!(disk(&r, "a.txt"), "1\n2\n3");
-
-    let lp = LinesPatch {
-        path: "a.txt".into(),
-        old_path: None,
-        original: Some("1\n2\n3".into()),
-        modified: Some("1\n2\n3\n4".into()),
-        removed: vec![3],
-        added: vec![3, 4],
-    };
-    let p = patch::lines(&lp).unwrap();
-    patch::apply(&r, p.as_bytes(), false, &["a.txt".into()]).unwrap();
-    assert_eq!(disk(&r, "a.txt"), "1\n2\n3\n4");
 }
 
 // ---- deleted files, the root commit, merge commits -----------------------------------------
 
 #[test]
-fn the_root_commit_reverts_restores_and_copies() {
+fn the_root_commit_reverts_and_restores() {
     let (_sb, r) = repo("pe-root");
     write_commit(&r, "a.txt", "1\n2\n", "root");
     let root = rev(&r, "HEAD");
@@ -253,10 +241,6 @@ fn the_root_commit_reverts_restores_and_copies() {
     assert!(out.is_err() || r.join("a.txt").exists());
     restore_file(&r, &root, "a.txt").unwrap();
     assert_eq!(disk(&r, "a.txt"), "1\n2\n");
-    let p = patch::changes(&r, "commit", &["a.txt".into()], Some(&root)).unwrap();
-    assert!(p.contains("new file mode"));
-    let mail = patch::commit(&r, &root).unwrap();
-    assert!(mail.contains("+1"));
     let req = RevertLines {
         sha: root,
         path: "a.txt".into(),
@@ -268,29 +252,12 @@ fn the_root_commit_reverts_restores_and_copies() {
     assert_eq!(disk(&r, "a.txt"), "1\n");
 }
 
-#[test]
-fn copying_a_merge_commit_as_a_patch_never_copies_another_commit() {
-    let (_sb, r) = repo("pe-merge-mail");
-    write_commit(&r, "a.txt", "a\n", "base");
-    run(&r, &["switch", "-q", "-c", "side"]).unwrap();
-    write_commit(&r, "s.txt", "side\n", "side commit");
-    run(&r, &["switch", "-q", "main"]).unwrap();
-    write_commit(&r, "m.txt", "main\n", "main commit");
-    run(&r, &["merge", "-q", "--no-ff", "-m", "merge side", "side"]).unwrap();
-    let out = patch::commit(&r, &rev(&r, "HEAD"));
-    assert!(
-        out.is_err(),
-        "a merge commit copied as some other commit: {}",
-        out.unwrap_or_default().lines().nth(3).unwrap_or_default()
-    );
-}
-
 // ---- odd paths -----------------------------------------------------------------------------
 
 // ---- unsafe patches ------------------------------------------------------------------------
 
 #[test]
-fn non_utf8_files_revert_and_say_why_they_do_not_copy() {
+fn non_utf8_files_revert_by_file_but_not_by_line() {
     let (_sb, r) = repo("pe-latin1");
     fs::write(r.join("l.txt"), b"caf\xe9\n1\n2\n").unwrap();
     commit_all(&r, "base");
@@ -299,9 +266,6 @@ fn non_utf8_files_revert_and_say_why_they_do_not_copy() {
     let sha = rev(&r, "HEAD");
     revert_file(&r, &sha, "l.txt", None).unwrap();
     assert_eq!(fs::read(r.join("l.txt")).unwrap(), b"caf\xe9\n1\n2\n");
-    assert!(patch::changes(&r, "commit", &["l.txt".into()], Some(&sha))
-        .unwrap_err()
-        .contains("UTF-8"));
     let req = RevertLines {
         sha,
         path: "l.txt".into(),
@@ -321,7 +285,7 @@ fn non_utf8_files_revert_and_say_why_they_do_not_copy() {
 // ---- undo and redo chains ------------------------------------------------------------------
 
 #[test]
-fn a_large_file_copies_selected_lines_and_reverts_by_line() {
+fn a_large_file_reverts_by_line() {
     let (_sb, r) = repo("pe-large");
     let old: String = (0..30_000).map(|i| format!("line {i}\n")).collect();
     let new = old
@@ -340,16 +304,6 @@ fn a_large_file_copies_selected_lines_and_reverts_by_line() {
     let started = std::time::Instant::now();
     assert!(revert::lines(&r, &req).unwrap().is_empty());
     assert_eq!(disk(&r, "big.txt"), old.replace("line 5\n", "LINE 5\n"));
-    let lp = LinesPatch {
-        path: "big.txt".into(),
-        old_path: None,
-        original: Some(old.clone()),
-        modified: Some(new.clone()),
-        removed: vec![6],
-        added: vec![6],
-    };
-    let p = patch::lines(&lp).unwrap();
-    assert!(p.len() < 1000, "one small hunk, not the whole file");
     assert!(started.elapsed().as_secs() < 10);
 }
 

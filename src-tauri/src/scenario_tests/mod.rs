@@ -7,7 +7,6 @@ mod commits;
 mod compare;
 mod compare_edges;
 mod content;
-mod conversations;
 // `sh` recorders stand in for the credential helper and askpass.
 #[cfg(unix)]
 mod history;
@@ -19,7 +18,6 @@ mod main_back_edges;
 #[cfg(unix)]
 mod open_in;
 mod operations;
-mod patch;
 mod patch_edges;
 mod review;
 mod rewrite;

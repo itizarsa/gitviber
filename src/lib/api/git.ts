@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { network } from "./network";
-import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesPatch, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, OpenInApp, Opened, OpenedRepo, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
+import type { About, Blame, Branch, BranchTracking, CleanUp, CleanedUp, Commit, CommitDetails, CommitOptions, Comparison, Definition, DefinitionRequest, DiffKind, DiffPair, Entry, FileChange, FileText, GitIdentity, GitInfo, GraphRefs, GuideAgent, Guided, GuideTarget, HistoryEdit, IgnoredFiles,  LargeFile, LinesRequest, LogFilter, MainBack, MergeCheck, NetOp, OpenInApp, Opened, OpenedRepo, ProjectInfo, PullMode, RemoteTags, RepoStatus, ResetMode, RevertLines, RewriteOutcome, SearchQuery, SearchResult, StackedBranches, Stash, StashFiles, SuggestKind, Whitespace, Worktree, WorktreeState } from "./types";
 
 /** Commits per history page: every list asks for this many, and a full page means there may be more. */
 export const LOG_PAGE = 200;
@@ -179,15 +179,6 @@ export const api = {
   removeIndexLock: (path: string) => invoke<void>("remove_index_lock", { path }),
   /** Stages, unstages or discards some lines of a diff (lines.rs); a discard is undoable. */
   changeLines: (request: LinesRequest) => invoke<void>("change_lines", { request }),
-  /** Files' changes as a patch: unstaged (untracked ones as new files), staged, or a commit's. `paths` take a rename's old path too. */
-  changesPatch: (kind: "unstaged" | "staged" | "commit", paths: string[], sha: string | null = null) => invoke<string>("changes_patch", { kind, paths, sha }),
-  /** A commit as `git format-patch` writes it. */
-  commitPatch: (sha: string) => invoke<string>("commit_patch", { sha }),
-  /** A stash's changes, its untracked files too. */
-  stashPatch: (sha: string) => invoke<string>("stash_patch", { sha }),
-  linesPatch: (request: LinesPatch) => invoke<string>("lines_patch", { request }),
-  /** Puts text on the clipboard after the click that asked for it is over, which the webview can't. */
-  clipboardWrite: (text: string) => invoke<void>("clipboard_write", { text }),
   /** `path` in the working tree as commit `sha` has it. */
   restoreFile: (sha: string, path: string) => invoke<void>("restore_file", { sha, path }),
   /** Undoes what commit `sha` did to the file, in the working tree. Returns the files left with conflicts. */

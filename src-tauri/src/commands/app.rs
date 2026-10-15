@@ -1,9 +1,7 @@
 use crate::state::{blocking, AppState, Res};
-use crate::{
-    agents, clipboard, conversations, errors, git, launch, menu, process, pty, translucency,
-};
+use crate::{clipboard, errors, git, launch, menu, process, pty, translucency};
 use std::path::Path;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 /// Any folder, unlike the repo commands: the shell can `cd` anywhere the user can anyway.
 /// `integration`: load the shell integration, whose scripts live in the app's cache folder.
@@ -47,12 +45,6 @@ pub async fn pty_write(state: State<'_, AppState>, id: u32, data: String, binary
 #[tauri::command]
 pub fn terminal_paste() -> Res<clipboard::Paste> {
     clipboard::read()
-}
-
-/// Text worked out after a click (a patch), onto the clipboard. Sync for the same reason as `terminal_paste`.
-#[tauri::command]
-pub fn clipboard_write(text: String) -> Res<()> {
-    clipboard::write_text(&text)
 }
 
 /// Sync for the same reason as `terminal_paste`.
@@ -108,7 +100,6 @@ pub fn pty_cwd(state: State<'_, AppState>, id: u32) -> Option<String> {
 
 #[tauri::command]
 pub fn pty_kill(state: State<'_, AppState>, id: u32) {
-    state.agents.forget(id);
     state.ptys.kill(id)
 }
 
@@ -117,60 +108,6 @@ pub fn pty_kill(state: State<'_, AppState>, id: u32) {
 #[tauri::command]
 pub fn pty_busy(state: State<'_, AppState>, ids: Option<Vec<u32>>) -> usize {
     state.ptys.busy(ids.as_deref())
-}
-
-/// The coding agents (agents.rs) the terminals `ids` run, by id; a terminal with none isn't
-/// listed. Each one's state file is watched from then on, its changes sent as "agent-state".
-#[tauri::command]
-pub async fn pty_agents(
-    app: AppHandle,
-    ids: Vec<u32>,
-) -> Res<std::collections::HashMap<u32, agents::Agent>> {
-    blocking(move || {
-        let state = app.state::<AppState>();
-        let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
-            return Ok(Default::default());
-        };
-        let mut running = std::collections::HashMap::new();
-        for id in ids {
-            let leader = state.ptys.foreground(id);
-            let sink = || -> agents::Sink {
-                let app = app.clone();
-                std::sync::Arc::new(move |id, state| {
-                    let _ = app.emit("agent-state", AgentState { id, state });
-                })
-            };
-            if let Some(agent) = state.agents.agent(id, leader, &home, sink) {
-                running.insert(id, agent);
-            }
-        }
-        Ok(running)
-    })
-    .await
-}
-
-/// The conversations agents had in `cwd` (conversations.rs), newest first: read now, never kept.
-#[tauri::command]
-pub async fn agent_conversations(cwd: String) -> Res<Vec<conversations::Conversation>> {
-    blocking(move || {
-        let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
-            return Ok(vec![]);
-        };
-        Ok(conversations::list(std::path::Path::new(&cwd), &home))
-    })
-    .await
-}
-
-#[derive(serde::Serialize, Clone)]
-struct AgentState {
-    id: u32,
-    state: Option<&'static str>,
-}
-
-/// Which of `paths` are folders still: a restored agent resumes only where it ran.
-#[tauri::command]
-pub fn folders_left(paths: Vec<String>) -> Vec<bool> {
-    paths.iter().map(|p| Path::new(p).is_dir()).collect()
 }
 
 /// The page saved what it keeps on the way out (quit.rs).
