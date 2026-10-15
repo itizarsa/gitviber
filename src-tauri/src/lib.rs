@@ -1,7 +1,6 @@
 mod agents;
 pub mod askpass;
 mod backup;
-mod cli;
 mod clipboard;
 mod commands;
 mod conversations;
@@ -277,7 +276,6 @@ pub fn run() {
             commands::sync::cancel_network,
             commands::sync::askpass_answer,
             commands::sync::askpass_ready,
-            commands::repo::clone_repo,
             commands::repo::init_repo,
             commands::repo::trust_folder,
             commands::sync::merge,
@@ -352,7 +350,6 @@ pub fn run() {
             commands::app::show_window,
             commands::app::open_dropped,
             commands::app::take_opened,
-            commands::app::install_cli,
             commands::app::set_translucent,
             commands::app::reduce_transparency,
         ])

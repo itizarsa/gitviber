@@ -232,8 +232,6 @@ export interface Settings {
   signOffRepos: string[];
   /** Minutes between quiet fetches of the open repo (one of FETCH_INTERVALS); 0 is off. */
   backgroundFetch: number;
-  /** Where the last clone went; the next one offers the same folder. */
-  cloneParent: string | null;
   /** New worktrees go in `<worktreeRoot>/<project>/` rather than `<project>.worktrees` beside it; null is off. */
   worktreeRoot: string | null;
   /** The user's own agent CLI, split like a shell command line (suggest.rs). */
@@ -315,7 +313,6 @@ const DEFAULTS: Settings = {
   signOffRepos: [],
   // Off until asked for: a fetch can prompt for an SSH key (1Password, a hardware key) every few minutes.
   backgroundFetch: 0,
-  cloneParent: null,
   worktreeRoot: null,
   suggestCommand: "claude -p",
   suggestModels: {},
@@ -410,7 +407,6 @@ function load(): Settings {
     if (typeof s.reviewLanguage !== "string") s.reviewLanguage = DEFAULTS.reviewLanguage;
     s.signOffRepos = Array.isArray(s.signOffRepos) ? s.signOffRepos.filter((p: unknown) => typeof p === "string") : DEFAULTS.signOffRepos;
     if (!FETCH_INTERVALS.includes(s.backgroundFetch)) s.backgroundFetch = DEFAULTS.backgroundFetch;
-    if (typeof s.cloneParent !== "string") s.cloneParent = null;
     if (typeof s.worktreeRoot !== "string") s.worktreeRoot = null;
     if (typeof s.openInApp !== "string") s.openInApp = DEFAULTS.openInApp;
     s.openInCustom = Array.isArray(s.openInCustom)
@@ -562,11 +558,11 @@ export function updateSettings(patch: Partial<Settings>) {
 
 /**
  * Back to the defaults, except what the user built up rather than chose: the repos they sign
- * off in, their own Open in apps, the folder clones go to.
+ * off in, their own Open in apps.
  */
 export function resetSettings() {
-  const { signOffRepos, openInCustom, cloneParent } = current;
-  updateSettings({ ...DEFAULTS, signOffRepos, openInCustom, cloneParent });
+  const { signOffRepos, openInCustom } = current;
+  updateSettings({ ...DEFAULTS, signOffRepos, openInCustom });
 }
 
 export function subscribeSettings(l: () => void) {

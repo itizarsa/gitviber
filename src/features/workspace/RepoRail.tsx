@@ -5,7 +5,7 @@ import { useAsyncValue } from "@/hooks/useAsyncValue";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/app/clipboard";
 import { revealProject } from "@/lib/app/openIn";
-import { useCommands, useShortcut } from "@/lib/commands/keybindings";
+import { useShortcut } from "@/lib/commands/keybindings";
 import { folderName } from "@/lib/path";
 import { REVEAL_LABEL } from "@/lib/platform";
 import type { RepoData } from "@/lib/repo/useRepo";
@@ -45,8 +45,6 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
     [recent.join("\n")],
     new Map<string, { exists: boolean }>(),
   );
-  // Switch Project (the palette) puts the keys on the open repo's tile.
-  useCommands({ "file.switchProject": () => document.querySelector<HTMLElement>('[data-repo-rail] [aria-current="true"]')?.focus() });
   const totals = changeTotals(repo);
   return (
     <nav data-repo-rail aria-label="Repositories" className={cn("flex w-12 shrink-0 flex-col items-center gap-1.5 bg-sidebar glass-sidebar pb-2", side === "left" ? "border-r" : "border-l", "border-border")}>

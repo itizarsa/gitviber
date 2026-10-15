@@ -8,7 +8,6 @@ import { Toaster } from "@/components/Toaster";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AboutDialog } from "@/features/app/AboutDialog";
-import { CloneDialog, openClone } from "@/features/projects/CloneDialog";
 import { CommandPalette, showCommands } from "@/features/palette/CommandPalette";
 import { IdentityDialog } from "@/features/app/IdentityDialog";
 import { NeedsGit } from "@/features/app/NeedsGit";
@@ -185,7 +184,6 @@ export function App() {
   // App-wide commands, so they also work on the welcome screen.
   useCommands({
     "file.openRepo": () => onOpen(),
-    "file.cloneRepo": openClone,
     "workbench.openSettings": () => openSettings(),
     "workbench.showCommands": showCommands,
     "help.shortcuts": () => openSettings("shortcuts"),
@@ -206,7 +204,6 @@ export function App() {
         (git && noGit ? <NeedsGit info={git} onRecheck={recheckGit} /> : <Welcome recent={recent} onOpenRepo={onOpen} onForgetRepo={onForget} onReorderRepos={onReorder} onLocateRepo={onLocate} />)
       )}
       <IdentityDialog root={opened?.root ?? null} />
-      <CloneDialog onCloned={onOpen} />
       <SettingsDialog main={opened?.main ?? null} />
       <AboutDialog />
       <PromptDialog />

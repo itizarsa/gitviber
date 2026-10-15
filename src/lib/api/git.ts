@@ -78,8 +78,6 @@ export const api = {
   /** That side as a file to copy: the working tree's own, or a stored version saved under its name. */
   mediaFile: (kind: DiffKind, path: string, oldPath: string | null, sha: string | null, base: string | null, original: boolean) =>
     invoke<string>("media_file", { kind, path, oldPath, sha, base, original }),
-  /** Puts `gitviber` on PATH (cli.rs) and says where. */
-  installCli: () => invoke<string>("install_cli"),
   /** Ends the app, once the page saved what it keeps (lib/app/quit). */
   quit: () => invoke<void>("quit"),
   /** After a ⌘Q: the page asks the user first, they cancelled, or it saves now (quit.rs). */
@@ -268,7 +266,6 @@ export const api = {
   /** When the repo last fetched (FETCH_HEAD's mtime, Unix seconds); null if never. */
   lastFetch: () => invoke<number | null>("last_fetch"),
   /** Clones into `parent/name` (refused if that holds anything); returns the new repo's path. */
-  cloneRepo: (url: string, parent: string, name: string, op?: NetOp) => network<string>("clone_repo", { url, parent, name }, op),
   /** `git init` in a folder that isn't in a repository yet. */
   initRepo: (path: string) => invoke<void>("init_repo", { path }),
   /** Adds the repository git refuses at `path` for its owner to the global safe.directory: the folder git's error names, only while git refuses it. */

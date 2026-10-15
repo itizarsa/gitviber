@@ -1,6 +1,6 @@
 use crate::state::{blocking, AppState, Res};
 use crate::{
-    agents, cli, clipboard, conversations, errors, git, launch, menu, process, pty, translucency,
+    agents, clipboard, conversations, errors, git, launch, menu, process, pty, translucency,
 };
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -77,12 +77,6 @@ pub fn set_translucent(window: tauri::WebviewWindow, on: bool, blur: u32) -> Res
 #[tauri::command]
 pub fn reduce_transparency() -> bool {
     translucency::reduce_transparency()
-}
-
-/// The `gitviber` command (cli.rs).
-#[tauri::command]
-pub async fn install_cli() -> Res<String> {
-    blocking(cli::install).await
 }
 
 /// Paths opened from outside the window since the page last asked (opened.rs). Off the main

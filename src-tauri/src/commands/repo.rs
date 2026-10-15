@@ -1,7 +1,6 @@
-use crate::state::{blocking, in_repo, repo, watch_network, AppState, Res};
-use crate::{fs, git, network, shell, watch};
+use crate::state::{blocking, in_repo, repo, AppState, Res};
+use crate::{fs, git, shell, watch};
 use std::path::{Path, PathBuf};
-use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
 #[derive(serde::Serialize)]
@@ -198,20 +197,6 @@ pub async fn reveal_project(path: String) -> Res<()> {
         fs::reveal(Path::new(&top), "")
     })
     .await
-}
-
-/// Like open_repo, any folder the user picked: the clone lands in `parent/name`.
-#[tauri::command]
-pub async fn clone_repo(
-    state: State<'_, AppState>,
-    url: String,
-    parent: String,
-    name: String,
-    op: String,
-    progress: Channel<network::Progress>,
-) -> Res<String> {
-    let net = watch_network(&state, op, progress);
-    blocking(move || git::clone(Path::new(&parent), &url, &name, &net)).await
 }
 
 /// After the user said to trust a repository git refused for its owner; see git::trust_folder.

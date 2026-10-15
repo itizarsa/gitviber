@@ -288,46 +288,6 @@ fn gone_upstream_is_unknown_not_pushed() {
     assert!(!log(&local, None, 0, 5).unwrap()[0].on_origin);
 }
 
-/// Clone streams progress, tracks origin, and never writes into a folder that holds something.
-#[test]
-fn clone_from_a_local_bare_remote() {
-    let sb = Sandbox::new("clone");
-    sb.remote_with_clones(0);
-    // file:// takes git's transfer path (a plain path would hardlink), so progress shows.
-    let url = format!("file://{}", sb.path("origin.git").display());
-    let seen = std::sync::Arc::new(Mutex::new(Vec::new()));
-    let sink = seen.clone();
-    let running = crate::network::Running::default();
-    let net = running.start("clone".into(), move |p| sink.lock().unwrap().push(p.phase));
-    let dest = clone(&sb.0, &url, "mine", &net).unwrap();
-    assert_eq!(PathBuf::from(&dest), sb.path("mine"));
-    let st = status(Path::new(&dest)).unwrap();
-    assert_eq!(st.branch.as_deref(), Some("main"));
-    assert_eq!(st.upstream.as_deref(), Some("origin/main"));
-    assert!(seen
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|p| p == "Receiving objects"));
-
-    fs::create_dir_all(sb.path("taken")).unwrap();
-    fs::write(sb.path("taken/keep.txt"), "mine\n").unwrap();
-    let err = clone(&sb.0, &url, "taken", &Net::default()).unwrap_err();
-    assert!(err.contains("isn't empty"), "{err}");
-    assert_eq!(fs::read_dir(sb.path("taken")).unwrap().count(), 1);
-    fs::create_dir_all(sb.path("empty")).unwrap();
-    clone(&sb.0, &url, "empty", &Net::default()).unwrap();
-    for bad in ["", "..", "a/b"] {
-        assert!(clone(&sb.0, &url, bad, &Net::default()).is_err(), "{bad}");
-    }
-    let missing = format!("file://{}", sb.path("nope.git").display());
-    assert!(clone(&sb.0, &missing, "nope", &Net::default()).is_err());
-    assert!(
-        !sb.path("nope").exists(),
-        "a failed clone leaves its folder behind"
-    );
-}
-
 /// A fetch from the main worktree counts for its linked worktrees, which keep FETCH_HEADs of
 /// their own; otherwise the background fetch would fetch again from each of them.
 #[test]

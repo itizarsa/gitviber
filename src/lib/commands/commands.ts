@@ -16,8 +16,6 @@ export const COMMANDS = [
   // Holding ⌘ alone shows it too (ShortcutOverlay).
   { id: "workbench.shortcutOverlay", title: "Show Shortcut Overlay", category: "General", keys: ["cmd+/"] },
   { id: "file.openRepo", title: "Open Repository", category: "General", keys: ["cmd+o"] },
-  { id: "file.cloneRepo", title: "Clone Repository", category: "General", keys: [] },
-  { id: "file.switchProject", title: "Switch Project", category: "General", keys: [] },
   // Not ⌘R: a reload ends every terminal (pty.rs kill_all), and in the terminal ⌘R names a pane.
   { id: "window.reload", title: "Reload Window", category: "General", keys: ["shift+cmd+r"] },
   // The file watcher refreshes on its own; this is for changes it can't see.

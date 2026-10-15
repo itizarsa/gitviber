@@ -98,7 +98,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     // Opens the app's own About window: a native panel can't hold links or buttons.
     let about = b.command("app.about", "About GitViber")?;
     let settings = b.command("workbench.openSettings", "Settings…")?;
-    let install_cli = b.command("app.installCli", "Install 'gitviber' Command…")?;
     // The app menu and Window are macOS's. GTK only builds separators, clipboard items and
     // About, so off macOS they'd be near empty: Settings goes under File and About under
     // Help instead, as Linux apps have them.
@@ -110,7 +109,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &about,
             &sep()?,
             &settings,
-            &install_cli,
             &sep()?,
             &native(PredefinedMenuItem::services)?,
             &sep()?,
@@ -130,7 +128,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         "File",
         &[
             &b.command("file.openRepo", "Open Repository…")?,
-            &b.command("file.cloneRepo", "Clone Repository…")?,
             &recent,
             &sep()?,
             &b.command("workbench.quickOpen", "Open File…")?,
@@ -148,10 +145,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     )?;
     if !mac {
         file.append_items(&[&sep()?, &settings])?;
-        // Windows has no installer for it yet.
-        if cfg!(target_os = "linux") {
-            file.append(&install_cli)?;
-        }
     }
 
     let find = b.command("editor.find", "Find")?;
