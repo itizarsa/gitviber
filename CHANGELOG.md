@@ -6,6 +6,13 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-15
+
+### Changed
+
+- **Repository tiles** in the rail, the project list and the palette are tinted in the repo's color with its letters in that color, the open one outlined in the theme's accent. Their two letters come from the name's words and skip punctuation: `billing-api` is BA, `.claude` CL.
+- **Maximize Terminal** fills the code area only: the rail and the sidebar stay in view.
+
 ## [0.3.0] - 2026-10-15
 
 macOS only, and trimmed further.
@@ -609,7 +616,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/itizarsa/gitviber/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/itizarsa/gitviber/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/itizarsa/gitviber/compare/v0.1.13...v0.2.0
 [0.1.13]: https://github.com/emircan-sahin/gitviber/compare/v0.1.12...v0.1.13
