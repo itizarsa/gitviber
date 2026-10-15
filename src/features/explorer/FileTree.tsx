@@ -4,7 +4,7 @@ import { Fragment, useEffect, useImperativeHandle, useMemo, useRef, useState } f
 import { useListFilter } from "@/components/ListFilter";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { api, type ChangeStatus, type Entry, errorMessage, type RepoStatus } from "@/lib/api";
-import { IS_MAC, primaryKey, REVEAL_LABEL } from "@/lib/platform";
+import { primaryKey, REVEAL_LABEL } from "@/lib/platform";
 import { matchesCommand, useShortcut } from "@/lib/commands/keybindings";
 import { focusPanel } from "@/lib/ui/panels";
 import { isMenuKey, openRowMenu } from "@/lib/ui/useListNav";
@@ -165,7 +165,7 @@ export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathM
   /** Where a ⇧-range starts: the last anchor while its row still shows (a collapsed folder or the filter can hide it). */
   const anchorFor = (fallback: string) => (shows(picked?.anchor) ? picked.anchor : fallback);
 
-  // ⌘-click (Ctrl off macOS) toggles a row, ⇧-click picks the range from the anchor; neither opens it, as in VS Code.
+  // ⌘-click toggles a row, ⇧-click picks the range from the anchor; neither opens it, as in VS Code.
   // The ⌘ check comes first, as in the Changes panel.
   const click = (e: Entry, ev: React.MouseEvent) => {
     setSelected(e.path);
@@ -497,7 +497,7 @@ export function FileTree({ status, revision, activeKey, onOpen, onHover, onPathM
             <OpenInMenuItem path={t?.path ?? ""} />
           </>
         )}
-        {IS_MAC && targetFiles.length > 0 && status && (
+        {targetFiles.length > 0 && status && (
           <ContextMenuItem onSelect={() => copyFiles(targetFiles.map((e) => `${status.root}/${e.path}`))}>
             <Copy /> {copyLabel(targetFiles.map((e) => e.path))}
           </ContextMenuItem>

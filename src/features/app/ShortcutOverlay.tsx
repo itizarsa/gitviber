@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { bindingsFor, COMMANDS, commandFor, type Overrides } from "@/lib/commands/commands";
-import { IS_MAC } from "@/lib/platform";
 import { canRun, eventChord, matchesCommand, runsAt, useCommands } from "@/lib/commands/keybindings";
 import { focusedPanel, type Panel } from "@/lib/ui/panels";
 import { untilReleased } from "@/lib/ui/held";
@@ -16,8 +15,7 @@ import { Keycaps } from "@/components/ui/kbd";
  * hovers through it, and a click on it only closes it, leaving focus where it was.
  */
 
-// Off macOS "cmd" is Ctrl (commands.ts), so that's the key to hold there.
-const HOLD_KEY = IS_MAC ? "Meta" : "Control";
+const HOLD_KEY = "Meta";
 const HOLD_MS = 1450;
 
 /** The panel's own command categories, listed first while it has focus. */
@@ -44,14 +42,10 @@ const FIXED: { category: string; rows: [string[], string][] }[] = [
       [["cmd+x"], "Cut"],
       [["cmd+v"], "Paste"],
       [["cmd+a"], "Select all"],
-      ...(IS_MAC
-        ? ([
-            [["cmd+h"], "Hide GitViber"],
-            [["cmd+m"], "Minimize"],
-            [["cmd+`"], "Next window"],
-            [["cmd+q"], "Quit"],
-          ] as [string[], string][])
-        : []),
+      [["cmd+h"], "Hide GitViber"],
+      [["cmd+m"], "Minimize"],
+      [["cmd+`"], "Next window"],
+      [["cmd+q"], "Quit"],
     ],
   },
 ];
@@ -144,7 +138,7 @@ export function ShortcutOverlay() {
         // Macs don't repeat modifiers; other systems do, and a repeat cancelling the timer kept it from showing.
         if (e.repeat) return;
         // Alone: with ⇧ or ⌥ it's the start of a chord.
-        const alone = !e.altKey && !e.shiftKey && !(IS_MAC ? e.ctrlKey : e.metaKey);
+        const alone = !e.altKey && !e.shiftKey && !e.ctrlKey;
         // The other ⌘ going down restarts it.
         cancel();
         // A chord's ⌘ ends the hold. Not the other ⌘ alone: a held overlay still waits for ⌘ to go up.
@@ -210,7 +204,7 @@ export function ShortcutOverlay() {
         <div className="flex shrink-0 items-baseline gap-3 border-b border-border px-5 py-3">
           <span className="text-[13px] font-semibold">Keyboard Shortcuts</span>
           <span className="text-[11.5px] text-subtle">Change any of them in Settings → Keyboard Shortcuts</span>
-          <span className="ml-auto text-[11.5px] text-subtle">{state === "held" ? `Release ${IS_MAC ? "⌘" : "Ctrl"} to close` : "Any key closes"}</span>
+          <span className="ml-auto text-[11.5px] text-subtle">{state === "held" ? "Release ⌘ to close" : "Any key closes"}</span>
         </div>
         {/* A short window scrolls the list: with the columns' height capped, the rest went off to the side, clipped. */}
         <div ref={scroller} onScroll={measure} className="min-h-0 overflow-y-auto px-5 pt-3">

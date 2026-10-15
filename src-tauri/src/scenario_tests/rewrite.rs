@@ -1106,7 +1106,6 @@ fn hooks_that_reject_commits() {
     for hook in ["pre-commit", "commit-msg", "pre-merge-commit"] {
         let p = hooks.join(hook);
         fs::write(&p, "#!/bin/sh\necho rejected by hook >&2\nexit 1\n").unwrap();
-        #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             fs::set_permissions(&p, fs::Permissions::from_mode(0o755)).unwrap();
@@ -1147,7 +1146,6 @@ fn hooks_that_reject_commits() {
     // A pre-rebase hook that says no: nothing happens, and nothing is left half done.
     let p = hooks.join("pre-rebase");
     fs::write(&p, "#!/bin/sh\nexit 1\n").unwrap();
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&p, fs::Permissions::from_mode(0o755)).unwrap();
@@ -1533,7 +1531,6 @@ fn a_prepare_commit_msg_hook_runs_once_per_commit() {
     let p = r.join(".git/hooks/prepare-commit-msg");
     fs::create_dir_all(p.parent().unwrap()).unwrap();
     fs::write(&p, "#!/bin/sh\necho hooked >> \"$1\"\n").unwrap();
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&p, fs::Permissions::from_mode(0o755)).unwrap();

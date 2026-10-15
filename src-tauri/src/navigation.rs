@@ -9,7 +9,7 @@ pub fn guard<R: Runtime>(dev_url: Option<Url>) -> TauriPlugin<R> {
         .build()
 }
 
-/// The bundled app (tauri://localhost; http://tauri.localhost on Windows), the blob: URLs
+/// The bundled app (tauri://localhost), the blob: URLs
 /// media previews show in frames, about:blank, and the dev server in debug builds.
 fn allowed(url: &Url, dev: Option<&Url>) -> bool {
     match url.scheme() {

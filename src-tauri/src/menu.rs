@@ -56,33 +56,11 @@ impl Builder<'_> {
     }
 }
 
-/// As REVEAL_LABEL in src/lib/platform.ts: Finder is macOS's file manager.
-const REVEAL: &str = if cfg!(target_os = "macos") {
-    "Reveal in Finder"
-} else if cfg!(windows) {
-    "Show in Explorer"
-} else {
-    "Show in Folder"
-};
+/// As REVEAL_LABEL in src/lib/platform.ts.
+const REVEAL: &str = "Reveal in Finder";
 
 /// GitHub Desktop's name for it.
-const SHOW_LOGS: &str = if cfg!(target_os = "macos") {
-    "Show Logs in Finder"
-} else {
-    "Show Logs"
-};
-
-/// GTK opens the menu bar on F10 before the page sees the key, which took it from htop and mc
-/// in the terminal. Geany and Vim turn it off for the same reason; the menu stays a click away.
-#[cfg(target_os = "linux")]
-pub fn free_f10() {
-    use gtk::prelude::*;
-    if let Some(settings) = gtk::Settings::default() {
-        if settings.find_property("gtk-menu-bar-accel").is_some() {
-            settings.set_property("gtk-menu-bar-accel", None::<&str>);
-        }
-    }
-}
+const SHOW_LOGS: &str = "Show Logs in Finder";
 
 pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let mut b = Builder {
@@ -98,11 +76,6 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     // Opens the app's own About window: a native panel can't hold links or buttons.
     let about = b.command("app.about", "About GitViber")?;
     let settings = b.command("workbench.openSettings", "Settings…")?;
-    // The app menu and Window are macOS's. GTK only builds separators, clipboard items and
-    // About, so off macOS they'd be near empty: Settings goes under File and About under
-    // Help instead, as Linux apps have them.
-    let mac = cfg!(target_os = "macos");
-
     let app_menu = submenu(
         "GitViber",
         &[
@@ -143,34 +116,25 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &b.command("file.openIn", "Open in…")?,
         ],
     )?;
-    if !mac {
-        file.append_items(&[&sep()?, &settings])?;
-    }
 
     let find = b.command("editor.find", "Find")?;
     let find_in_files = b.command("search.findInFiles", "Find in Files")?;
-    // The native items, so text fields keep their own undo, clipboard and selection. GTK's only
-    // show their keys (clicked, they'd need libxdo, and type into a terminal), so off macOS the
-    // menu has just the finds; the keys work in text fields either way.
-    let edit = if mac {
-        submenu(
-            "Edit",
-            &[
-                &native(PredefinedMenuItem::undo)?,
-                &native(PredefinedMenuItem::redo)?,
-                &sep()?,
-                &native(PredefinedMenuItem::cut)?,
-                &native(PredefinedMenuItem::copy)?,
-                &native(PredefinedMenuItem::paste)?,
-                &native(PredefinedMenuItem::select_all)?,
-                &sep()?,
-                &find,
-                &find_in_files,
-            ],
-        )?
-    } else {
-        submenu("Edit", &[&find, &find_in_files])?
-    };
+    // The native items, so text fields keep their own undo, clipboard and selection.
+    let edit = submenu(
+        "Edit",
+        &[
+            &native(PredefinedMenuItem::undo)?,
+            &native(PredefinedMenuItem::redo)?,
+            &sep()?,
+            &native(PredefinedMenuItem::cut)?,
+            &native(PredefinedMenuItem::copy)?,
+            &native(PredefinedMenuItem::paste)?,
+            &native(PredefinedMenuItem::select_all)?,
+            &sep()?,
+            &find,
+            &find_in_files,
+        ],
+    )?;
 
     let view = submenu(
         "View",
@@ -272,25 +236,17 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &b.command("help.license", "View License")?,
         ],
     )?;
-    if !mac {
-        help.append_items(&[&sep()?, &about])?;
-    }
 
     // Window lists the open windows; Help gets macOS's search box, which finds menu items.
-    #[cfg(target_os = "macos")]
     {
         window.set_as_windows_menu_for_nsapp()?;
         help.set_as_help_menu_for_nsapp()?;
     }
 
-    let menu = if mac {
-        Menu::with_items(
-            app,
-            &[&app_menu, &file, &edit, &view, &go, &git, &window, &help],
-        )?
-    } else {
-        Menu::with_items(app, &[&file, &edit, &view, &go, &git, &help])?
-    };
+    let menu = Menu::with_items(
+        app,
+        &[&app_menu, &file, &edit, &view, &go, &git, &window, &help],
+    )?;
     app.manage(Handles {
         items: b.items,
         recent,
@@ -337,7 +293,6 @@ pub fn update(
 
 /// macOS moves a key equivalent to the key that types it on a US layout, so on Turkish Q
 /// ⌘, showed as ⌘Ö. The page matches the character typed; the menu must show that one.
-#[cfg(target_os = "macos")]
 pub fn keep_typed_key_equivalents() {
     use objc2::msg_send;
     use objc2::runtime::{AnyClass, AnyObject, Bool};

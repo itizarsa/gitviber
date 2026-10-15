@@ -496,7 +496,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn cancel_stops_the_whole_process_group() {
         let dir = std::env::temp_dir().join(format!("gitviber-net-{}", std::process::id()));

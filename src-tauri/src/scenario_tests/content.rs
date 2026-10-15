@@ -257,7 +257,6 @@ fn english_git_keeps_utf8_names_and_messages() {
     assert!(err.contains("not a git repository"), "{err}");
 }
 
-#[cfg(unix)]
 #[test]
 fn symlinks_cannot_escape_the_repo() {
     let sb = Sandbox::new("escape");
@@ -293,7 +292,6 @@ fn symlinks_cannot_escape_the_repo() {
     vfs::write_file(&r, "ok.txt", "fine").unwrap();
 }
 
-#[cfg(unix)]
 #[test]
 fn a_symlink_diffs_as_its_target_path() {
     let sb = Sandbox::new("linkdiff");

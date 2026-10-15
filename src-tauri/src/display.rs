@@ -2,7 +2,6 @@
 //! ("Prefer Page Rendering Updates near 60fps"), which makes scrolling a virtualized
 //! list feel stuttery next to native apps. We switch that WebKit feature off.
 
-#[cfg(target_os = "macos")]
 pub fn unlock_high_refresh_rate<R: tauri::Runtime>(webview: &tauri::WebviewWindow<R>) {
     use objc2::runtime::{AnyClass, AnyObject, Bool, Sel};
     use objc2::{msg_send, sel};
@@ -35,6 +34,3 @@ pub fn unlock_high_refresh_rate<R: tauri::Runtime>(webview: &tauri::WebviewWindo
         }
     });
 }
-
-#[cfg(not(target_os = "macos"))]
-pub fn unlock_high_refresh_rate<R: tauri::Runtime>(_webview: &tauri::WebviewWindow<R>) {}

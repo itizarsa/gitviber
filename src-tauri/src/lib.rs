@@ -1,3 +1,7 @@
+// macOS only: the code calls AppKit and libproc directly.
+#[cfg(not(target_os = "macos"))]
+compile_error!("GitViber builds for macOS only.");
+
 pub mod askpass;
 mod backup;
 mod clipboard;
@@ -5,7 +9,7 @@ mod commands;
 mod definitions;
 #[cfg(debug_assertions)]
 mod dev_bridge;
-#[cfg(all(target_os = "macos", debug_assertions))]
+#[cfg(debug_assertions)]
 pub mod dev_bundle;
 mod diff;
 mod display;
@@ -21,7 +25,6 @@ mod local_socket;
 mod menu;
 mod navigation;
 mod network;
-#[cfg(target_os = "macos")]
 mod objc;
 mod open_in;
 mod opened;
@@ -42,10 +45,7 @@ mod state;
 mod suggest;
 mod titlebar;
 mod translucency;
-#[cfg(target_os = "linux")]
-mod trash;
 mod watch;
-#[cfg(desktop)]
 mod window_state;
 
 use state::AppState;
@@ -54,7 +54,6 @@ use tauri::{Emitter, Manager};
 /// The page shows its window once its theme is applied (main.tsx, settings.tsx); if it never gets that far, a
 /// visible window beats one that seems not to open. Called once the window is built, hidden.
 fn show_eventually(window: tauri::WebviewWindow) {
-    #[cfg(desktop)]
     window_state::restored(&window);
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(3));
@@ -68,11 +67,9 @@ fn show_eventually(window: tauri::WebviewWindow) {
 fn show(window: &tauri::WebviewWindow) {
     let _ = window.show();
     translucency::shown(window);
-    #[cfg(desktop)]
     window_state::shown(window);
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     shell::resolve_in_background();
     let context = tauri::generate_context!();
@@ -82,24 +79,10 @@ pub fn run() {
     } else {
         None
     };
-    let builder = tauri::Builder::default();
-    // First: a second launch exits in its setup, before the other plugins start theirs. Not in
-    // dev builds, which would hand their arguments to the installed app and quit.
-    #[cfg(all(any(target_os = "linux", windows), not(debug_assertions)))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-        let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
-        opened::push(app, opened::from_args(&args, std::path::Path::new(&cwd)));
-        // A launcher click names no folder, but still means "show me the app".
-        opened::raise(app);
-    }));
-    let mut builder = builder
+    tauri::Builder::default()
         .plugin(navigation::guard(dev_url))
-        .plugin(tauri_plugin_dialog::init());
-    #[cfg(desktop)]
-    {
-        builder = builder.plugin(window_state::plugin());
-    }
-    builder
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(window_state::plugin())
         .menu(menu::build)
         .on_menu_event(|app, event| {
             if event.id() == menu::QUIT {
@@ -152,12 +135,8 @@ pub fn run() {
                 errors::init(dir);
             }
             askpass::serve(app.handle().clone());
-            #[cfg(target_os = "macos")]
             menu::keep_typed_key_equivalents();
-            #[cfg(target_os = "macos")]
             translucency::watch_reduce_transparency(app.handle());
-            #[cfg(target_os = "linux")]
-            menu::free_f10();
             #[cfg(debug_assertions)]
             dev_bridge::start(app.handle().clone());
             if let Some(webview) = app.get_webview_window("main") {
@@ -342,14 +321,11 @@ pub fn run() {
         .expect("error while building GitViber")
         .run(|app, event| {
             // A folder dropped on the Dock icon, opened with Finder's Open With or `open -a`.
-            #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = event {
                 opened::push(
                     app,
                     urls.iter().filter_map(|u| u.to_file_path().ok()).collect(),
                 );
             }
-            #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
         });
 }

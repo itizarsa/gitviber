@@ -186,7 +186,6 @@ fn clean_up_leaves_locked_and_missing_worktrees() {
 
 /// The dialog's sizes: links aren't followed (a loop, a link to a big folder elsewhere), odd
 /// names come back as they are, and a folder being deleted meanwhile doesn't fail it.
-#[cfg(unix)]
 #[test]
 fn ignored_files_are_sized_without_following_links() {
     let sb = Sandbox::new("cu-sizes");
@@ -228,7 +227,6 @@ fn ignored_files_are_sized_without_following_links() {
 /// isn't known, so the dialog must say "at least", and `git worktree remove` can't delete it.
 /// Git then fails halfway: the worktree's admin folder is gone but the folder stays, a broken
 /// checkout no longer listed. Clean up should leave such a worktree whole instead.
-#[cfg(unix)]
 #[test]
 fn clean_up_leaves_a_worktree_with_a_folder_it_cant_delete() {
     use std::os::unix::fs::PermissionsExt;

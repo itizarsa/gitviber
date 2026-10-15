@@ -164,7 +164,6 @@ fn a_rename_in_a_patch_lists_both_names() {
     );
 }
 
-#[cfg(unix)]
 #[test]
 fn a_tracked_link_that_points_out_of_the_repo_can_be_reverted() {
     let (sb, r) = repo("pe-symlink-out");
@@ -327,7 +326,6 @@ fn the_working_tree_compared_with_a_commit_leaves_ignored_files_out() {
     assert_eq!(rows, [("a.txt", "M"), ("new file.txt", "?")]);
 }
 
-#[cfg(unix)]
 #[test]
 fn two_files_compare_the_same_a_binary_a_folder_and_a_link_out() {
     let (sb, r) = repo("pe-two-files");

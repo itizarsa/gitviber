@@ -174,7 +174,6 @@ mod tests {
 
     /// The script, run by sh with a stand-in for Claude Code, hands it the text whole: quotes,
     /// `$`, backticks and line breaks reach it as written, and none of them runs.
-    #[cfg(unix)]
     #[test]
     fn the_text_reaches_the_agent_as_written_and_stays_private() {
         use std::os::unix::fs::PermissionsExt;

@@ -2,8 +2,6 @@ import type { Terminal } from "@xterm/xterm";
 import { appRunsFromTerminal, appTakesFromTerminal, type CommandId, commandIn } from "../commands/keybindings";
 import { getSettings } from "../settings";
 import { untilReleased } from "../ui/held";
-import { IS_LINUX, IS_MAC } from "../platform";
-import { pasteInto } from "./pasteInput";
 import { hintKey } from "./hints";
 import { copyPaneSelection, type Pane, TERMINAL_COMMANDS } from "./terminals";
 
@@ -39,12 +37,8 @@ const SCROLL_KEYS: Record<string, (term: Terminal) => void> = {
   PageDown: (t) => t.scrollPages(1),
 };
 
-/**
- * Off macOS only Ctrl+Home/End: Ctrl+PgUp/PgDn switch tabs in other terminals, and xterm pages with
- * Shift+PgUp/PgDn itself, as VS Code does.
- */
 function scrollKey(e: KeyboardEvent) {
-  const alone = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey && (e.key === "Home" || e.key === "End");
+  const alone = e.metaKey && !e.ctrlKey;
   return alone && !e.shiftKey && !e.altKey ? SCROLL_KEYS[e.key] : undefined;
 }
 
@@ -56,7 +50,7 @@ function lineEditKey(e: KeyboardEvent): string | undefined {
 // ⌘ keys are the app's shortcuts (copy and paste arrive as clipboard events, not keys),
 // except the line-editing ones; ⌃` toggles the panel instead of sending NUL, ⌃Tab or ⌃1 run
 // their commands, and the panel's own keys stay with it whatever they're rebound to. Unbound,
-// ⌘Home/End/PgUp/PgDn (Ctrl+Home/End elsewhere) scroll the history.
+// ⌘Home/End/PgUp/PgDn scroll the history.
 export function paneKeys(p: Pane) {
   const term = p.term;
   return (e: KeyboardEvent) => {
@@ -72,35 +66,24 @@ export function paneKeys(p: Pane) {
         if (leftOptionDown) stopWatchingOption = untilReleased("Alt", () => (leftOptionDown = false));
       } else if (e.altKey && e.key !== "Alt" && term.options.macOptionIsMeta !== leftOptionDown) term.options.macOptionIsMeta = leftOptionDown;
     }
-    // Linux terminals copy and paste with Ctrl+Shift+C/V: Ctrl+C and Ctrl+V belong to the shell.
     // The letter as typed (Dvorak's C isn't on the C key), or the key's place on a non-Latin layout.
     const letter = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : e.code.replace(/^Key/, "").toLowerCase();
-    if (IS_LINUX && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && (letter === "c" || letter === "v")) {
-      if (e.type === "keydown") {
-        const selection = term.getSelection();
-        if (letter === "v") void pasteInto(p);
-        else if (selection) void navigator.clipboard.writeText(selection).catch(() => {});
-      }
-      e.preventDefault();
-      return false;
-    }
     // ⌘C copies a selection here: xterm copies from WebKit's copy event, which WebKit can leave out
     // with nothing selected in xterm's text area. Handled, the key doesn't reach the menu's Copy as
     // well; with no selection it still does, and copies nothing.
-    if (IS_MAC && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && letter === "c" && term.hasSelection() && !appRunsFromTerminal(e) && !commandIn(TERMINAL_COMMANDS, e)) {
+    if (e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && letter === "c" && term.hasSelection() && !appRunsFromTerminal(e) && !commandIn(TERMINAL_COMMANDS, e)) {
       if (e.type === "keydown") copyPaneSelection(p.id);
       e.preventDefault();
       return false;
     }
     // ⌘A selects the terminal's text, as in VS Code, iTerm2 and Ghostty; the webview's own select
     // all only reached xterm's hidden text area.
-    if (IS_MAC && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && letter === "a" && !appRunsFromTerminal(e) && !commandIn(TERMINAL_COMMANDS, e)) {
+    if (e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && letter === "a" && !appRunsFromTerminal(e) && !commandIn(TERMINAL_COMMANDS, e)) {
       if (e.type === "keydown") term.selectAll();
       e.preventDefault();
       return false;
     }
-    // ⌘↑ / ⌘↓ between the marked prompts. Off macOS, Ctrl+↑/↓ stay a full-screen program's, or a
-    // shell's with no marks (⌘ keys never reach one anyway). Plain typing isn't looked up.
+    // ⌘↑ / ⌘↓ between the marked prompts. Plain typing isn't looked up.
     const jump = (e.metaKey || e.ctrlKey || e.altKey) && commandIn(JUMP_COMMANDS, e);
     if (jump && term.buffer.active.type === "normal" && p.marks.hasCommands()) {
       if (e.type === "keydown") p.marks.jump(jump === "terminal.prevCommand" ? -1 : 1);

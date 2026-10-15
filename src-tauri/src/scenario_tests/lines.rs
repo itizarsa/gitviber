@@ -187,7 +187,6 @@ fn line_endings_filters_and_modes() {
     act(&r, "unstaged", "stage", "n.txt", &[], &[3]);
     assert_eq!(index(&r, "n.txt"), "a\nb\nc\n");
 
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         write_commit(&r, "run.sh", "echo 1\n", "script");
@@ -215,7 +214,6 @@ fn a_file_changed_since_it_was_shown_is_left_alone() {
     assert!(change(&r, &wrong).is_err());
 }
 
-#[cfg(unix)]
 #[test]
 fn a_symlink_is_not_staged_or_discarded_by_line() {
     let (_sb, r) = repo("lines-link");

@@ -9,18 +9,16 @@ import {
   commandFor,
   eventChord,
   eventChords,
-  formatChordFor,
   isReserved,
   type KeyLike,
-  menuAccelerator,
   runsInEditor,
   runsWhileTyping,
   runsInTerminal,
   takenFromTerminal,
 } from "./commands.ts";
 
-const press = (key: string, code: string, mods: Partial<Omit<KeyLike, "key" | "code">> = {}, mac = true): string | null =>
-  eventChord({ key, code, altKey: false, shiftKey: false, metaKey: false, ctrlKey: false, ...mods }, mac);
+const press = (key: string, code: string, mods: Partial<Omit<KeyLike, "key" | "code">> = {}): string | null =>
+  eventChord({ key, code, altKey: false, shiftKey: false, metaKey: false, ctrlKey: false, ...mods });
 
 test("US layout", () => {
   assert.equal(press("b", "KeyB", { metaKey: true }), "cmd+b");
@@ -93,7 +91,7 @@ test("the first listed command wins a shared chord", () => {
 });
 
 test("⌘1–⌘9 pick tabs; the git panel's views moved to ⌃1–⌃4", () => {
-  const run = (chord: string, overrides = {}) => commandFor(chord, overrides, true)?.id;
+  const run = (chord: string, overrides = {}) => commandFor(chord, overrides)?.id;
   assert.equal(run("cmd+1"), "tab.goto1");
   assert.equal(run("cmd+8"), "tab.goto8");
   assert.equal(run("cmd+9"), "tab.last");
@@ -108,28 +106,10 @@ test("⌘1–⌘9 pick tabs; the git panel's views moved to ⌃1–⌃4", () => 
   assert.equal(run("ctrl+3", { "view.changes": ["alt+cmd+1"] }), undefined);
 });
 
-test("off macOS: views on Alt+1–4, tabs on Ctrl+Tab (the Super key is the OS's)", () => {
-  const run = (chord: string, overrides = {}) => commandFor(chord, overrides, false)?.id;
-  assert.equal(run("cmd+1"), "tab.goto1", "Ctrl+1");
-  assert.equal(run("alt+3"), "view.changes");
-  assert.equal(run("alt+4"), "view.history");
-  assert.equal(run("alt+1"), "view.explorer");
-  assert.equal(run("ctrl+1"), undefined, "Super+1");
-  assert.equal(run("cmd+tab"), "tab.next");
-  assert.equal(run("shift+cmd+tab"), "tab.prev");
-  assert.equal(run("shift+cmd+]"), "tab.next");
-  assert.equal(run("ctrl+tab"), undefined, "Super+Tab");
-  // Ctrl+← / Ctrl+→ move by word, as everywhere there.
-  assert.equal(run("cmd+right"), undefined);
-  assert.equal(press("Tab", "Tab", { ctrlKey: true }, false), "cmd+tab");
-  assert.deepEqual(bindingsFor("view.changes", {}, false), ["alt+3"]);
-  assert.deepEqual(bindingsFor("view.changes", { "view.changes": ["cmd+1"] }, false), ["cmd+1"]);
-});
-
 const byId = (id: string) => COMMANDS.find((c) => c.id === id) as Command;
 
-test("what still runs while typing in a text field or the terminal (macOS)", () => {
-  const typing = (chord: string, id: string) => runsWhileTyping(chord, byId(id), true);
+test("what still runs while typing in a text field or the terminal", () => {
+  const typing = (chord: string, id: string) => runsWhileTyping(chord, byId(id));
   // ⌘←/⌘→ move the cursor (start/end of line in the terminal); the other tab keys work everywhere.
   assert.equal(typing("cmd+right", "tab.next"), false);
   assert.equal(typing("cmd+left", "tab.prev"), false);
@@ -154,72 +134,38 @@ test("a file being edited takes ⌥Z for word wrap, unless it types a letter the
   assert.equal(edit("alt+s", "diff.toggleSplit", "ß"), false, "only editor keys");
 });
 
-test("what still runs while typing (elsewhere: cmd is the physical Ctrl)", () => {
-  const typing = (chord: string, id: string) => runsWhileTyping(chord, byId(id), false);
-  assert.equal(typing("cmd+tab", "tab.next"), true);
-  assert.equal(typing("cmd+1", "tab.goto1"), true);
-  assert.equal(typing("cmd+b", "view.toggleSidebar"), true);
-  assert.equal(typing("cmd+right", "tab.next"), false, "Ctrl+→ moves by word");
-  assert.equal(typing("alt+1", "view.changes"), false, "Alt types characters on some layouts");
-});
-
 test("the terminal hands the app its Ctrl chords, except Ctrl+letter", () => {
-  const taken = (chord: string, id: string, mac: boolean) => takenFromTerminal(chord, byId(id), mac);
-  assert.equal(taken("ctrl+tab", "tab.next", true), true);
-  assert.equal(taken("ctrl+1", "view.changes", true), true);
-  assert.equal(taken("ctrl+a", "view.changes", true), false, "⌃A is the shell's");
+  const taken = (chord: string, id: string) => takenFromTerminal(chord, byId(id));
+  assert.equal(taken("ctrl+tab", "tab.next"), true);
+  assert.equal(taken("ctrl+1", "view.changes"), true);
+  assert.equal(taken("ctrl+a", "view.changes"), false, "⌃A is the shell's");
   // ⌘ chords reach the app anyway on macOS; this is only about ⌃.
-  assert.equal(taken("cmd+1", "tab.goto1", true), false);
-  assert.equal(taken("cmd+tab", "tab.next", false), true, "Ctrl+Tab");
-  assert.equal(taken("cmd+1", "tab.goto1", false), true, "Ctrl+1");
-  assert.equal(taken("cmd+b", "view.toggleSidebar", false), false, "Ctrl+B is the shell's (tmux)");
-  assert.equal(taken("cmd+left", "tab.prev", false), false, "Ctrl+← moves by word");
-  assert.equal(taken("alt+1", "view.changes", false), false);
-  assert.equal(taken("shift+cmd+t", "terminal.new", false), true, "Ctrl+Shift+T, as in Linux terminals");
-});
-
-test("off macOS, cmd is Ctrl and ctrl is the Windows / Super key", () => {
-  assert.equal(press("b", "KeyB", { ctrlKey: true }, false), "cmd+b");
-  assert.equal(press("E", "KeyE", { ctrlKey: true, shiftKey: true }, false), "shift+cmd+e");
-  assert.equal(press("b", "KeyB", { metaKey: true }, false), "ctrl+b");
-  assert.equal(menuAccelerator("shift+cmd+e", false), "shift+ctrl+e");
-  assert.equal(menuAccelerator("ctrl+enter", false), "super+enter");
-  assert.equal(menuAccelerator("shift+cmd+e", true), "shift+cmd+e");
-  assert.equal(formatChordFor("shift+cmd+e", false), "Ctrl+Shift+E");
-  assert.equal(formatChordFor("alt+down", false), "Alt+↓");
-  assert.equal(formatChordFor("shift+cmd+e", true), "⇧⌘E");
+  assert.equal(taken("cmd+1", "tab.goto1"), false);
 });
 
 test("with the terminal focused, a key goes to the app or the shell, never both", () => {
-  const app = (chord: string, id: string, mac: boolean) => runsInTerminal(chord, byId(id), mac);
-  for (const mac of [true, false]) {
-    // F-keys are the shell's (htop, mc), though a text field lets them through.
-    assert.equal(app("f6", "view.focusNextPanel", mac), false);
-    assert.equal(app("shift+f6", "view.focusPrevPanel", mac), false);
-    assert.equal(app("f7", "diff.nextChange", mac), false);
-    assert.equal(runsWhileTyping("f6", byId("view.focusNextPanel"), mac), true);
-    assert.equal(app("j", "review.nextFile", mac), false);
-    assert.equal(app("alt+down", "diff.nextChange", mac), false);
-  }
+  const app = (chord: string, id: string) => runsInTerminal(chord, byId(id));
+  // F-keys are the shell's (htop, mc), though a text field lets them through.
+  assert.equal(app("f6", "view.focusNextPanel"), false);
+  assert.equal(app("shift+f6", "view.focusPrevPanel"), false);
+  assert.equal(app("f7", "diff.nextChange"), false);
+  assert.equal(runsWhileTyping("f6", byId("view.focusNextPanel")), true);
+  assert.equal(app("j", "review.nextFile"), false);
+  assert.equal(app("alt+down", "diff.nextChange"), false);
   // What xterm skips: ⌘ chords and the ⌃ chords it hands over.
-  assert.equal(app("cmd+1", "tab.goto1", true), true);
-  assert.equal(app("shift+cmd+]", "tab.next", true), true);
-  assert.equal(app("ctrl+tab", "tab.next", true), true);
-  assert.equal(app("ctrl+a", "view.changes", true), false);
-  assert.equal(app("cmd+left", "tab.prev", true), false, "start of line");
-  // Elsewhere the physical Ctrl is "cmd": Ctrl+letter is the shell's, Super is the app's.
-  assert.equal(app("cmd+tab", "tab.next", false), true);
-  assert.equal(app("cmd+1", "tab.goto1", false), true);
-  assert.equal(app("cmd+b", "view.toggleSidebar", false), false);
-  assert.equal(app("ctrl+b", "view.toggleSidebar", false), true);
+  assert.equal(app("cmd+1", "tab.goto1"), true);
+  assert.equal(app("shift+cmd+]", "tab.next"), true);
+  assert.equal(app("ctrl+tab", "tab.next"), true);
+  assert.equal(app("ctrl+a", "view.changes"), false);
+  assert.equal(app("cmd+left", "tab.prev"), false, "start of line");
 });
 
 test("a punctuation key also counts as its US name; letters and digits only as typed", () => {
   const chords = (key: string, code: string, mods: Partial<Omit<KeyLike, "key" | "code">> = {}) =>
-    eventChords({ key, code, altKey: false, shiftKey: false, metaKey: false, ctrlKey: false, ...mods }, true);
+    eventChords({ key, code, altKey: false, shiftKey: false, metaKey: false, ctrlKey: false, ...mods });
   // Turkish Q types " on the US ` key: ⌃` still toggles the terminal.
   assert.deepEqual(chords('"', "Backquote", { ctrlKey: true }), ["ctrl+\"", "ctrl+`"]);
-  assert.equal(commandFor("ctrl+`", {}, true)?.id, "terminal.toggle");
+  assert.equal(commandFor("ctrl+`", {})?.id, "terminal.toggle");
   assert.deepEqual(chords("`", "Backquote", { ctrlKey: true }), ["ctrl+`"]);
   // German ⌘Y is the US Z key, and must not undo.
   assert.deepEqual(chords("y", "KeyZ", { metaKey: true }), ["cmd+y"]);
@@ -229,107 +175,89 @@ test("a punctuation key also counts as its US name; letters and digits only as t
 });
 
 test("the terminal's own keys only run there, and keep ⌘W from closing a tab only there", () => {
-  assert.equal(commandFor("cmd+d", {}, true), undefined);
-  assert.equal(commandFor("cmd+w", {}, true)?.id, "tab.close");
-  assert.deepEqual(bindingsFor("terminal.split", {}, true), ["cmd+d"]);
+  assert.equal(commandFor("cmd+d", {}), undefined);
+  assert.equal(commandFor("cmd+w", {})?.id, "tab.close");
+  assert.deepEqual(bindingsFor("terminal.split", {}), ["cmd+d"]);
   // ⌃` reaches the app from inside the terminal instead of sending NUL.
-  assert.ok(takenFromTerminal("ctrl+`", byId("terminal.toggle"), true));
-  // Off macOS Ctrl+letter is the shell's and Super+D / Super+W the desktop's (KDE): Ctrl+Shift.
-  assert.deepEqual(bindingsFor("terminal.split", {}, false), ["shift+cmd+d"]);
-  assert.equal(commandFor("shift+cmd+w", {}, false), undefined);
-  assert.equal(commandFor("cmd+w", {}, false)?.id, "tab.close");
+  assert.ok(takenFromTerminal("ctrl+`", byId("terminal.toggle")));
   // Split down, pane focus and maximize: ⇧⌘D, ⇧⌘ and ⌥⌘ arrows and ⌘↵ outside the terminal stay what they were.
-  assert.deepEqual(bindingsFor("terminal.splitDown", {}, true), ["shift+cmd+d"]);
-  assert.deepEqual(bindingsFor("terminal.splitDown", {}, false), ["alt+shift+cmd+d"], "Ctrl+Shift+D splits right there");
-  assert.deepEqual(bindingsFor("terminal.toggleMaximize", {}, false), ["alt+shift+cmd+enter"], "Ctrl+Enter is a program's, Ctrl+Shift+Enter zooms a pane");
-  assert.deepEqual(bindingsFor("terminal.zoomPane", {}, true), ["shift+cmd+enter"]);
-  assert.deepEqual(bindingsFor("terminal.focusLeft", {}, true), ["alt+cmd+left"], "by side");
-  assert.deepEqual(bindingsFor("terminal.prevPane", {}, true), ["shift+cmd+left"], "pages through the numbered panes");
-  assert.deepEqual(bindingsFor("terminal.focusUp", {}, true), ["shift+cmd+up", "alt+cmd+up"]);
-  assert.deepEqual(bindingsFor("terminal.focusLeft", {}, false), [], "the shell's or the desktop's there");
+  assert.deepEqual(bindingsFor("terminal.splitDown", {}), ["shift+cmd+d"]);
+  assert.deepEqual(bindingsFor("terminal.zoomPane", {}), ["shift+cmd+enter"]);
+  assert.deepEqual(bindingsFor("terminal.focusLeft", {}), ["alt+cmd+left"], "by side");
+  assert.deepEqual(bindingsFor("terminal.prevPane", {}), ["shift+cmd+left"], "pages through the numbered panes");
+  assert.deepEqual(bindingsFor("terminal.focusUp", {}), ["shift+cmd+up", "alt+cmd+up"]);
   const arrows = ["left", "right", "up", "down"].flatMap((k) => [`shift+cmd+${k}`, `alt+cmd+${k}`]);
-  for (const mac of [true, false])
-    for (const chord of ["shift+cmd+d", "alt+shift+cmd+d", ...arrows, "cmd+enter", "shift+cmd+enter", "alt+shift+cmd+enter"]) assert.equal(commandFor(chord, {}, mac), undefined, chord);
+  for (const chord of ["shift+cmd+d", "alt+shift+cmd+d", ...arrows, "cmd+enter", "shift+cmd+enter", "alt+shift+cmd+enter"]) assert.equal(commandFor(chord, {}), undefined, chord);
 });
 
-test("only macOS reserves chords", () => {
-  assert.equal(isReserved("cmd+q", true), true);
-  assert.equal(isReserved("cmd+h", true), true);
-  assert.equal(isReserved("cmd+b", true), false);
-  // Off macOS "cmd" is Ctrl, which nothing takes from the page.
-  assert.equal(isReserved("cmd+h", false), false);
-  assert.equal(isReserved("cmd+m", false), false);
+test("macOS reserves chords", () => {
+  assert.equal(isReserved("cmd+q"), true);
+  assert.equal(isReserved("cmd+h"), true);
+  assert.equal(isReserved("cmd+b"), false);
 });
 
 test("no two global commands share a default, and macOS takes none of them", () => {
-  for (const mac of [true, false]) {
-    const owner = new Map<string, string>();
-    for (const c of COMMANDS) {
-      if ("local" in c) continue;
-      for (const chord of bindingsFor(c.id, {}, mac)) {
-        assert.equal(owner.get(chord), undefined, `${chord} is ${owner.get(chord)}'s and ${c.id}'s (mac: ${mac})`);
-        assert.equal(isReserved(chord, mac), false, `${chord} (${c.id})`);
-        owner.set(chord, c.id);
-      }
+  const owner = new Map<string, string>();
+  for (const c of COMMANDS) {
+    if ("local" in c) continue;
+    for (const chord of bindingsFor(c.id, {})) {
+      assert.equal(owner.get(chord), undefined, `${chord} is ${owner.get(chord)}'s and ${c.id}'s`);
+      assert.equal(isReserved(chord), false, `${chord} (${c.id})`);
+      owner.set(chord, c.id);
     }
   }
 });
 
 test("Reload Window is ⇧⌘R, leaving ⌘R to name a terminal pane", () => {
-  assert.deepEqual(bindingsFor("window.reload", {}, true), ["shift+cmd+r"]);
-  assert.deepEqual(bindingsFor("terminal.renamePane", {}, true), ["cmd+r"]);
+  assert.deepEqual(bindingsFor("window.reload", {}), ["shift+cmd+r"]);
+  assert.deepEqual(bindingsFor("terminal.renamePane", {}), ["cmd+r"]);
 });
 
 test("no two commands of one place share a default", () => {
-  for (const mac of [true, false]) {
-    const owner = new Map<string, string>();
-    for (const c of COMMANDS) {
-      if (!("local" in c)) continue;
-      for (const chord of bindingsFor(c.id, {}, mac)) {
-        const key: string = `${c.local} ${chord}`;
-        assert.equal(owner.get(key), undefined, `${chord} is ${owner.get(key)}'s and ${c.id}'s in ${c.local} (mac: ${mac})`);
-        owner.set(key, c.id);
-      }
+  const owner = new Map<string, string>();
+  for (const c of COMMANDS) {
+    if (!("local" in c)) continue;
+    for (const chord of bindingsFor(c.id, {})) {
+      const key: string = `${c.local} ${chord}`;
+      assert.equal(owner.get(key), undefined, `${chord} is ${owner.get(key)}'s and ${c.id}'s in ${c.local}`);
+      owner.set(key, c.id);
     }
   }
 });
 
-// Monaco's own ⌥⌘ keys (Ctrl+Alt elsewhere), from its default keybindings: the code view's capture
+// Monaco's own ⌥⌘ keys, from its default keybindings: the code view's capture
 // listener would take them from it. Find's toggles (⌥⌘C W R L P), replace (⌥⌘F), remove brackets (⌥⌘⌫).
 const MONACO_ALT_CMD = ["c", "w", "r", "l", "p", "f", "backspace", "space", "[", "]", "up", "down", ".", "enter"].map((k) => `alt+cmd+${k}`);
 
 test("stage, unstage and discard the change at the cursor leave Monaco's keys and text fields alone", () => {
   for (const id of ["diff.stageChange", "diff.unstageChange", "diff.discardChange"]) {
-    for (const mac of [true, false]) {
-      for (const chord of bindingsFor(id as Command["id"], {}, mac)) {
-        assert.ok(!MONACO_ALT_CMD.includes(chord), `${id}: ${chord} is Monaco's`);
-        // A key meant for the code view mustn't stage or discard from the commit message or the terminal.
-        assert.equal(runsWhileTyping(chord, byId(id), mac), false, `${id}: ${chord}`);
-        assert.equal(runsInTerminal(chord, byId(id), mac), false, `${id}: ${chord}`);
-      }
+    for (const chord of bindingsFor(id as Command["id"], {})) {
+      assert.ok(!MONACO_ALT_CMD.includes(chord), `${id}: ${chord} is Monaco's`);
+      // A key meant for the code view mustn't stage or discard from a text field or the terminal.
+      assert.equal(runsWhileTyping(chord, byId(id)), false, `${id}: ${chord}`);
+      assert.equal(runsInTerminal(chord, byId(id)), false, `${id}: ${chord}`);
     }
   }
-  assert.equal(commandFor("shift+cmd+r", {}, true)?.id, "window.reload");
+  assert.equal(commandFor("shift+cmd+r", {})?.id, "window.reload");
   // ⌥ turns S into ß and N into a dead key; the physical key counts.
   assert.equal(press("ß", "KeyS", { altKey: true, metaKey: true }), "alt+cmd+s");
   assert.equal(press("Dead", "KeyN", { altKey: true, metaKey: true }), "alt+cmd+n");
   // WebKit reports ⌥⌘N as the dead key's own "~": the key's letter still finds the command.
   const tilde = { key: "~", code: "KeyN", altKey: true, shiftKey: false, metaKey: true, ctrlKey: false };
-  assert.deepEqual(eventChords(tilde, true), ["alt+cmd+~", "alt+cmd+n"]);
-  assert.equal(commandFor("alt+cmd+n", {}, true)?.id, "diff.unstageChange");
+  assert.deepEqual(eventChords(tilde), ["alt+cmd+~", "alt+cmd+n"]);
+  assert.equal(commandFor("alt+cmd+n", {})?.id, "diff.unstageChange");
 });
 
-test("fetch, pull and push reach the app from text fields and the terminal (macOS); unbound elsewhere", () => {
+test("fetch, pull and push reach the app from text fields and the terminal", () => {
   const keys = { "git.fetch": "ctrl+shift+cmd+t", "git.pull": "ctrl+shift+cmd+p", "git.push": "ctrl+cmd+p" } as const;
   for (const [id, chord] of Object.entries(keys) as [keyof typeof keys, string][]) {
-    assert.deepEqual(bindingsFor(id, {}, true), [chord]);
-    assert.deepEqual(bindingsFor(id, {}, false), []);
-    assert.equal(runsWhileTyping(chord, byId(id), true), true, id);
-    assert.equal(runsInTerminal(chord, byId(id), true), true, id);
+    assert.deepEqual(bindingsFor(id, {}), [chord]);
+    assert.equal(runsWhileTyping(chord, byId(id)), true, id);
+    assert.equal(runsInTerminal(chord, byId(id)), true, id);
     assert.ok(!MONACO_ALT_CMD.includes(chord), id);
   }
   assert.equal(press("t", "KeyT", { ctrlKey: true, shiftKey: true, metaKey: true }), "ctrl+shift+cmd+t");
-  assert.equal(commandFor("ctrl+cmd+p", {}, true)?.id, "git.push");
+  assert.equal(commandFor("ctrl+cmd+p", {})?.id, "git.push");
   // ⌘G stays macOS's Find Next.
-  assert.equal(commandFor("cmd+g", {}, true), undefined);
+  assert.equal(commandFor("cmd+g", {}), undefined);
 });

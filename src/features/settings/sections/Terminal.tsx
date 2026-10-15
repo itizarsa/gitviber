@@ -18,7 +18,6 @@ import {
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
 import { Field, FontPicker, Group, OptionSelect, SizeStepper } from "@/features/settings/controls";
-import { IS_MAC } from "@/lib/platform";
 
 export function TerminalSection() {
   const s = useSettings();
@@ -111,19 +110,17 @@ export function TerminalSection() {
         >
           <Switch checked={s.askBeforeQuit} onChange={(v) => updateSettings({ askBeforeQuit: v })} />
         </Field>
-        {IS_MAC && (
-          <Field
-            label="Option as Meta"
-            hint="Off, ⌥ types characters like @ or œ. As Meta, ⌥ keys go to the shell and agents instead (Claude Code's ⌥P, readline's ⌥B and ⌥F). Left ⌥ keeps the right one for the characters your layout needs."
-          >
-            <Segmented<string>
-              value={s.optionAsMeta}
-              onChange={(v) => updateSettings({ optionAsMeta: v as OptionKey })}
-              options={Object.entries(OPTION_KEYS).map(([value, label]) => ({ value, label }))}
-              variant="field"
-            />
-          </Field>
-        )}
+        <Field
+          label="Option as Meta"
+          hint="Off, ⌥ types characters like @ or œ. As Meta, ⌥ keys go to the shell and agents instead (Claude Code's ⌥P, readline's ⌥B and ⌥F). Left ⌥ keeps the right one for the characters your layout needs."
+        >
+          <Segmented<string>
+            value={s.optionAsMeta}
+            onChange={(v) => updateSettings({ optionAsMeta: v as OptionKey })}
+            options={Object.entries(OPTION_KEYS).map(([value, label]) => ({ value, label }))}
+            variant="field"
+          />
+        </Field>
       </Group>
       <Group title="Accessibility">
         <Field label="Screen reader mode" hint="Lets VoiceOver read the terminal's output and the line you type. Open terminals switch at once.">

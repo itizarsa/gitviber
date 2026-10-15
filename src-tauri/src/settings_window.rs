@@ -42,14 +42,12 @@ pub fn show(app: &AppHandle, section: Option<&str>, open: bool) -> Res<bool> {
         // As the main window (tauri.conf.json): the page shows it once its theme is applied.
         .visible(false)
         .background_color(tauri::window::Color(0x17, 0x17, 0x18, 0xff));
-    #[cfg(target_os = "macos")]
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true);
     // Linux and Windows give it the app's menu bar too, which keeps Ctrl+Q there; its items go
     // to the page as macOS's do while it's in front (menu_target).
     let window = builder.build().map_err(err)?;
-    #[cfg(target_os = "macos")]
     {
         let w = window.clone();
         let _ = window.run_on_main_thread(move || no_full_screen(&w));
@@ -60,7 +58,6 @@ pub fn show(app: &AppHandle, section: Option<&str>, open: bool) -> Res<bool> {
 
 /// Kept beside the workspace, it has no use for full screen, where a see-through window would
 /// show gray (translucency.ts): the green button zooms it instead.
-#[cfg(target_os = "macos")]
 fn no_full_screen(window: &tauri::WebviewWindow) {
     use objc2::msg_send;
     use objc2::runtime::AnyObject;

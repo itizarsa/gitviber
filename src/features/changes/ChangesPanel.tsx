@@ -276,7 +276,7 @@ export function ChangesPanel({ status: full, activeKey, onOpen, onHover, refresh
 
   const range = (from: Change, to: Change) => rangeOf(shownFiles, from, to, selectionKey);
 
-  // ⌘-click (Ctrl off macOS) toggles a row, ⇧-click picks the range from the anchor. The open tab follows the clicked row either way.
+  // ⌘-click toggles a row, ⇧-click picks the range from the anchor. The open tab follows the clicked row either way.
   const pick = (c: Change, e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
     if (primaryKey(e)) setPicked({ rows: toggled([...selected.values()], c, selectionKey), anchor: c, focus: c.file.path });
     else if (e.shiftKey && anchor) setPicked({ rows: range(anchor, c), anchor, focus: c.file.path });

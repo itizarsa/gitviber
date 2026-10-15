@@ -116,7 +116,6 @@ fn nothing_outside_the_worktree_is_opened() {
     let r = worktree(&sb);
     let rec = Recorder::new(&sb);
     fs::write(sb.path("secret.txt"), "s").unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(sb.path("secret.txt"), r.join("link.txt")).unwrap();
     for project in [false, true] {
         for rel in ["../secret.txt", "/etc/hosts", "link.txt", ".git/config"] {
@@ -160,7 +159,6 @@ fn a_broken_template_runs_nothing() {
 }
 
 /// The menu draws every app's icon at once: concurrent asks get the same picture, drawn once.
-#[cfg(target_os = "macos")]
 #[test]
 fn icons_drawn_at_once_agree() {
     use crate::open_in::icon;

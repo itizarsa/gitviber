@@ -149,7 +149,6 @@ fn odd_repos() {
 /// A partial clone (`--filter=blob:none`, as big monorepos are cloned) fetches an object it
 /// lacks on demand. Hovering a line with another repo's SHA, or `sha1sum` output, mustn't reach
 /// the network: git fetched from origin twice per unknown full id (40 fetches for 20 ids).
-#[cfg(unix)]
 #[test]
 fn a_partial_clone_is_never_fetched_from() {
     let sb = Sandbox::new("tl-partial");

@@ -50,8 +50,8 @@ export function findMatches(text: string, query: string, o: FindOptions, limit =
   return out;
 }
 
-/** The key that flips an option in a find box, Monaco's: ⌥⌘C / ⌥⌘W / ⌥⌘R on macOS, Alt+C / Alt+W / Alt+R elsewhere. */
-export function optionKey(e: { code: string; altKey: boolean; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }, mac: boolean): keyof FindOptions | null {
-  if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey !== mac) return null;
+/** The key that flips an option in a find box, Monaco's: ⌥⌘C / ⌥⌘W / ⌥⌘R. */
+export function optionKey(e: { code: string; altKey: boolean; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }): keyof FindOptions | null {
+  if (!e.altKey || e.shiftKey || e.ctrlKey || !e.metaKey) return null;
   return ({ KeyC: "matchCase", KeyW: "wholeWord", KeyR: "regex" } as const)[e.code as "KeyC"] ?? null;
 }

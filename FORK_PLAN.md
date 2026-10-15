@@ -3,7 +3,7 @@
 What this fork changes compared to upstream GitViber (0.1.13, commit `5e0a3e8`). The goal is
 a smaller app for personal use, built locally and installed through your own Homebrew tap.
 
-Screenshots of the current UI (Linux dev build under Xvfb) are in [`docs/fork-plan/`](docs/fork-plan/),
+Screenshots of the UI (taken from the Linux dev build up to 0.2.0) are in [`docs/fork-plan/`](docs/fork-plan/),
 referenced below where relevant. A 45-second walkthrough of everything listed here is in
 [`docs/fork-plan/walkthrough.mp4`](docs/fork-plan/walkthrough.mp4): the repo popover, the PRs and
 Issues tabs, Undo history, a Browser tab, and the Obsidian, Notifications and Browser settings.
@@ -308,22 +308,30 @@ Linux dev build under Xvfb with screenshots (§7).
 
 ---
 
-## 7. Build and verify environment (Linux, used for this plan)
+## 7. Build and verify environment
+
+Until 0.2.0 the fork was checked in a Linux container: a debug build under Xvfb, driven through
+`src-tauri/src/dev_bridge.rs` with `xdotool`, `import` and `ffmpeg`. That is how the screenshots in
+`docs/fork-plan/` were taken.
+
+From 0.3.0 the app builds for macOS only (§8), so that no longer runs. In a Linux container:
 
 ```sh
-# system packages (Ubuntu 24.04)
-apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
-  librsvg2-dev libsoup-3.0-dev patchelf xvfb xdotool imagemagick ffmpeg
 pnpm install --frozen-lockfile
-pnpm typecheck && pnpm test          # 730/730 pass on the baseline
-(cd src-tauri && cargo build)        # debug build (~4.5 min cold)
-# or the system packages + pnpm install in one go: scripts/setup-linux-env.sh
-# run headless and drive it
-Xvfb :99 -screen 0 1480x920x24 &
-DISPLAY=:99 pnpm tauri dev
+pnpm typecheck && pnpm test && pnpm build      # the frontend, as before
+sh scripts/clippy-macos-from-linux.sh          # the Rust side, type-checked and linted for macOS
 ```
 
-Debug builds expose `src-tauri/src/dev_bridge.rs` on `127.0.0.1:1520`, which runs JavaScript in
-the page. Together with `xdotool`, `import` (screenshots) and `ffmpeg -f x11grab` (video),
-this drives the real window on Linux. That is how the screenshots in `docs/fork-plan/` were
-taken.
+The Rust tests and a real run need a Mac: CI (`.github/workflows/ci.yml`, macos-latest) runs
+`pnpm check` on every push to `main` or an `arshath/*` branch.
+
+## 8. 0.3.0: macOS only, trimmed further
+
+- Linux and Windows code paths, builds, icons and CI go; `lib.rs` stops a build for another OS.
+  The keyboard layer has only macOS's chords (no Ctrl-for-⌘ mapping, no `keysOther`).
+- Removed: the `gitviber` command, Clone, Switch Project, Copy as Patch, agent awareness in
+  terminals (status dots, Agents menu, resume on restore), Resume a Conversation, external
+  diff/merge tools, installing git from the app, the website, the update proxy, upstream's
+  contributor docs, and the dead Commit shortcut.
+- Kept: guided reviews and Ask Agent (Settings → Agent and → Review), now always starting a new
+  agent session; conflict view's Ask agent does the same.

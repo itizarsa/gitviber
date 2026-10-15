@@ -241,7 +241,6 @@ mod tests {
         let elsewhere = dir.join("gitviber-open.x");
         std::fs::write(&elsewhere, "/c\n").unwrap();
         assert!(requested(&elsewhere).is_none());
-        #[cfg(unix)]
         {
             std::os::unix::fs::symlink(&elsewhere, &request).unwrap();
             assert!(requested(&request).is_none());

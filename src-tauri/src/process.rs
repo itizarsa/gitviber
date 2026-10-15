@@ -29,11 +29,7 @@ pub(crate) fn search_path() -> OsString {
 /// The login shell's entries first (its order decides which node a hook gets), then
 /// Homebrew's, then the app's own; each directory once.
 pub(crate) fn merge_paths(login: Option<&OsStr>, current: &OsStr) -> OsString {
-    let homebrew: &[&str] = if cfg!(target_os = "macos") {
-        &["/opt/homebrew/bin", "/usr/local/bin"]
-    } else {
-        &[]
-    };
+    let homebrew = ["/opt/homebrew/bin", "/usr/local/bin"];
     let mut seen = HashSet::new();
     let dirs: Vec<PathBuf> = login
         .into_iter()
@@ -148,10 +144,7 @@ pub(crate) fn exec(
 
 /// Gives the command a process group of its own, so `kill_group` also stops what it started.
 pub fn in_own_group(cmd: &mut Command) {
-    #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(cmd, 0);
-    #[cfg(not(unix))]
-    let _ = cmd;
 }
 
 /// Stops a child started `in_own_group`, and everything in its group. With a `grace`, SIGTERM
@@ -159,24 +152,20 @@ pub fn in_own_group(cmd: &mut Command) {
 pub fn kill_group(child: &mut Child, grace: Duration) {
     // Not the `kill` command: procps's (Ubuntu) reads `-KILL -12345` as `-1`, every process
     // of the user, which took down the CI runner.
-    #[cfg(unix)]
     let group = child.id() as libc::pid_t;
     // 0 is our own group, 1 init's; neither is ever the child's.
-    #[cfg(unix)]
     let signal = |sig| {
         if group > 1 && group != unsafe { libc::getpgrp() } {
             unsafe { libc::killpg(group, sig) };
         }
     };
     if !grace.is_zero() {
-        #[cfg(unix)]
         signal(libc::SIGTERM);
         let deadline = Instant::now() + grace;
         while Instant::now() < deadline && !exited(child) {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
-    #[cfg(unix)]
     signal(libc::SIGKILL);
     let _ = child.kill();
     let _ = child.wait();
@@ -185,7 +174,6 @@ pub fn kill_group(child: &mut Child, grace: Duration) {
 /// Whether the child has exited, without reaping it. try_wait would reap it, and a reaped
 /// leader's pid (the group's id) can go to another process before the SIGKILL that follows.
 pub fn exited(child: &mut Child) -> bool {
-    #[cfg(unix)]
     {
         // Zeroed: with WNOHANG and nothing to report, the kernel may leave it untouched.
         let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
@@ -193,8 +181,6 @@ pub fn exited(child: &mut Child) -> bool {
         let r = unsafe { libc::waitid(libc::P_PID, child.id() as libc::id_t, &mut info, flags) };
         r != 0 || info.si_signo != 0
     }
-    #[cfg(not(unix))]
-    !matches!(child.try_wait(), Ok(None))
 }
 
 /// Splits a command line into argv with shell-style quoting and nothing else a shell does: no
@@ -237,7 +223,6 @@ pub fn split_command(line: &str) -> Result<Vec<String>, String> {
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn exited_leaves_the_child_to_be_reaped() {
         let mut child = spawn(Command::new("sh").args(["-c", "exit 3"])).unwrap();
@@ -313,7 +298,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn a_reader_spawned_beside_its_writer_gets_its_end_of_input() {
         // patch_ids' shape: the pipe's reader spawned on one thread while another spawns its
@@ -354,7 +338,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn a_timeout_stops_what_the_process_started() {
         let dir = std::env::temp_dir().join(format!("gitviber-exec-{}", std::process::id()));
@@ -384,7 +367,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn login_path_goes_first_and_each_dir_once() {
         let merged = merge_paths(

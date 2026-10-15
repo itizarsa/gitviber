@@ -5,16 +5,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tip } from "@/components/ui/tooltip";
 import { useCommands, useShortcut } from "@/lib/commands/keybindings";
 import { GROUPS, type OpenApp, type OpenTarget, openIn, refreshOpenApps, useOpenAppIcon, useOpenApps } from "@/lib/app/openIn";
-import { IS_MAC } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { lineInView } from "@/features/viewer/activeEditor";
 import { openSettings } from "@/features/settings/SettingsDialog";
 
 /**
  * The app's own icon (macOS) the size of a menu's, a blank while it's drawn. Without one,
- * `fallback`: on macOS a plain icon by default, so the names line up; elsewhere nothing.
+ * `fallback`: a plain icon by default, so the names line up.
  */
-function AppIcon({ app, className = "size-4", fallback = IS_MAC ? <AppWindow className={className} /> : null }: { app: OpenApp; className?: string; fallback?: React.ReactNode }) {
+function AppIcon({ app, className = "size-4", fallback = <AppWindow className={className} /> }: { app: OpenApp; className?: string; fallback?: React.ReactNode }) {
   const url = useOpenAppIcon(app);
   if (url) return <img src={url} alt="" draggable={false} className={cn("shrink-0", className)} />;
   return url === undefined ? <span className={cn("shrink-0", className)} /> : fallback;

@@ -1,10 +1,9 @@
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow, type Theme as WindowTheme } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Whitespace } from "./api";
 import { cleanOverrides } from "./commands/commands";
 import { listenHere, OTHER_WINDOW } from "./app/settingsWindow";
-import { IS_MAC, IS_WINDOWS } from "./platform";
 import { writeJson } from "./storage";
 import { effortLevels, SUGGEST_PRESETS, type SuggestPreset } from "./git/suggest";
 import { useSyncExternalStore } from "react";
@@ -25,12 +24,9 @@ export type CodeFontWeight = keyof typeof CODE_FONT_WEIGHTS;
 /** "Custom" is any installed font, by the name in `customCodeFont`. */
 export type CodeFont = keyof typeof CODE_FONTS | "Custom";
 
-// Only macOS has these; elsewhere they'd render as the system monospace under a wrong name.
-const MAC_ONLY_FONTS: readonly CodeFont[] = ["SF Mono", "Menlo", "Monaco"];
-/** The presets this platform can show. */
-export const codeFontChoices = (Object.keys(CODE_FONTS) as CodeFont[]).filter((f) => IS_MAC || !MAC_ONLY_FONTS.includes(f));
-/** SF Mono on macOS; elsewhere a bundled font, so it looks the same on every desktop. */
-const DEFAULT_CODE_FONT: keyof typeof CODE_FONTS = IS_MAC ? "SF Mono" : "JetBrains Mono";
+/** The presets. */
+export const codeFontChoices = Object.keys(CODE_FONTS) as CodeFont[];
+const DEFAULT_CODE_FONT: keyof typeof CODE_FONTS = "SF Mono";
 
 // System mirrors index.css's --font-ui.
 export const UI_FONTS = {
@@ -44,9 +40,8 @@ export type UiFont = keyof typeof UI_FONTS | "Custom";
 /** The interface text's weight; medium and semibold labels stay a step above it. */
 export const UI_FONT_WEIGHTS = { 400: "Regular", 500: "Medium" } as const;
 export type UiFontWeight = keyof typeof UI_FONT_WEIGHTS;
-const MAC_ONLY_UI_FONTS: readonly UiFont[] = ["Helvetica Neue", "Avenir Next"];
-/** The presets this platform can show. */
-export const uiFontChoices = (Object.keys(UI_FONTS) as UiFont[]).filter((f) => IS_MAC || !MAC_ONLY_UI_FONTS.includes(f));
+/** The presets. */
+export const uiFontChoices = Object.keys(UI_FONTS) as UiFont[];
 
 /** A typed font name without the characters that could break out of a quoted CSS family name. */
 export const cleanFontName = (name: string) => name.replace(/["'\\;{}]/g, "").trim();
@@ -344,9 +339,7 @@ function load(): Settings {
     const s = stored ? { ...DEFAULTS, ...stored } : DEFAULTS;
     if (!Object.hasOwn(CODE_FONTS, s.codeFont) && s.codeFont !== "Custom") s.codeFont = DEFAULTS.codeFont;
     if (!Object.hasOwn(CODE_FONT_WEIGHTS, s.codeFontWeight)) s.codeFontWeight = DEFAULTS.codeFontWeight;
-    if (!IS_MAC && MAC_ONLY_FONTS.includes(s.codeFont)) s.codeFont = DEFAULTS.codeFont;
     if (!Object.hasOwn(UI_FONTS, s.uiFont) && s.uiFont !== "Custom") s.uiFont = DEFAULTS.uiFont;
-    if (!IS_MAC && MAC_ONLY_UI_FONTS.includes(s.uiFont)) s.uiFont = DEFAULTS.uiFont;
     if (!Object.hasOwn(UI_FONT_WEIGHTS, s.uiFontWeight)) s.uiFontWeight = DEFAULTS.uiFontWeight;
     if (typeof s.codeFontSize !== "number" || !Number.isFinite(s.codeFontSize)) s.codeFontSize = DEFAULTS.codeFontSize;
     s.codeFontSize = clampCodeFont(s.codeFontSize);
@@ -434,28 +427,6 @@ function resolve(): ResolvedSettings {
   return { ...current, theme, dark, codeTheme: dark ? current.syntaxTheme : current.lightSyntaxTheme };
 }
 
-/**
- * Linux: the desktop's light or dark, which System sets the window to. There null can't stand for
- * the OS: tao applies it as gtk-application-prefer-dark-theme = false, and WebKitGTK takes
- * prefers-color-scheme from that flag, so a dark Wayland desktop got the light UI. Until the
- * first setTheme, theme() is what tao read from the XDG portal; after that tao passes on the
- * portal's changes (and echoes ours) as theme-changed events. Null elsewhere.
- */
-let desktopTheme: Promise<WindowTheme | null> = Promise.resolve(null);
-if (!IS_MAC && !IS_WINDOWS) {
-  try {
-    const win = getCurrentWindow();
-    desktopTheme = win.theme().catch(() => null);
-    void win
-      .onThemeChanged(({ payload }) => {
-        if (current.appearance === "system") desktopTheme = Promise.resolve(payload);
-      })
-      .catch(() => {});
-  } catch {
-    // Not in a Tauri window.
-  }
-}
-
 let appliedAppearance: Appearance | null = null;
 function applyTheme() {
   document.documentElement.dataset.theme = resolved.theme;
@@ -466,7 +437,7 @@ function applyTheme() {
   try {
     const win = getCurrentWindow();
     const chosen = current.appearance === "system" ? null : resolved.dark ? "dark" : "light";
-    desktopTheme.then((desktop) => win.setTheme(chosen ?? desktop)).catch(() => {});
+    win.setTheme(chosen).catch(() => {});
   } catch {
     // Not in a Tauri window.
   }

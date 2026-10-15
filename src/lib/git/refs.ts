@@ -1,7 +1,6 @@
 import type { Branch, BranchTracking } from "../api/types.ts";
 import { plural } from "../format.ts";
 import { folderName } from "../path.ts";
-import { IS_MAC, IS_WINDOWS } from "../platform.ts";
 
 /** git's empty tree (SHA-1), what changes before a repository's first commit are against. */
 export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -20,8 +19,8 @@ export function sanitizedRefName(name: string) {
   return s === "HEAD" || s === "@" ? `${s}-` : s;
 }
 
-// Refs are files, often, and macOS and Windows file systems ignore case: there Master is master.
-const FOLD_CASE = IS_MAC || IS_WINDOWS;
+// Refs are files, often, and macOS's file system ignores case: there Master is master.
+const FOLD_CASE = true;
 
 /** Whether two branch names are the same branch here. */
 export const sameRef = (a: string, b: string, fold = FOLD_CASE) => (fold ? a.toLowerCase() === b.toLowerCase() : a === b);

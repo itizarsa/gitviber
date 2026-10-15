@@ -189,11 +189,7 @@ fn is_hook(path: &Path) -> bool {
     let Ok(meta) = std::fs::metadata(path) else {
         return false;
     };
-    #[cfg(unix)]
-    return meta.is_file()
-        && std::os::unix::fs::PermissionsExt::mode(&meta.permissions()) & 0o111 != 0;
-    #[cfg(not(unix))]
-    meta.is_file()
+    meta.is_file() && std::os::unix::fs::PermissionsExt::mode(&meta.permissions()) & 0o111 != 0
 }
 
 /// GitHub refuses a push with a file over 100 MiB, and by then the commit has to come out of

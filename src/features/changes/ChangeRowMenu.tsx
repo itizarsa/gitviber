@@ -1,7 +1,7 @@
 import { Archive, ArrowLeftToLine, ArrowRightToLine, Check, Copy, Diff, EyeOff, File, Files, FolderSearch, GitMerge, History, ListTree, Minus, Plus, SquareCheck, Undo2 } from "lucide-react";
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { type FileChange } from "@/lib/api";
-import { IS_MAC, REVEAL_LABEL } from "@/lib/platform";
+import { REVEAL_LABEL } from "@/lib/platform";
 import type { Selection } from "@/lib/repo/selection";
 import { copyFiles, copyLabel, copyText } from "@/lib/app/clipboard";
 import { revealPath } from "@/lib/app/openIn";
@@ -122,7 +122,7 @@ export function ChangeRowMenu({
       </ContextMenuItem>
       <OpenInMenuItem path={file.path} disabled={!onDisk} />
       <ContextMenuSeparator />
-      {IS_MAC && onDiskPaths.length > 0 && (
+      {onDiskPaths.length > 0 && (
         <ContextMenuItem onSelect={() => copyFiles(onDiskPaths.map((p) => `${root}/${p}`))}>
           <Copy /> {copyLabel(onDiskPaths)}
         </ContextMenuItem>

@@ -163,7 +163,6 @@ pub fn remove_index_lock(repo: &Path, named: &str) -> Result<(), String> {
 /// before it takes index.lock and stays there while a hook or an editor runs. `git commit -a`
 /// holds the lock that long without keeping it open, so the lock file itself can't tell. The
 /// app's own reads there take no lock; one running now only makes the user try again.
-#[cfg(target_os = "macos")]
 fn git_working_in(dir: &Path) -> Option<libc::pid_t> {
     use std::ffi::{CStr, OsStr};
     use std::os::unix::ffi::OsStrExt;
@@ -189,10 +188,4 @@ fn git_working_in(dir: &Path) -> Option<libc::pid_t> {
         let cwd = unsafe { CStr::from_ptr(info.pvi_cdir.vip_path.as_ptr().cast()) };
         Path::new(OsStr::from_bytes(cwd.to_bytes())).starts_with(&dir)
     })
-}
-
-/// Elsewhere only the lock's age and the user's word guard it.
-#[cfg(not(target_os = "macos"))]
-fn git_working_in(_dir: &Path) -> Option<i32> {
-    None
 }

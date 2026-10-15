@@ -3,10 +3,9 @@
  * runs under node:test). A binding is a canonical chord string such as "shift+cmd+e" or
  * "alt+down": modifiers in ⌃⌥⇧⌘ order, then the key. Defaults follow VS Code where it has
  * an equivalent. When two commands share a chord, the one listed first here wins.
- * Off macOS "cmd" is Ctrl, as VS Code's CtrlCmd, and "ctrl" is the Windows / Super key.
  */
 
-import { IS_MAC, IS_WINDOWS, REVEAL_LABEL } from "../platform.ts";
+import { REVEAL_LABEL } from "../platform.ts";
 
 export const COMMANDS = [
   { id: "workbench.showCommands", title: "Command Palette", category: "General", keys: ["shift+cmd+p"] },
@@ -28,12 +27,11 @@ export const COMMANDS = [
   // The app last picked under "Open in"; the list of apps until there is one.
   { id: "file.openIn", title: "Open in External App", category: "General", keys: ["shift+cmd+o"] },
   // ⌘1–⌘9 pick tabs, as in browsers. Listed before the tabs, so a user who bound ⌘1 here keeps it.
-  // Elsewhere "ctrl" is the Super key, which the OS takes; Alt+1–4 is the usual there.
   // In the sidebar's tab order: Explorer, Search, Changes, History.
-  { id: "view.explorer", title: "Show Explorer", category: "View", keys: ["ctrl+1"], keysOther: ["alt+1"] },
-  { id: "view.search", title: "Show Search", category: "View", keys: ["ctrl+2"], keysOther: ["alt+2"] },
-  { id: "view.changes", title: "Focus Changes", category: "View", keys: ["ctrl+3"], keysOther: ["alt+3"] },
-  { id: "view.history", title: "Focus History", category: "View", keys: ["ctrl+4"], keysOther: ["alt+4"] },
+  { id: "view.explorer", title: "Show Explorer", category: "View", keys: ["ctrl+1"] },
+  { id: "view.search", title: "Show Search", category: "View", keys: ["ctrl+2"] },
+  { id: "view.changes", title: "Focus Changes", category: "View", keys: ["ctrl+3"] },
+  { id: "view.history", title: "Focus History", category: "View", keys: ["ctrl+4"] },
   // ⌘F is Find, which searches the history list too while focus is there.
   { id: "history.search", title: "Search History", category: "View", keys: ["alt+cmd+f"] },
   { id: "view.toggleSidebar", title: "Toggle Sidebar", category: "View", keys: ["cmd+b"] },
@@ -54,19 +52,17 @@ export const COMMANDS = [
   { id: "tab.goto4", title: "Go to Tab 4", category: "Tabs", keys: ["cmd+4"] },
   { id: "tab.goto5", title: "Go to Tab 5", category: "Tabs", keys: ["cmd+5"] },
   { id: "tab.goto6", title: "Go to Tab 6", category: "Tabs", keys: ["cmd+6"] },
-  // Elsewhere ⇧Ctrl+T opens a terminal (terminal.new): unbound there.
-  { id: "tab.closeOthers", title: "Close Other Tabs", category: "Tabs", keys: ["alt+cmd+t"], keysOther: [] },
+  { id: "tab.closeOthers", title: "Close Other Tabs", category: "Tabs", keys: ["alt+cmd+t"] },
   { id: "tab.closeLeft", title: "Close Tabs to the Left", category: "Tabs", keys: [] },
   { id: "tab.closeRight", title: "Close Tabs to the Right", category: "Tabs", keys: [] },
   { id: "tab.closeAll", title: "Close All Tabs", category: "Tabs", keys: [] },
-  { id: "tab.reopenClosed", title: "Reopen Closed Tab", category: "Tabs", keys: ["shift+cmd+t"], keysOther: [] },
+  { id: "tab.reopenClosed", title: "Reopen Closed Tab", category: "Tabs", keys: ["shift+cmd+t"] },
   { id: "tab.goto7", title: "Go to Tab 7", category: "Tabs", keys: ["cmd+7"] },
   { id: "tab.goto8", title: "Go to Tab 8", category: "Tabs", keys: ["cmd+8"] },
   { id: "tab.last", title: "Go to Last Tab", category: "Tabs", keys: ["cmd+9"] },
   // ⌘←/⌘→ skip text fields and the terminal (see runsWhileTyping); ⇧⌘] shows in the menu as it works everywhere.
-  // Elsewhere Ctrl+Tab ("cmd" there); Ctrl+← / Ctrl+→ move by word.
-  { id: "tab.next", title: "Next Tab", category: "Tabs", keys: ["shift+cmd+]", "cmd+right", "ctrl+tab"], keysOther: ["cmd+tab", "shift+cmd+]"] },
-  { id: "tab.prev", title: "Previous Tab", category: "Tabs", keys: ["shift+cmd+[", "cmd+left", "ctrl+shift+tab"], keysOther: ["shift+cmd+tab", "shift+cmd+["] },
+  { id: "tab.next", title: "Next Tab", category: "Tabs", keys: ["shift+cmd+]", "cmd+right", "ctrl+tab"] },
+  { id: "tab.prev", title: "Previous Tab", category: "Tabs", keys: ["shift+cmd+[", "cmd+left", "ctrl+shift+tab"] },
   { id: "tab.moveLeft", title: "Move Tab Left", category: "Tabs", keys: ["alt+left"], local: "the tab strip" },
   { id: "tab.moveRight", title: "Move Tab Right", category: "Tabs", keys: ["alt+right"], local: "the tab strip" },
   { id: "review.nextFile", title: "Next Changed File", category: "Review", keys: ["j"] },
@@ -115,44 +111,41 @@ export const COMMANDS = [
   { id: "media.zoomIn", title: "Zoom In Image", category: "Editor", keys: ["=", "shift+="], local: "the image view" },
   { id: "media.zoomOut", title: "Zoom Out Image", category: "Editor", keys: ["-"], local: "the image view" },
   { id: "media.fit", title: "Fit Image", category: "Editor", keys: ["0"], local: "the image view" },
-  // ⌃` as in VS Code, ⌘J as its panel toggle. Elsewhere Ctrl+`, as VS Code has it there too.
-  { id: "terminal.toggle", title: "Toggle Terminal", category: "Terminal", keys: ["cmd+j", "ctrl+`"], keysOther: ["cmd+j", "cmd+`"] },
+  // ⌃` as in VS Code, ⌘J as its panel toggle.
+  { id: "terminal.toggle", title: "Toggle Terminal", category: "Terminal", keys: ["cmd+j", "ctrl+`"] },
   { id: "terminal.newInProject", title: "New Terminal in Project…", category: "Terminal", keys: [] },
-  // Off macOS Ctrl+Shift, as in Linux terminals: Ctrl+letter is the shell's and desktops take Super
-  // chords (KDE: Super+D, Super+W). The ones below it only run in the terminal.
-  { id: "terminal.new", title: "New Terminal", category: "Terminal", keys: ["cmd+t"], keysOther: ["shift+cmd+t"] },
+  // The ones below it only run in the terminal.
+  { id: "terminal.new", title: "New Terminal", category: "Terminal", keys: ["cmd+t"] },
   // The id is from when it only split right; kept so a user's binding for it still applies.
-  { id: "terminal.split", title: "Split Terminal Right", category: "Terminal", keys: ["cmd+d"], keysOther: ["shift+cmd+d"], local: "the terminal", noRepeat: true },
-  // ⇧⌘D as in iTerm2, Ghostty and cmux. Elsewhere Ctrl+Shift+D is split right, so down adds Alt.
-  { id: "terminal.splitDown", title: "Split Terminal Down", category: "Terminal", keys: ["shift+cmd+d"], keysOther: ["alt+shift+cmd+d"], local: "the terminal", noRepeat: true },
-  { id: "terminal.clear", title: "Clear Terminal", category: "Terminal", keys: ["cmd+k"], keysOther: ["shift+cmd+k"], local: "the terminal" },
-  { id: "terminal.close", title: "Close Terminal Pane", category: "Terminal", keys: ["cmd+w"], keysOther: ["shift+cmd+w"], local: "the terminal" },
+  { id: "terminal.split", title: "Split Terminal Right", category: "Terminal", keys: ["cmd+d"], local: "the terminal", noRepeat: true },
+  // ⇧⌘D as in iTerm2, Ghostty and cmux.
+  { id: "terminal.splitDown", title: "Split Terminal Down", category: "Terminal", keys: ["shift+cmd+d"], local: "the terminal", noRepeat: true },
+  { id: "terminal.clear", title: "Clear Terminal", category: "Terminal", keys: ["cmd+k"], local: "the terminal" },
+  { id: "terminal.close", title: "Close Terminal Pane", category: "Terminal", keys: ["cmd+w"], local: "the terminal" },
   // ⇧⌘←/→ page through the panes by their numbers, wrapping; ⌥⌘arrows go by side, as in cmux.
-  { id: "terminal.prevPane", title: "Previous Terminal Pane", category: "Terminal", keys: ["shift+cmd+left"], keysOther: ["ctrl+alt+left"], local: "the terminal" },
-  { id: "terminal.nextPane", title: "Next Terminal Pane", category: "Terminal", keys: ["shift+cmd+right"], keysOther: ["ctrl+alt+right"], local: "the terminal" },
-  // Unbound elsewhere: Ctrl+Shift+arrows select by word in shells (PSReadLine), GNOME takes Ctrl+Alt+Shift+arrows, and Alt+arrows move by word.
-  { id: "terminal.focusLeft", title: "Focus Terminal Pane Left", category: "Terminal", keys: ["alt+cmd+left"], keysOther: [], local: "the terminal" },
-  { id: "terminal.focusRight", title: "Focus Terminal Pane Right", category: "Terminal", keys: ["alt+cmd+right"], keysOther: [], local: "the terminal" },
-  { id: "terminal.focusUp", title: "Focus Terminal Pane Above", category: "Terminal", keys: ["shift+cmd+up", "alt+cmd+up"], keysOther: [], local: "the terminal" },
-  { id: "terminal.focusDown", title: "Focus Terminal Pane Below", category: "Terminal", keys: ["shift+cmd+down", "alt+cmd+down"], keysOther: [], local: "the terminal" },
-  // Esc stays the program's (Claude Code, vim). Elsewhere Ctrl+Enter is a program's (kitty keyboard protocol), and Ctrl+Shift+Enter zooms a pane.
-  { id: "terminal.toggleMaximize", title: "Maximize Terminal", category: "Terminal", keys: ["cmd+enter"], keysOther: ["alt+shift+cmd+enter"], local: "the terminal", noRepeat: true },
+  { id: "terminal.prevPane", title: "Previous Terminal Pane", category: "Terminal", keys: ["shift+cmd+left"], local: "the terminal" },
+  { id: "terminal.nextPane", title: "Next Terminal Pane", category: "Terminal", keys: ["shift+cmd+right"], local: "the terminal" },
+  { id: "terminal.focusLeft", title: "Focus Terminal Pane Left", category: "Terminal", keys: ["alt+cmd+left"], local: "the terminal" },
+  { id: "terminal.focusRight", title: "Focus Terminal Pane Right", category: "Terminal", keys: ["alt+cmd+right"], local: "the terminal" },
+  { id: "terminal.focusUp", title: "Focus Terminal Pane Above", category: "Terminal", keys: ["shift+cmd+up", "alt+cmd+up"], local: "the terminal" },
+  { id: "terminal.focusDown", title: "Focus Terminal Pane Below", category: "Terminal", keys: ["shift+cmd+down", "alt+cmd+down"], local: "the terminal" },
+  // Esc stays the program's (Claude Code, vim).
+  { id: "terminal.toggleMaximize", title: "Maximize Terminal", category: "Terminal", keys: ["cmd+enter"], local: "the terminal", noRepeat: true },
   // ⇧⌘↵ as in cmux and Ghostty (Ctrl+Shift+Enter on Linux there).
-  { id: "terminal.zoomPane", title: "Zoom Terminal Pane", category: "Terminal", keys: ["shift+cmd+enter"], keysOther: ["shift+cmd+enter"], local: "the terminal", noRepeat: true },
-  // Only a split's panes show a name; the tab shows the repo and branch. Unbound elsewhere: Ctrl+R is
-  // the shell's history search, and Ctrl+Shift+R reloads.
+  { id: "terminal.zoomPane", title: "Zoom Terminal Pane", category: "Terminal", keys: ["shift+cmd+enter"], local: "the terminal", noRepeat: true },
+  // Only a split's panes show a name; the tab shows the repo and branch.
   // Every split of the open tab at even sizes; one split's divider does it with a double-click.
   { id: "terminal.equalizePanes", title: "Equalize Terminal Panes", category: "Terminal", keys: [] },
-  { id: "terminal.renamePane", title: "Rename Terminal Pane", category: "Terminal", keys: ["cmd+r"], keysOther: [], local: "the terminal" },
+  { id: "terminal.renamePane", title: "Rename Terminal Pane", category: "Terminal", keys: ["cmd+r"], local: "the terminal" },
   // The window's zoom keys size the terminal's font while it has focus, as in terminal apps.
   { id: "terminal.fontZoomIn", title: "Increase Terminal Font Size", category: "Terminal", keys: ["cmd+=", "shift+cmd+="], local: "the terminal" },
   { id: "terminal.fontZoomOut", title: "Decrease Terminal Font Size", category: "Terminal", keys: ["cmd+-"], local: "the terminal" },
   { id: "terminal.fontZoomReset", title: "Reset Terminal Font Size", category: "Terminal", keys: ["cmd+0"], local: "the terminal" },
-  // The prompts shell integration marks, as in VS Code (Ctrl+↑/↓ elsewhere, "cmd" there); a full-screen program keeps the keys.
+  // The prompts shell integration marks, as in VS Code; a full-screen program keeps the keys.
   { id: "terminal.prevCommand", title: "Scroll to Previous Command", category: "Terminal", keys: ["cmd+up"], local: "the terminal" },
   { id: "terminal.nextCommand", title: "Scroll to Next Command", category: "Terminal", keys: ["cmd+down"], local: "the terminal" },
   // WezTerm's QuickSelect key, Ctrl+Shift+Space on every platform (kitty's hints are Ctrl+Shift+E, the explorer's here).
-  { id: "terminal.hints", title: "Show Link Hints", category: "Terminal", keys: ["ctrl+shift+space"], keysOther: ["shift+cmd+space"], local: "the terminal", noRepeat: true },
+  { id: "terminal.hints", title: "Show Link Hints", category: "Terminal", keys: ["ctrl+shift+space"], local: "the terminal", noRepeat: true },
   { id: "explorer.rename", title: "Rename File", category: "Explorer", keys: ["f2"], local: "the explorer" },
   { id: "explorer.delete", title: "Delete File", category: "Explorer", keys: ["cmd+backspace"], local: "the explorer" },
   { id: "git.switchBranch", title: "Switch Branch", category: "Git", keys: [] },
@@ -162,10 +155,9 @@ export const COMMANDS = [
   { id: "git.switchWorktree", title: "Switch Worktree", category: "Git", keys: [] },
   { id: "git.newWorktree", title: "New Worktree", category: "Git", keys: [] },
   // GitHub Desktop's keys with ⌃ added: ⇧⌘T, ⇧⌘P and ⌘P reopen a tab, open the palette and a file here.
-  // Elsewhere "ctrl" is the Super key, which the OS takes: unbound there.
-  { id: "git.fetch", title: "Fetch", category: "Git", keys: ["ctrl+shift+cmd+t"], keysOther: [] },
-  { id: "git.pull", title: "Pull", category: "Git", keys: ["ctrl+shift+cmd+p"], keysOther: [] },
-  { id: "git.push", title: "Push", category: "Git", keys: ["ctrl+cmd+p"], keysOther: [] },
+  { id: "git.fetch", title: "Fetch", category: "Git", keys: ["ctrl+shift+cmd+t"] },
+  { id: "git.pull", title: "Pull", category: "Git", keys: ["ctrl+shift+cmd+p"] },
+  { id: "git.push", title: "Push", category: "Git", keys: ["ctrl+cmd+p"] },
   // VS Code's Sync Changes: what the remote has, then what's here.
   { id: "git.sync", title: "Sync (Pull, then Push)", category: "Git", keys: [] },
   // A patch from Copy as Patch, a mail or a chat: previewed first, then applied to the working tree.
@@ -174,7 +166,6 @@ export const COMMANDS = [
   { id: "git.toggleStage", title: "Stage / Unstage Changes", category: "Git", keys: ["s"], noRepeat: true },
   { id: "git.discard", title: "Discard Changes", category: "Git", keys: ["cmd+backspace"], outsideText: true },
   // Local: only `local` listens for it.
-  { id: "git.commit", title: "Commit", category: "Git", keys: ["cmd+enter", "ctrl+enter"], local: "the commit message" },
   { id: "git.renameBranch", title: "Rename Branch", category: "Git", keys: ["f2"], local: "the branch picker" },
   { id: "git.selectAllChanges", title: "Select All Changes", category: "Git", keys: ["cmd+a"], local: "the changes list" },
   { id: "git.createTag", title: "Create Tag", category: "Git", keys: ["cmd+enter", "ctrl+enter"], local: "the tag message" },
@@ -191,8 +182,6 @@ export const COMMANDS = [
   title: string;
   category: string;
   keys: readonly string[];
-  /** The defaults off macOS, where they differ. */
-  keysOther?: readonly string[];
   /** Where it listens, for a command only one place handles. */
   local?: string;
   outsideText?: boolean;
@@ -211,11 +200,8 @@ export const isCommandId = (id: string): id is CommandId => COMMANDS.some((c) =>
 /** macOS handles these before the page sees them (quit, hide, minimize, cycle windows, screenshots). */
 const MAC_RESERVED = ["cmd+q", "cmd+h", "alt+cmd+h", "cmd+m", "cmd+`", "shift+cmd+3", "shift+cmd+4", "shift+cmd+5"];
 
-/**
- * Whether the system takes a chord before the page sees it. Only macOS does: off it "cmd" is
- * Ctrl, and the GTK menu has no Quit, Hide or Minimize items to claim Ctrl+Q, Ctrl+H or Ctrl+M.
- */
-export const isReserved = (chord: string, mac = IS_MAC) => mac && MAC_RESERVED.includes(chord);
+/** Whether macOS takes a chord before the page sees it. */
+export const isReserved = (chord: string) => MAC_RESERVED.includes(chord);
 
 const MODS = ["ctrl", "alt", "shift", "cmd"] as const;
 
@@ -290,11 +276,11 @@ function unmodified(e: KeyLike): string | null {
 }
 
 /** The canonical chord for a key event, or null for a lone modifier or an unknown key. */
-export function eventChord(e: KeyLike, mac = IS_MAC): string | null {
+export function eventChord(e: KeyLike): string | null {
   if (["Meta", "Control", "Alt", "Shift", "CapsLock", "Fn"].includes(e.key)) return null;
   const key = keyToken(e);
   if (!key) return null;
-  const held = { cmd: mac ? e.metaKey : e.ctrlKey, ctrl: mac ? e.ctrlKey : e.metaKey, alt: e.altKey, shift: e.shiftKey };
+  const held = { cmd: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey };
   return [...MODS.filter((m) => held[m]), key].join("+");
 }
 
@@ -304,8 +290,8 @@ export function eventChord(e: KeyLike, mac = IS_MAC): string | null {
  * something else there. Letters and digits only count as typed (German ⌘Y, the US Z key, must not
  * run ⌘Z), and so do keys without ⌘ or ⌃: they type, and "?" is not "/".
  */
-export function eventChords(e: KeyLike, mac = IS_MAC): string[] {
-  const chord = eventChord(e, mac);
+export function eventChords(e: KeyLike): string[] {
+  const chord = eventChord(e);
   if (!chord || !(e.metaKey || e.ctrlKey)) return chord ? [chord] : [];
   const mods = chord.split("+").slice(0, -1);
   const chords = [chord];
@@ -316,15 +302,6 @@ export function eventChords(e: KeyLike, mac = IS_MAC): string[] {
   const us = CODE_KEYS[e.code];
   if (us) chords.push([...mods, us].join("+"));
   return [...new Set(chords)];
-}
-
-/** A chord as the native menu (muda) reads it: there "cmd" is always the ⌘ / Windows key. */
-export function menuAccelerator(chord: string, mac = IS_MAC): string {
-  if (mac) return chord;
-  return chord
-    .split("+")
-    .map((p) => (p === "cmd" ? "ctrl" : p === "ctrl" ? "super" : p))
-    .join("+");
 }
 
 /** Canonical form of a stored chord, or null when it has unknown or repeated modifiers. */
@@ -347,28 +324,26 @@ export function cleanOverrides(raw: unknown): Overrides {
   return out;
 }
 
-export function bindingsFor(id: CommandId, overrides: Overrides, mac = IS_MAC): readonly string[] {
-  const c: Command = COMMANDS.find((c) => c.id === id)!;
-  return overrides[id] ?? (!mac && "keysOther" in c ? c.keysOther : c.keys);
+export function bindingsFor(id: CommandId, overrides: Overrides): readonly string[] {
+  return overrides[id] ?? COMMANDS.find((c) => c.id === id)!.keys;
 }
 
 /** The global command a chord runs: the first listed one bound to it. */
-export function commandFor(chord: string, overrides: Overrides, mac = IS_MAC): Command | undefined {
-  return COMMANDS.find((c) => !("local" in c) && bindingsFor(c.id, overrides, mac).includes(chord));
+export function commandFor(chord: string, overrides: Overrides): Command | undefined {
+  return COMMANDS.find((c) => !("local" in c) && bindingsFor(c.id, overrides).includes(chord));
 }
 
 /**
  * Whether a chord still runs its command while focus is in a text field or the terminal. Letters
- * and ⌥ chords type characters there, ⌃+letter edits the line on macOS (⌃A, ⌃K), and "cmd"-arrows
- * move the cursor (⌘←/⌘→ to the line's ends, Ctrl+←/→ by word elsewhere). Other "cmd" chords,
- * ⌃ with anything else (⌃Tab, ⌃1), the Super key and F-keys are free.
+ * and ⌥ chords type characters there, ⌃+letter edits the line (⌃A, ⌃K), and ⌘-arrows move the
+ * cursor to the line's ends. Other ⌘ chords, ⌃ with anything else (⌃Tab, ⌃1) and F-keys are free.
  */
-export function runsWhileTyping(chord: string, command: Command, mac = IS_MAC): boolean {
+export function runsWhileTyping(chord: string, command: Command): boolean {
   if ("outsideText" in command) return false;
   const mods = chord.split("+");
   const key = mods.pop()!;
   if (mods.includes("cmd")) return !["left", "right", "up", "down"].includes(key);
-  if (mods.includes("ctrl")) return !mac || !/^[a-z]$/.test(key);
+  if (mods.includes("ctrl")) return !/^[a-z]$/.test(key);
   return /^f\d+$/.test(key) && !mods.includes("alt");
 }
 
@@ -383,23 +358,23 @@ export function runsInEditor(chord: string, command: Command, typed?: string): b
 /**
  * Whether the terminal hands a chord to its command instead of the shell: the physical Ctrl with
  * anything but a letter (⌃Tab, ⌃1), which a shell would only read as a control code. Ctrl+letter
- * (⌃C, ⌃R) is always the shell's; Ctrl+Shift+letter is the app's, as in Linux terminals.
+ * (⌃C, ⌃R) is always the shell's; Ctrl+Shift+letter is the app's.
  */
-export function takenFromTerminal(chord: string, command: Command, mac = IS_MAC): boolean {
+export function takenFromTerminal(chord: string, command: Command): boolean {
   const mods = chord.split("+");
   const key = mods.pop()!;
   const shellKey = /^[a-z]$/.test(key) && !mods.includes("shift");
-  return mods.includes(mac ? "ctrl" : "cmd") && !shellKey && runsWhileTyping(chord, command, mac);
+  return mods.includes("ctrl") && !shellKey && runsWhileTyping(chord, command);
 }
 
 /**
  * Whether a chord runs its command while the terminal has focus: only what the terminal doesn't
- * read itself, so a key never goes to both. That's ⌘ (the Super key elsewhere) and what it hands
- * over (takenFromTerminal). F-keys stay the shell's: programs there use them (htop, mc).
+ * read itself, so a key never goes to both. That's ⌘ and what it hands over (takenFromTerminal).
+ * F-keys stay the shell's: programs there use them (htop, mc).
  */
-export function runsInTerminal(chord: string, command: Command, mac = IS_MAC): boolean {
-  if (chord.split("+").includes(mac ? "cmd" : "ctrl")) return runsWhileTyping(chord, command, mac);
-  return takenFromTerminal(chord, command, mac);
+export function runsInTerminal(chord: string, command: Command): boolean {
+  if (chord.split("+").includes("cmd")) return runsWhileTyping(chord, command);
+  return takenFromTerminal(chord, command);
 }
 
 const GLYPHS: Record<string, string> = {
@@ -424,24 +399,8 @@ const GLYPHS: Record<string, string> = {
   "-": "−",
 };
 
-const NAMES: Record<string, string> = { cmd: "Ctrl", ctrl: IS_WINDOWS ? "Win" : "Super", alt: "Alt", shift: "Shift" };
+/** ⇧⌘E: one argument, so it can go straight into `.map`. */
+export const formatChord = (chord: string) => chordKeys(chord).join("");
 
-/** One argument, so it can go straight into `.map`. */
-export const formatChord = (chord: string) => formatChordFor(chord, IS_MAC);
-
-/** ⇧⌘E on macOS, Ctrl+Shift+E elsewhere. */
-export function formatChordFor(chord: string, mac: boolean): string {
-  return chordKeysFor(chord, mac).join(mac ? "" : "+");
-}
-
-/** A chord's keys one by one, as keycaps show them: ⇧ ⌘ E on macOS, Ctrl Shift E elsewhere. */
-export const chordKeys = (chord: string) => chordKeysFor(chord, IS_MAC);
-
-function chordKeysFor(chord: string, mac: boolean): string[] {
-  const parts = chord.split("+");
-  if (mac) return parts.map((p) => GLYPHS[p] ?? p.toUpperCase());
-  // Windows and Linux lead with Ctrl, not with ⌃⌥⇧⌘'s order.
-  const key = parts.pop()!;
-  const mods = ["cmd", "ctrl", "alt", "shift"].filter((m) => parts.includes(m)).map((m) => NAMES[m]);
-  return [...mods, GLYPHS[key] ?? key.toUpperCase()];
-}
+/** A chord's keys one by one, as keycaps show them: ⇧ ⌘ E. */
+export const chordKeys = (chord: string) => chord.split("+").map((p) => GLYPHS[p] ?? p.toUpperCase());

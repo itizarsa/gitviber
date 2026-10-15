@@ -32,13 +32,12 @@ test("regex: its own syntax, empty matches left out, a broken one is an error", 
 });
 
 test("the option keys are Monaco's", () => {
-  const key = (code: string, mods: { alt?: boolean; meta?: boolean; shift?: boolean; ctrl?: boolean }, mac: boolean) =>
-    optionKey({ code, altKey: !!mods.alt, metaKey: !!mods.meta, shiftKey: !!mods.shift, ctrlKey: !!mods.ctrl }, mac);
-  assert.equal(key("KeyC", { alt: true, meta: true }, true), "matchCase");
-  assert.equal(key("KeyW", { alt: true, meta: true }, true), "wholeWord");
-  assert.equal(key("KeyR", { alt: true }, false), "regex");
-  // ⌥C alone types ç on a Mac.
-  assert.equal(key("KeyC", { alt: true }, true), null);
-  assert.equal(key("KeyC", { alt: true, meta: true }, false), null);
-  assert.equal(key("KeyX", { alt: true }, false), null);
+  const key = (code: string, mods: { alt?: boolean; meta?: boolean; shift?: boolean; ctrl?: boolean }) =>
+    optionKey({ code, altKey: !!mods.alt, metaKey: !!mods.meta, shiftKey: !!mods.shift, ctrlKey: !!mods.ctrl });
+  assert.equal(key("KeyC", { alt: true, meta: true }), "matchCase");
+  assert.equal(key("KeyW", { alt: true, meta: true }), "wholeWord");
+  assert.equal(key("KeyR", { alt: true, meta: true }), "regex");
+  // ⌥C alone types ç.
+  assert.equal(key("KeyC", { alt: true }), null);
+  assert.equal(key("KeyX", { alt: true, meta: true }), null);
 });

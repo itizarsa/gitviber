@@ -165,7 +165,6 @@ fn staging_unstaging_and_discarding_more_paths_than_argv_holds() {
 }
 
 /// chmod +x alone has no text diff; status says what changed.
-#[cfg(unix)]
 #[test]
 fn a_mode_change_is_reported() {
     use std::os::unix::fs::PermissionsExt;
@@ -255,7 +254,6 @@ fn a_stale_index_lock_can_be_removed() {
 
 /// `git commit -a` holds index.lock while its hooks run, without keeping the file open: however
 /// old, the lock is left alone while that git still works in the repository.
-#[cfg(target_os = "macos")]
 #[test]
 fn a_running_commits_index_lock_is_left_alone() {
     use std::time::{Duration, SystemTime};

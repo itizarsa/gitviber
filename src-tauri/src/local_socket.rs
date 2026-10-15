@@ -11,10 +11,8 @@ pub fn random_hex(n: usize) -> Option<String> {
     Some(bytes.iter().map(|b| format!("{b:02x}")).collect())
 }
 
-#[cfg(unix)]
 pub use unix::{ask_line, private_dir, serve_line};
 
-#[cfg(unix)]
 mod unix {
     use serde::{de::DeserializeOwned, Serialize};
     use std::io::{BufRead, BufReader, ErrorKind, Read, Write};

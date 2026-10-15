@@ -239,28 +239,18 @@ fn index_mode(repo: &Path, path: &str) -> String {
         .unwrap_or_else(|| disk_mode(&repo.join(path)))
 }
 
-#[cfg(unix)]
 fn disk_mode(path: &Path) -> String {
     use std::os::unix::fs::PermissionsExt;
     let exec = std::fs::metadata(path).is_ok_and(|m| m.permissions().mode() & 0o111 != 0);
     if exec { "100755" } else { "100644" }.into()
 }
 
-#[cfg(not(unix))]
-fn disk_mode(_: &Path) -> String {
-    "100644".into()
-}
-
-#[cfg(unix)]
 fn set_mode(path: &Path, mode: &str) {
     use std::os::unix::fs::PermissionsExt;
     if mode == "100755" {
         let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755));
     }
 }
-
-#[cfg(not(unix))]
-fn set_mode(_: &Path, _: &str) {}
 
 #[cfg(test)]
 mod tests {

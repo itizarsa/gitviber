@@ -8,14 +8,12 @@ mod compare;
 mod compare_edges;
 mod content;
 // `sh` recorders stand in for the credential helper and askpass.
-#[cfg(unix)]
 mod history;
 mod history_more;
 mod lines;
 mod main_back;
 mod main_back_edges;
 // A `sh` recorder stands in for the editor.
-#[cfg(unix)]
 mod open_in;
 mod operations;
 mod patch_edges;
@@ -23,10 +21,8 @@ mod review;
 mod rewrite;
 mod search;
 // zsh on a pty.
-#[cfg(unix)]
 mod shell_marks;
 // zsh and bash with the integration.
-#[cfg(unix)]
 mod stash;
 mod stash_edges;
 mod suggest;
@@ -191,7 +187,7 @@ fn repo_with_submodule(sb: &Sandbox) -> PathBuf {
     ];
     run(&r, &add).unwrap();
     // A clone made by git, not `clone_of`: without its own identity a commit in it
-    // fails where the machine has none (the Linux CI runner).
+    // fails where the machine has none (a CI runner).
     identity(&r.join("sub"));
     commit(&r, "add sub", &CommitOptions::default(), &Net::default()).unwrap();
     r

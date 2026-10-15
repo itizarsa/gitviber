@@ -29,7 +29,7 @@ pub struct Injection {
 pub fn injection(shell: &Path, dir: &Path) -> Option<Injection> {
     let name = shell.file_name()?.to_str()?;
     // macOS's own bash is 3.2, without PS0; Ghostty leaves it alone too.
-    let old_bash = cfg!(target_os = "macos") && shell == Path::new("/bin/bash");
+    let old_bash = shell == Path::new("/bin/bash");
     if name != "zsh" && (name != "bash" || old_bash) {
         return None;
     }
@@ -63,7 +63,6 @@ fn write(dir: &Path) -> std::io::Result<()> {
         let parent = path.parent().unwrap_or(dir);
         let mut folders = std::fs::DirBuilder::new();
         folders.recursive(true);
-        #[cfg(unix)]
         std::os::unix::fs::DirBuilderExt::mode(&mut folders, 0o700);
         folders.create(parent)?;
         for folder in [dir, parent] {
@@ -71,7 +70,6 @@ fn write(dir: &Path) -> std::io::Result<()> {
                 return Err(std::io::ErrorKind::InvalidInput.into());
             }
             // Made by an older version, before the mode was set.
-            #[cfg(unix)]
             std::fs::set_permissions(folder, std::os::unix::fs::PermissionsExt::from_mode(0o700))?;
         }
         let current = std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_file())
@@ -87,7 +85,6 @@ fn write(dir: &Path) -> std::io::Result<()> {
         let _ = std::fs::remove_file(&temp);
         let mut file = std::fs::OpenOptions::new();
         file.write(true).create_new(true);
-        #[cfg(unix)]
         std::os::unix::fs::OpenOptionsExt::mode(&mut file, 0o600);
         file.open(&temp)?.write_all(text.as_bytes())?;
         // A rename replaces what's at `path`, a link included, rather than writing where it points.
@@ -114,12 +111,9 @@ mod tests {
             bash.env[0].1,
             dir.join("bash/gitviber.bash").into_os_string()
         );
-        if cfg!(target_os = "macos") {
-            assert!(injection(Path::new("/bin/bash"), &dir).is_none());
-        }
+        assert!(injection(Path::new("/bin/bash"), &dir).is_none());
         assert!(injection(Path::new("/opt/homebrew/bin/fish"), &dir).is_none());
         // A link planted in place of a script is replaced, not written through.
-        #[cfg(unix)]
         {
             let outside = dir.join("outside");
             std::fs::write(&outside, "mine").unwrap();

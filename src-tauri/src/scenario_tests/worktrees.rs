@@ -284,7 +284,6 @@ fn a_new_worktree_gets_the_ignored_files_worktreeinclude_lists() {
         fs::create_dir_all(r.join(path).parent().unwrap()).unwrap();
         fs::write(r.join(path), text).unwrap();
     }
-    #[cfg(unix)]
     std::os::unix::fs::symlink("../../../outside", r.join("config/local/link")).unwrap();
 
     let mut listed = worktree_includes(&r).unwrap();
@@ -439,7 +438,6 @@ fn a_new_worktree_checks_out_an_existing_branch() {
 
 /// A folder picked through a symlink, or typed in another case: the new worktree's path is
 /// the one `worktree list` reports, which the picker and the terminals compare it with.
-#[cfg(unix)]
 #[test]
 fn a_new_worktree_through_a_symlink_has_its_real_path() {
     let sb = Sandbox::new("wtlink");
@@ -659,7 +657,6 @@ fn worktree_time_counts_a_deleted_file() {
 }
 
 /// A symlink made just now is new work, whatever it points at (or doesn't, yet).
-#[cfg(unix)]
 #[test]
 fn worktree_time_counts_a_new_symlink() {
     let sb = Sandbox::new("wtlink");

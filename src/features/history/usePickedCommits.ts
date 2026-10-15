@@ -7,7 +7,7 @@ const sha = (c: Commit) => c.sha;
 const same = (s: string) => s;
 
 /**
- * Commits picked together in History: ⌘-click (Ctrl off macOS) picks one or puts it back, ⇧-click
+ * Commits picked together in History: ⌘-click picks one or puts it back, ⇧-click
  * and ⇧↑↓ the range from the last one clicked, along commits on the same side of HEAD; a plain
  * click or move lets them go. Picks a rewrite replaced leave with their commits. `open`: the
  * open commit, which a first ⌘-click picks along.

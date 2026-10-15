@@ -254,7 +254,6 @@ fn discarding_a_folder_leaves_ignored_files_and_link_targets_alone() {
     let outside = _sb.path("outside");
     fs::create_dir_all(&outside).unwrap();
     fs::write(outside.join("keep.txt"), "k\n").unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&outside, r.join("d/link")).unwrap();
     let listed: Vec<String> = status(&r)
         .unwrap()
@@ -267,7 +266,6 @@ fn discarding_a_folder_leaves_ignored_files_and_link_targets_alone() {
     discard(&r, &["d/a.txt".to_string()]).unwrap();
     assert_eq!(fs::read_to_string(r.join("d/a.txt")).unwrap(), "a\n");
     assert!(r.join("d/x.log").exists());
-    #[cfg(unix)]
     {
         assert!(listed.contains(&"d/link".to_string()), "{listed:?}");
     }

@@ -4,19 +4,15 @@
 //! In full screen the toolbar would stay pinned over the page's own top bar, so it auto-hides
 //! there and slides in with the menu bar, as in any full-screen app.
 
-#[cfg(target_os = "macos")]
 use objc2::runtime::{AnyObject, Sel};
 
-#[cfg(target_os = "macos")]
 type OptionsFn = unsafe extern "C-unwind" fn(*mut AnyObject, Sel, *mut AnyObject, usize) -> usize;
 
 /// tao's own window:willUseFullScreenPresentationOptions:, which ours wraps.
-#[cfg(target_os = "macos")]
 static TAO_OPTIONS: std::sync::OnceLock<OptionsFn> = std::sync::OnceLock::new();
 
 /// A full-screen window takes its presentation options from its delegate, not from NSApp
 /// (setting them there was ignored), so auto-hiding the toolbar has to be answered here.
-#[cfg(target_os = "macos")]
 unsafe extern "C-unwind" fn full_screen_options(
     this: *mut AnyObject,
     sel: Sel,
@@ -40,7 +36,6 @@ unsafe extern "C-unwind" fn full_screen_options(
     }
 }
 
-#[cfg(target_os = "macos")]
 pub fn setup<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     use block2::RcBlock;
     use objc2::runtime::{Bool, Imp};
@@ -101,6 +96,3 @@ pub fn setup<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
         }
     }
 }
-
-#[cfg(not(target_os = "macos"))]
-pub fn setup<R: tauri::Runtime>(_window: &tauri::WebviewWindow<R>) {}

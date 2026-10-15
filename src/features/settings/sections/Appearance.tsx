@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { appearanceFloor, previewTranslucency } from "@/lib/app/translucency";
-import { IS_MAC } from "@/lib/platform";
 import {
   type Appearance,
   BACKGROUND_BLUR,
@@ -26,7 +25,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, FontPicker, Group, OptionSelect, Slider } from "@/features/settings/controls";
 
 // What the System theme follows.
-const DESKTOP = IS_MAC ? "macOS" : "your desktop";
+const DESKTOP = "macOS";
 
 export function AppearanceSection() {
   const s = useSettings();
@@ -61,38 +60,33 @@ export function AppearanceSection() {
             />
           </Field>
         )}
-        {/* macOS only: elsewhere the window can't be made clear this way. */}
-        {IS_MAC && (
-          <>
-            <Field
-              label="Window opacity"
-              hint={`Below 100%, the desktop shows through the whole window, down to ${floor}%, the lowest the chosen light and dark themes both stay readable at. Text, dialogs, menus and the terminal stay solid, as does the window in full screen or with Reduce transparency on.`}
-            >
-              <Slider
-                name="Window opacity"
-                {...WINDOW_OPACITY}
-                min={floor}
-                value={s.windowOpacity}
-                fallback={100}
-                format={(v) => `${v}%`}
-                onChange={(v) => updateSettings({ windowOpacity: v })}
-                onPreview={(v) => previewTranslucency({ windowOpacity: v })}
-              />
-            </Field>
-            <Field label="Background blur" hint="How much the desktop behind a see-through window is blurred. 0 leaves it sharp.">
-              <Slider
-                name="Background blur"
-                {...BACKGROUND_BLUR}
-                value={s.backgroundBlur}
-                fallback={0}
-                format={(v) => `${v} px`}
-                disabled={s.windowOpacity === 100}
-                onChange={(v) => updateSettings({ backgroundBlur: v })}
-                onPreview={(v) => previewTranslucency({ backgroundBlur: v })}
-              />
-            </Field>
-          </>
-        )}
+        <Field
+          label="Window opacity"
+          hint={`Below 100%, the desktop shows through the whole window, down to ${floor}%, the lowest the chosen light and dark themes both stay readable at. Text, dialogs, menus and the terminal stay solid, as does the window in full screen or with Reduce transparency on.`}
+        >
+          <Slider
+            name="Window opacity"
+            {...WINDOW_OPACITY}
+            min={floor}
+            value={s.windowOpacity}
+            fallback={100}
+            format={(v) => `${v}%`}
+            onChange={(v) => updateSettings({ windowOpacity: v })}
+            onPreview={(v) => previewTranslucency({ windowOpacity: v })}
+          />
+        </Field>
+        <Field label="Background blur" hint="How much the desktop behind a see-through window is blurred. 0 leaves it sharp.">
+          <Slider
+            name="Background blur"
+            {...BACKGROUND_BLUR}
+            value={s.backgroundBlur}
+            fallback={0}
+            format={(v) => `${v} px`}
+            disabled={s.windowOpacity === 100}
+            onChange={(v) => updateSettings({ backgroundBlur: v })}
+            onPreview={(v) => previewTranslucency({ backgroundBlur: v })}
+          />
+        </Field>
       </Group>
       {/* Each appearance keeps its own syntax theme, so switching back restores it. */}
       <Group title="Code colors">

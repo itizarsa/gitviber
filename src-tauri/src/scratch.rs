@@ -12,7 +12,6 @@ impl ScratchDir {
         let name = crate::local_socket::random_hex(8).ok_or("could not name a temporary folder")?;
         let dir = std::env::temp_dir().join(format!("gitviber-{purpose}-{name}"));
         let mut builder = std::fs::DirBuilder::new();
-        #[cfg(unix)]
         std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
         // Fails if anything already sits at that path, so nobody can plant one for us.
         builder
@@ -49,7 +48,6 @@ pub(crate) fn write_private(path: &Path, text: &str) -> std::io::Result<()> {
     use std::io::Write;
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true);
-    #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     options.open(path)?.write_all(text.as_bytes())
 }
@@ -89,7 +87,6 @@ mod tests {
     use super::*;
     use std::time::SystemTime;
 
-    #[cfg(unix)]
     #[test]
     fn sweep_removes_only_its_own_old_folders() {
         let old = ScratchDir::new("sweep-test").unwrap();

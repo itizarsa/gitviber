@@ -20,7 +20,6 @@ import { type SaveState } from "./saveRound";
 import { planFit } from "./fit";
 import { ask } from "../app/ask";
 import { plural } from "../format";
-import { IS_LINUX, IS_MAC, IS_WINDOWS } from "../platform";
 import { failed, toast } from "../app/toast";
 import { copyText } from "../app/clipboard";
 import { stoppedByQuit } from "../app/quit";
@@ -253,12 +252,11 @@ export function createPane(cwd: string, restored?: { history: string; savedAt: n
   });
   term.onTitleChange((title) => update(id, (info) => ({ ...info, title })));
   watchFind(p);
-  // A mouse wheel's notch arrives as ~53-100 px off macOS, so a row per row would scroll vim or
-  // htop 3-5 rows a notch where it scrolled one; the replay is for the Mac trackpad it was made on.
-  if (IS_MAC) reportWheelByRow(term);
+  // The wheel by row, for the trackpad's fine steps.
+  reportWheelByRow(term);
   // ⌥-drag selects past a program that reads the mouse, which Claude Code's "option+click to native
   // select" counts on. Forcing it always would cost ⌥-drag's block selection where none reads it.
-  if (IS_MAC) host.addEventListener("mousedown", () => (term.options.macOptionClickForcesSelection = term.modes.mouseTrackingMode !== "none"), true);
+  host.addEventListener("mousedown", () => (term.options.macOptionClickForcesSelection = term.modes.mouseTrackingMode !== "none"), true);
   // XTVERSION names this app, as Ghostty and iTerm2 name themselves. Answered as xterm.js, Claude
   // Code took the pane for VS Code's terminal: 3 rows a report once the wheel slowed, and its
   // workarounds for VS Code's glyph atlas.
@@ -267,35 +265,27 @@ export function createPane(cwd: string, restored?: { history: string; savedAt: n
     term.input("\x1bP>|GitViber\x1b\\", false);
     return true;
   });
-  // OSC 52 copies (clipboard.rs writes macOS's and Linux's only). Taken from the pane in use alone,
-  // where a yank or a tmux copy happens: output in the background can't replace the clipboard.
-  if (!IS_WINDOWS)
-    term.parser.registerOscHandler(52, (data) => {
-      if (!state.open || activeGroup()?.focused !== id || !document.hasFocus()) return true;
-      const text = osc52Text(data);
-      if (text !== null) copyFromProgram(text);
-      return true;
-    });
+  // OSC 52 copies (clipboard.rs). Taken from the pane in use alone, where a yank or a tmux copy
+  // happens: output in the background can't replace the clipboard.
+  term.parser.registerOscHandler(52, (data) => {
+    if (!state.open || activeGroup()?.focused !== id || !document.hasFocus()) return true;
+    const text = osc52Text(data);
+    if (text !== null) copyFromProgram(text);
+    return true;
+  });
   // ⌘V reads the pasteboard natively (clipboard.rs): the webview's paste carries only text, so a
   // copied image or Finder file pasted nothing. Ahead of xterm's own handler on its text area.
-  // Linux reads GTK's clipboard the same way (Shift+Insert, Ctrl+Shift+V below); Windows is untried.
-  // A middle-click pastes Linux's primary selection, which xterm moves its text area under the
-  // pointer for: that paste is left to it.
-  let middleAt = -Infinity;
-  if (IS_LINUX) host.addEventListener("mousedown", (e) => e.button === 1 && (middleAt = performance.now()), true);
-  if (!IS_WINDOWS)
-    host.addEventListener(
-      "paste",
-      (e) => {
-        if (performance.now() - middleAt < 1000) return void (middleAt = -Infinity);
-        // Kept for when the native read fails: the text at least still pastes.
-        const text = e.clipboardData?.getData("text/plain") ?? "";
-        e.preventDefault();
-        e.stopPropagation();
-        void pasteInto(p, text);
-      },
-      true,
-    );
+  host.addEventListener(
+    "paste",
+    (e) => {
+      // Kept for when the native read fails: the text at least still pastes.
+      const text = e.clipboardData?.getData("text/plain") ?? "";
+      e.preventDefault();
+      e.stopPropagation();
+      void pasteInto(p, text);
+    },
+    true,
+  );
   host.addEventListener("wheel", pinchFont, { capture: true, passive: false });
   term.attachCustomKeyEventHandler(paneKeys(p));
   return { id, cwd, title: "" };
@@ -652,11 +642,11 @@ export function paneMenuState(id: number) {
 
 /**
  * A program reading the mouse (tmux, vim `mouse=a`) gets the right-click, and shows its own menu;
- * with the key that forces a selection past it (⌥, ⇧ off macOS) the click is the pane's.
+ * with the key that forces a selection past it (⌥) the click is the pane's.
  */
 export function paneTakesMouse(id: number, e: MouseEvent) {
   const mode = panes.get(id)?.term.modes.mouseTrackingMode;
-  return !!mode && mode !== "none" && !(IS_MAC ? e.altKey : e.shiftKey);
+  return !!mode && mode !== "none" && !e.altKey;
 }
 
 export function copyPaneSelection(id: number) {

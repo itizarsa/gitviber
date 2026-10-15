@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/ui/tooltip";
 import { bindingsFor, COMMANDS, type Command, type CommandId, commandFor, eventChord, formatChord, isReserved } from "@/lib/commands/commands";
-import { IS_MAC } from "@/lib/platform";
 import { updateSettings, useSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -61,7 +60,7 @@ export function ShortcutsSection({ recording, setRecording }: { recording: Recor
   return (
     <>
       <Field
-        label={`Hold ${IS_MAC ? "⌘" : "Ctrl"} to show shortcuts`}
+        label="Hold ⌘ to show shortcuts"
         hint="Hold it by itself for a second to see the shortcuts that work where you are. The key below shows them too."
         commands={["workbench.shortcutOverlay"]}
       >
@@ -143,8 +142,7 @@ export function ShortcutsSection({ recording, setRecording }: { recording: Recor
       {!groups.length && <div className="rounded-md border border-border px-3 py-6 text-center text-[12px] text-subtle">{category === ALL ? "No matching commands" : `No matching commands in ${category}`}</div>}
       <p className="mt-3 text-[11.5px] leading-relaxed text-subtle">
         Click a key to change it, or + to add one; Esc cancels. When two commands share a key, the warning next to them names the one that runs. While you type in a text field, only
-        shortcuts with {IS_MAC ? "⌘, ⌃ or an F-key apply (not ⌘-arrows or ⌃ with a letter, which edit text)" : "Ctrl or an F-key apply (not Ctrl+arrows, which move by word)"}, and Commit only applies in
-        the commit message.
+        shortcuts with ⌘, ⌃ or an F-key apply (not ⌘-arrows or ⌃ with a letter, which edit text).
       </p>
     </>
   );

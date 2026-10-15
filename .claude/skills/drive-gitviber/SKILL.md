@@ -77,19 +77,3 @@ What already failed, so don't retry it:
 - `pkill -f 'target/debug/(gitviber|GitViber Dev\.app/)'; pkill -f "tauri.mjs dev"`. The dev
   build reruns itself as `target/debug/GitViber Dev.app` (dev_bundle.rs), same pid. Leave
   `/Applications/GitViber.app` alone: that one is the user's own.
-
-## On Linux (headless, e.g. a cloud container)
-
-`scripts/setup-linux-env.sh` installs WebKitGTK and the capture tools. Then:
-
-```sh
-export UI_DIR=<scratchpad>/ui; LX=.claude/skills/drive-gitviber/lx.sh
-Xvfb :99 -screen 0 1480x920x24 &
-DISPLAY=:99 WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm tauri dev > $UI_DIR/dev.log 2>&1 &
-$LX js 'return document.title'     # same bridge and prelude as ui.sh
-$LX shot a1                        # whole display -> $UI_DIR/a1.png
-$LX rec-start demo; …; $LX rec-stop  # $UI_DIR/demo.mp4
-```
-
-There is no native open panel to drive: seed `localStorage` `gitviber.recent` (a JSON list of
-paths) and `gitviber.last`, then `location.reload()`.

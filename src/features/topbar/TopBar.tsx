@@ -18,7 +18,6 @@ import { DisabledTip, Tip } from "@/components/ui/tooltip";
 import { api, cancelNetwork } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
 import { folderName } from "@/lib/path";
-import { IS_MAC } from "@/lib/platform";
 import { useCommands } from "@/lib/commands/keybindings";
 import { openTerminal } from "@/lib/terminal/terminals";
 import { useNetActivity } from "@/lib/repo/netActivity";
@@ -110,7 +109,7 @@ export function TopBar({ repo, root, main, onOpenRepo }: Props) {
   return (
     <header
       data-tauri-drag-region
-      className={`flex h-[max(40px,calc(40px/var(--ui-scale,1)))] shrink-0 items-center gap-1 border-b border-border bg-sidebar glass-sidebar pr-2 ${fullscreen || !IS_MAC ? "pl-2" : "pl-[calc(86px/var(--ui-scale,1))]"}`}
+      className={`flex h-[max(40px,calc(40px/var(--ui-scale,1)))] shrink-0 items-center gap-1 border-b border-border bg-sidebar glass-sidebar pr-2 ${fullscreen ? "pl-2" : "pl-[calc(86px/var(--ui-scale,1))]"}`}
     >
       <Wordmark />
       <div className="mx-2 h-4 w-px bg-border-strong" />

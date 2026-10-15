@@ -1,7 +1,7 @@
 import { emitTo } from "@tauri-apps/api/event";
 import { useEffect, useMemo } from "react";
 import { api, type OpenInApp } from "../api";
-import { IS_MAC, REVEAL_FAILED } from "../platform";
+import { REVEAL_FAILED } from "../platform";
 import { getSettings, type Settings, updateSettings, useSettings } from "../settings";
 import { readJson, writeJson } from "../storage";
 import { createStore } from "../store";
@@ -92,9 +92,9 @@ function loadIcon(id: string) {
     });
 }
 
-/** A found app's icon: its URL, "" for none (the user's own apps, off macOS), undefined while it's drawn. */
+/** A found app's icon: its URL, "" for none (the user's own apps), undefined while it's drawn. */
 export function useOpenAppIcon(app: OpenApp): string | undefined {
-  const id = IS_MAC && !app.command ? app.id : undefined;
+  const id = !app.command ? app.id : undefined;
   const url = icons.use()[id ?? ""];
   useEffect(() => {
     if (id) loadIcon(id);

@@ -17,19 +17,6 @@ fn openable(url: &str) -> Option<String> {
         .filter(|_| plain)
 }
 
-/// A desktop tool with the session's environment, not ours: inside an AppImage ours points at
-/// its bundled libraries and xdg-open, and the host's file manager crashed on them. The login
-/// shell's PATH where it's known, so NixOS's tools and a $BROWSER in ~/.local/bin are found.
-#[cfg(all(unix, not(target_os = "macos")))]
-fn desktop_tool(program: &str) -> Command {
-    let mut cmd = Command::new(program);
-    cmd.env_clear().envs(crate::shell::clean_env());
-    if let Some(path) = crate::shell::login_path() {
-        cmd.env("PATH", path);
-    }
-    cmd
-}
-
 /// Opens a web page in the default browser.
 pub fn open_url(url: &str) -> Result<(), String> {
     launch(&openable(url).ok_or("refusing to open this URL")?)
@@ -37,17 +24,8 @@ pub fn open_url(url: &str) -> Result<(), String> {
 
 /// Hands `url` to the OS's opener, as one argument.
 fn launch(url: &str) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
     let mut cmd = Command::new("open");
     // Not `cmd /C start`: cmd.exe re-parses the argument.
-    #[cfg(target_os = "windows")]
-    let mut cmd = {
-        let mut c = Command::new("rundll32");
-        c.arg("url.dll,FileProtocolHandler");
-        c
-    };
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let mut cmd = desktop_tool("xdg-open");
     crate::process::spawn(cmd.arg(url))
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -56,68 +34,11 @@ fn launch(url: &str) -> Result<(), String> {
 /// Selects `path` in the file manager.
 pub fn reveal(path: PathBuf) -> Result<(), String> {
     // Waited on (it returns at once) so no zombie is left behind per click.
-    #[cfg(target_os = "macos")]
-    return match crate::process::spawn(Command::new("open").arg("-R").arg(path))
-        .and_then(|mut c| c.wait())
+    match crate::process::spawn(Command::new("open").arg("-R").arg(path)).and_then(|mut c| c.wait())
     {
         Ok(s) if s.success() => Ok(()),
         Ok(s) => Err(format!("open -R failed ({s})")),
         Err(e) => Err(e.to_string()),
-    };
-    #[cfg(target_os = "linux")]
-    {
-        use std::process::Stdio;
-        // The file manager's own interface selects the entry (Dolphin, Nautilus, Nemo, …).
-        // gdbus comes with GLib, which the app needs anyway; dbus-send is a separate package on
-        // some distros. The URI is percent-encoded, so no quote or comma breaks either syntax.
-        let uri = format!("file://{}", crate::trash::encode(&path));
-        let (items, array) = (format!("['{uri}']"), format!("array:string:{uri}"));
-        let calls: [&[&str]; 2] = [
-            &[
-                "gdbus",
-                "call",
-                "--session",
-                "--dest=org.freedesktop.FileManager1",
-                "--object-path=/org/freedesktop/FileManager1",
-                "--method=org.freedesktop.FileManager1.ShowItems",
-                items.as_str(),
-                "''",
-            ],
-            &[
-                "dbus-send",
-                "--session",
-                "--print-reply",
-                "--dest=org.freedesktop.FileManager1",
-                "/org/freedesktop/FileManager1",
-                "org.freedesktop.FileManager1.ShowItems",
-                array.as_str(),
-                "string:",
-            ],
-        ];
-        for call in calls {
-            let shown = crate::process::spawn(
-                desktop_tool(call[0])
-                    .args(&call[1..])
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null()),
-            )
-            .and_then(|mut c| c.wait());
-            if shown.is_ok_and(|s| s.success()) {
-                return Ok(());
-            }
-        }
-        // Without one, open the folder it's in. xdg-open may stay until that window closes,
-        // so it's reaped on a thread.
-        let mut child =
-            crate::process::spawn(desktop_tool("xdg-open").arg(path.parent().unwrap_or(&path)))
-                .map_err(|e| format!("xdg-open: {e}"))?;
-        std::thread::spawn(move || child.wait());
-        Ok(())
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    {
-        let _ = path;
-        Err("Reveal is not supported on this platform yet".into())
     }
 }
 

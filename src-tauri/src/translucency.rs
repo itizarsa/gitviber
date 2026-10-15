@@ -5,29 +5,24 @@
 
 /// The windows (labels) that are clear now: the background color each had before, retained, to
 /// put back, and the blur they have.
-#[cfg(target_os = "macos")]
 static CLEAR: std::sync::Mutex<std::collections::BTreeMap<String, Clear>> =
     std::sync::Mutex::new(std::collections::BTreeMap::new());
 
-#[cfg(target_os = "macos")]
 struct Clear {
     /// An NSColor, retained.
     color: usize,
     blur: u32,
 }
 
-#[cfg(target_os = "macos")]
 fn clear() -> std::sync::MutexGuard<'static, std::collections::BTreeMap<String, Clear>> {
     CLEAR.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// The settings' highest blur (BACKGROUND_BLUR in settings.ts): past it the window server's blur
 /// costs more for little difference.
-#[cfg(target_os = "macos")]
 const MAX_BLUR: u32 = 40;
 
 /// Clear with `blur`, or solid. On the main thread, where AppKit's windows belong.
-#[cfg(target_os = "macos")]
 pub fn set<R: tauri::Runtime>(
     window: &tauri::WebviewWindow<R>,
     on: bool,
@@ -79,7 +74,6 @@ pub fn set<R: tauri::Runtime>(
 
 /// The window server's blur behind a clear window. Private, as for every terminal that blurs,
 /// Terminal.app too; looked up rather than linked, so a macOS without it only goes unblurred.
-#[cfg(target_os = "macos")]
 fn set_blur(ns_window: *mut objc2::runtime::AnyObject, radius: u32) {
     use objc2::msg_send;
 
@@ -97,13 +91,10 @@ fn set_blur(ns_window: *mut objc2::runtime::AnyObject, radius: u32) {
     }
 }
 
-#[cfg(target_os = "macos")]
 type MainConnection = unsafe extern "C" fn() -> i32;
-#[cfg(target_os = "macos")]
 type SetBlurRadius = unsafe extern "C" fn(i32, u32, i32) -> i32;
 
 /// CGSMainConnectionID and CGSSetWindowBackgroundBlurRadius, from SkyLight through CoreGraphics.
-#[cfg(target_os = "macos")]
 fn blur_calls() -> Option<(MainConnection, SetBlurRadius)> {
     static CALLS: std::sync::OnceLock<Option<(MainConnection, SetBlurRadius)>> =
         std::sync::OnceLock::new();
@@ -116,7 +107,6 @@ fn blur_calls() -> Option<(MainConnection, SetBlurRadius)> {
 }
 
 /// A C function loaded into the process, as `F`; None when there's none by that name.
-#[cfg(target_os = "macos")]
 unsafe fn symbol<F: Copy>(name: &std::ffi::CStr) -> Option<F> {
     let found = libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr());
     (!found.is_null()).then(|| std::mem::transmute_copy(&found))
@@ -125,7 +115,6 @@ unsafe fn symbol<F: Copy>(name: &std::ffi::CStr) -> Option<F> {
 /// WKWebView has no public switch for its own background; this private key is the one wry's
 /// transparent webviews use. On the main thread with_webview runs at once, in the same turn as the
 /// window's change, so no frame shows one without the other.
-#[cfg(target_os = "macos")]
 fn draw_background<R: tauri::Runtime>(
     window: &tauri::WebviewWindow<R>,
     draws: bool,
@@ -147,7 +136,6 @@ fn draw_background<R: tauri::Runtime>(
 
 /// A page starting to load (a reload, ⌘R) starts solid: it asks to be clear again if it wants
 /// to be, and one made solid just before the reload doesn't stay clear.
-#[cfg(target_os = "macos")]
 pub fn reset<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     if clear().contains_key(window.label()) {
         let w = window.clone();
@@ -158,7 +146,6 @@ pub fn reset<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
 }
 
 /// The blur again once the window is on screen: asked for while it was hidden, it had none.
-#[cfg(target_os = "macos")]
 pub fn shown<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     if clear().contains_key(window.label()) {
         let w = window.clone();
@@ -172,7 +159,6 @@ pub fn shown<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
 }
 
 /// A closed window's entry goes, with the color it held.
-#[cfg(target_os = "macos")]
 pub fn forget(label: &str) {
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
@@ -184,7 +170,6 @@ pub fn forget(label: &str) {
 
 /// Reduce transparency switched while a window is in front: the pages ask again
 /// (translucency.ts). One observer, kept for the app's lifetime.
-#[cfg(target_os = "macos")]
 pub fn watch_reduce_transparency(app: &tauri::AppHandle) {
     use block2::RcBlock;
     use objc2::runtime::AnyObject;
@@ -206,7 +191,6 @@ pub fn watch_reduce_transparency(app: &tauri::AppHandle) {
 }
 
 /// macOS's Reduce transparency (System Settings → Accessibility → Display).
-#[cfg(target_os = "macos")]
 pub fn reduce_transparency() -> bool {
     use objc2::runtime::{AnyObject, Bool};
     use objc2::{class, msg_send};
@@ -218,30 +202,7 @@ pub fn reduce_transparency() -> bool {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-pub fn set<R: tauri::Runtime>(
-    _window: &tauri::WebviewWindow<R>,
-    _on: bool,
-    _blur: u32,
-) -> Result<(), String> {
-    Err("Window opacity is only supported on macOS".into())
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn reset<R: tauri::Runtime>(_window: &tauri::WebviewWindow<R>) {}
-
-#[cfg(not(target_os = "macos"))]
-pub fn shown<R: tauri::Runtime>(_window: &tauri::WebviewWindow<R>) {}
-
-#[cfg(not(target_os = "macos"))]
-pub fn forget(_label: &str) {}
-
-#[cfg(not(target_os = "macos"))]
-pub fn reduce_transparency() -> bool {
-    false
-}
-
-#[cfg(all(test, target_os = "macos"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 

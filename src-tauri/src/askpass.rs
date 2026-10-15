@@ -204,7 +204,6 @@ pub fn serve(app: tauri::AppHandle) {
 /// Starts the one server, with `helper` as the program git and ssh run to ask. A failure only
 /// leaves prompts unanswered, as before.
 pub fn start(helper: PathBuf, emit: impl Fn(Event) -> bool + Send + Sync + 'static) {
-    #[cfg(unix)]
     if let Some(server) = unix::listen(helper, Box::new(emit), PROMPT_TIMEOUT) {
         // Once this launch's own socket listens, and past it.
         let ours = server.socket.parent().map(Path::to_path_buf);
@@ -213,8 +212,6 @@ pub fn start(helper: PathBuf, emit: impl Fn(Event) -> bool + Send + Sync + 'stat
             unix::remove_at_exit();
         }
     }
-    #[cfg(not(unix))]
-    let _ = (helper, emit);
 }
 
 /// When git or ssh started this binary to ask something: relays the question to the running
@@ -232,13 +229,7 @@ pub fn helper() -> Option<i32> {
         prompt,
         kind: std::env::var("SSH_ASKPASS_PROMPT").ok(),
     };
-    #[cfg(unix)]
     let answer = unix::ask(std::path::Path::new(&socket), &request);
-    #[cfg(not(unix))]
-    let answer: Option<String> = {
-        let _ = (socket, request);
-        None
-    };
     Some(match answer {
         Some(a) => {
             use std::io::Write;
@@ -335,7 +326,6 @@ fn host_of(url: &str) -> Option<String> {
     (!host.is_empty()).then(|| host.to_string())
 }
 
-#[cfg(unix)]
 mod unix {
     use super::*;
     use crate::local_socket::{ask_line, private_dir, serve_line};

@@ -3,7 +3,6 @@ import { api, errorMessage, pty } from "../api";
 import { ask } from "../app/ask";
 import { IN_SETTINGS_WINDOW } from "../app/settingsWindow";
 import { failed, toast } from "../app/toast";
-import { IS_WINDOWS } from "../platform";
 import { getSettings } from "../settings";
 import { pastedLines, pathPastes } from "./paste";
 import { panes, type Pane } from "./terminals";
@@ -58,10 +57,9 @@ function pastePaths(p: Pane, paths: string[]) {
 type DropTarget = Pane | "window" | null;
 let dropTarget: DropTarget = null;
 function targetAt(pos: { x: number; y: number }): DropTarget {
-  // Typed physical, but on macOS and Linux wry hands over window points unscaled (drag_drop.rs):
-  // halved on Retina, the point landed in the sidebar. Page zoom (the UI scale) makes a CSS pixel
-  // bigger than a point. Windows' pixels are physical, and Chromium's ratio includes the zoom.
-  const scale = IS_WINDOWS ? devicePixelRatio : getSettings().uiScale;
+  // Typed physical, but wry hands over window points unscaled (drag_drop.rs): halved on Retina,
+  // the point landed in the sidebar. Page zoom (the UI scale) makes a CSS pixel bigger than a point.
+  const scale = getSettings().uiScale;
   const el = document.elementFromPoint(pos.x / scale, pos.y / scale);
   const pane = el && [...panes.values()].find((p) => p.host.contains(el));
   return pane || (IN_SETTINGS_WINDOW || document.querySelector('[role="dialog"], [role="alertdialog"]') ? null : "window");

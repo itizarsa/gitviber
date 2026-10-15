@@ -6,6 +6,25 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-15
+
+macOS only, and trimmed further.
+
+### Changed
+
+- **macOS only.** The Linux and Windows code, builds and CI are gone; a build elsewhere stops with an error.
+- **Ask agent to resolve** in a conflict starts your agent in a new terminal tab with the prompt, rather than pasting into one it detected.
+- Quitting still asks first while a terminal runs a command (Settings → Terminal).
+
+### Removed
+
+- The `gitviber` terminal command, Clone Repository and Switch Project: the rail's + opens a repository, a tile switches to it.
+- Copy as Patch, from changes, commits, stashes and selected lines.
+- Agent awareness in terminals: the status dots, the Agents menu, resuming agents on restore, and Resume a Conversation.
+- Open in an external diff or merge tool (`git difftool` / `git mergetool`).
+- Installing git from the app; it says how to install it instead.
+- The project website and its deployment.
+
 ## [0.2.0] - 2026-10-14
 
 The first release of this fork, trimmed to reviewing and git: [FORK_PLAN.md](FORK_PLAN.md) has the details.
@@ -590,7 +609,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/itizarsa/gitviber/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/itizarsa/gitviber/compare/v0.1.13...v0.2.0
 [0.1.13]: https://github.com/emircan-sahin/gitviber/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/emircan-sahin/gitviber/compare/v0.1.11...v0.1.12

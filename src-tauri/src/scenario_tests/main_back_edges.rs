@@ -38,7 +38,6 @@ fn assert_layout(r: &Path, held: &Path, main: Option<&str>, other: Option<&str>)
 
 /// A post-checkout hook that fails in the folder named in the flag file, after git has already
 /// switched: git then exits non-zero for a switch that happened.
-#[cfg(unix)]
 fn failing_hook(r: &Path, sb: &Sandbox) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
     let flag = sb.path("fail-in");
@@ -56,7 +55,6 @@ fn failing_hook(r: &Path, sb: &Sandbox) -> PathBuf {
     flag
 }
 
-#[cfg(unix)]
 #[test]
 fn a_failing_hook_in_the_main_folder_rolls_everything_back() {
     let sb = Sandbox::new("mbhookmain");
@@ -71,7 +69,6 @@ fn a_failing_hook_in_the_main_folder_rolls_everything_back() {
     assert_layout(&r, &held, Some("feat"), Some("main"));
 }
 
-#[cfg(unix)]
 #[test]
 fn a_failing_hook_in_the_other_folder_leaves_it_on_its_branch() {
     let sb = Sandbox::new("mbhookheld");
@@ -86,7 +83,6 @@ fn a_failing_hook_in_the_other_folder_leaves_it_on_its_branch() {
     assert_layout(&r, &held, Some("feat"), Some("main"));
 }
 
-#[cfg(unix)]
 #[test]
 fn a_failing_hook_during_undo_leaves_the_move_as_it_was() {
     let sb = Sandbox::new("mbhookundo");
@@ -339,7 +335,6 @@ fn an_untracked_file_the_switch_would_overwrite_is_refused_before_anything_moves
     );
 }
 
-#[cfg(unix)]
 #[test]
 fn a_repo_opened_through_a_symlink_plans_and_undoes() {
     let sb = Sandbox::new("mblink");

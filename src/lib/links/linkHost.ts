@@ -4,7 +4,7 @@
 // reach commits (History).
 import type { IBufferRange, IDisposable, ILink, Terminal } from "@xterm/xterm";
 import { api } from "../api";
-import { IS_MAC, primaryKey } from "../platform";
+import { primaryKey } from "../platform";
 import { type Alias, cellText, diskCandidates, diskTarget, type FileIndex, findTerminalLinks, folders, hyperlinkTarget, indexCase, indexFiles, type Link, LINK_WINDOW, loadAliases, resolveLink, resolveTerminalLink, type Target } from "./links";
 import { dirname, slashes } from "../path";
 import { failed } from "../app/toast";
@@ -114,7 +114,7 @@ export function openTargetIn(root: string, target: Target) {
 type GitTarget = { commit: string };
 export type TerminalTarget = Target | GitTarget;
 
-const CLICK = `${IS_MAC ? "⌘" : "Ctrl"}-click`;
+const CLICK = "⌘-click";
 
 /** What ⌘-click does, for the hover: as VS Code's terminal says it. */
 function hint(target: TerminalTarget) {

@@ -20,7 +20,7 @@ struct Zsh {
 }
 
 impl Zsh {
-    /// None where there's no zsh (a Linux runner without it).
+    /// None where there's no zsh.
     fn start(name: &str, zshrc: &str, env: &[(&str, &str)]) -> Option<Zsh> {
         let zsh = ["/bin/zsh", "/usr/bin/zsh"]
             .into_iter()

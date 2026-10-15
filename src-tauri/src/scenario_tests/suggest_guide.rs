@@ -28,7 +28,6 @@ fn of(sha: String) -> Target {
 }
 
 /// Processes whose command line has `marker`, other than pgrep itself.
-#[cfg(unix)]
 fn alive(marker: &str) -> bool {
     std::process::Command::new("pgrep")
         .args(["-f", marker])
@@ -188,7 +187,6 @@ fn guide_of_a_branch_detached_empty_behind_or_without_its_base() {
     assert!(guide(&r, "cat", branch("refs/heads/--help")).is_err());
 }
 
-#[cfg(unix)]
 #[test]
 fn guide_agents_that_ignore_stdin_flood_stdout_or_print_garbage() {
     let sb = Sandbox::new("guide-agents");
@@ -223,7 +221,6 @@ fn guide_agents_that_ignore_stdin_flood_stdout_or_print_garbage() {
     assert!(err.contains("code 7") && err.contains("nope"), "{err}");
 }
 
-#[cfg(unix)]
 #[test]
 fn starting_a_second_guide_cancels_the_first_and_kills_its_children() {
     use crate::suggest::{Kind, Suggester};
@@ -268,7 +265,6 @@ fn starting_a_second_guide_cancels_the_first_and_kills_its_children() {
 
 /// An agent that leaves a background child holding stdout and exits: the run doesn't wait for
 /// stdout's end past a Cancel (the child here lives 6 s; a daemon would hang the guide for good).
-#[cfg(unix)]
 #[test]
 fn cancel_ends_a_guide_whose_agent_left_a_child_on_the_pipe() {
     let sb = Sandbox::new("guide-straggler");
@@ -296,7 +292,6 @@ fn cancel_ends_a_guide_whose_agent_left_a_child_on_the_pipe() {
 
 /// A commit too big to send whole: a small file and a 2 MB one, whose diff goes only in the
 /// patch file. `agent.sh` in the sandbox is the fake agent.
-#[cfg(unix)]
 fn big_commit(sb: &Sandbox, script: &str) -> (PathBuf, String, String) {
     let r = sb.path("r");
     init(&r);
@@ -313,7 +308,6 @@ fn big_commit(sb: &Sandbox, script: &str) -> (PathBuf, String, String) {
 /// The patch file's path, as the prompt on stdin names it.
 const FIND_PATCH: &str = "f=$(grep -o '/[^ `]*changes[.]patch' | head -1)\n";
 
-#[cfg(unix)]
 #[test]
 fn an_agent_reads_what_isnt_inline_from_the_patch_file_which_then_goes() {
     let sb = Sandbox::new("guide-patch-file");
@@ -345,7 +339,6 @@ fn an_agent_reads_what_isnt_inline_from_the_patch_file_which_then_goes() {
     assert!(!file.exists() && !file.parent().unwrap().exists());
 }
 
-#[cfg(unix)]
 #[test]
 fn the_patch_file_goes_when_the_agent_fails_is_cancelled_or_times_out() {
     let sb = Sandbox::new("guide-patch-gone");
@@ -398,7 +391,6 @@ fn the_patch_file_goes_when_the_agent_fails_is_cancelled_or_times_out() {
 
 /// Claude Code is told of the patch's folder with --add-dir, opencode with its permission
 /// config; a change sent whole has no patch file, so neither.
-#[cfg(unix)]
 #[test]
 fn the_agent_is_let_read_the_patch_folder_only_when_there_is_one() {
     use crate::suggest::Reads;
@@ -476,7 +468,6 @@ fn user_diff_settings_dont_turn_a_small_guide_into_the_patch_start() {
 }
 
 /// Two guides running at once, each with a patch file: their own folders, both gone after.
-#[cfg(unix)]
 #[test]
 fn two_guides_at_once_each_have_their_own_patch_folder() {
     let sb = Sandbox::new("guide-two-at-once");
@@ -496,7 +487,6 @@ fn two_guides_at_once_each_have_their_own_patch_folder() {
 
 /// Arguments reach the agent as they are: `--tools ""` from a command line is one empty
 /// argument, and a schema with spaces and quotes is one argument, never split again.
-#[cfg(unix)]
 #[test]
 fn an_empty_tools_value_and_a_quoted_schema_each_stay_one_argument() {
     let sb = Sandbox::new("guide-argv");

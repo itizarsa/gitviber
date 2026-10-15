@@ -41,7 +41,6 @@ fn now() -> u64 {
 }
 
 /// "2026-09-22 14.03" in local time: when a discarded version went to the Trash.
-#[cfg(unix)]
 fn local_minute() -> String {
     use std::ffi::{c_char, c_int, c_long};
     // `struct tm`: sec, min, hour, mday, mon, year, wday, yday, isdst, then gmtoff and zone.
@@ -68,9 +67,4 @@ fn local_minute() -> String {
         f[2],
         f[1]
     )
-}
-
-#[cfg(not(unix))]
-fn local_minute() -> String {
-    now().to_string()
 }

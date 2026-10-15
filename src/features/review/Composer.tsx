@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/api";
 import { toast } from "@/lib/app/toast";
-import { IS_MAC } from "@/lib/platform";
 
 /** A new review note, kept here. */
 export function Composer({
@@ -53,7 +52,7 @@ export function Composer({
       } else if (e.key === "Escape") onCancel();
     },
     rows: 3,
-    placeholder: `${label}… (${IS_MAC ? "⌘↵" : "Ctrl+Enter"} to add)`,
+    placeholder: `${label}… (⌘↵ to add)`,
   };
   const box = (
     <div className="flex flex-col gap-2">

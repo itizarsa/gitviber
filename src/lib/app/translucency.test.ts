@@ -556,12 +556,3 @@ test("Reset settings makes the window solid again", async () => {
   assert.equal(w.look, undefined);
 });
 
-test("off macOS a stored opacity does nothing: no window calls, the page stays solid", async () => {
-  for (const platform of ["Linux x86_64", "Win32"]) {
-    const w = await boot({ platform, focused: true, stored: { windowOpacity: 70 } });
-    w.settings.updateSettings({ windowOpacity: 60, backgroundBlur: 10 });
-    await w.frame(3);
-    assert.deepEqual(w.asked, [], platform);
-    assert.equal(w.look, undefined, platform);
-  }
-});

@@ -15,79 +15,12 @@ use std::time::Duration;
 pub fn clean_env() -> Vec<(OsString, OsString)> {
     let mut env: Vec<(OsString, OsString)> = KEEP
         .iter()
-        .chain(DESKTOP)
         .filter_map(|k| std::env::var_os(k).map(|v| (k.into(), v)))
         .collect();
-    if cfg!(target_os = "linux") {
-        let locale: Vec<_> = std::env::vars_os()
-            .filter(|(k, _)| {
-                k.to_string_lossy().starts_with("LC_") && !env.iter().any(|(e, _)| e == k)
-            })
-            .collect();
-        env.extend(locale);
-        if let Some(i) = env.iter().position(|(k, _)| k == "XDG_DATA_DIRS") {
-            match without_appimage(&env[i].1, std::env::var_os("APPDIR")) {
-                Some(dirs) => env[i].1 = dirs,
-                None => drop(env.remove(i)),
-            }
-        }
-    }
-    if cfg!(unix) {
-        env.push(("PATH".into(), "/usr/bin:/bin:/usr/sbin:/sbin".into()));
-    }
+    env.push(("PATH".into(), "/usr/bin:/bin:/usr/sbin:/sbin".into()));
     env
 }
 
-/// `dirs` without the ones an AppImage's launcher put first, inside its own mount; None if
-/// nothing else is left.
-fn without_appimage(dirs: &OsString, app: Option<OsString>) -> Option<OsString> {
-    let Some(app) = app.filter(|a| !a.is_empty()) else {
-        return Some(dirs.clone());
-    };
-    let app = Path::new(&app);
-    let kept: Vec<_> = std::env::split_paths(dirs)
-        .filter(|d| !d.starts_with(app))
-        .collect();
-    if kept.is_empty() {
-        return None;
-    }
-    std::env::join_paths(kept).ok()
-}
-
-/// A Linux desktop session's: without them `xdg-open`, `code .`, a browser login, a keyring
-/// or the clipboard tools an AI CLI pastes images with can't reach the display or D-Bus.
-/// macOS apps get none of these from launchd.
-#[cfg(target_os = "linux")]
-const DESKTOP: &[&str] = &[
-    "DISPLAY",
-    "WAYLAND_DISPLAY",
-    "XAUTHORITY",
-    "XDG_RUNTIME_DIR",
-    "DBUS_SESSION_BUS_ADDRESS",
-    "XDG_SESSION_TYPE",
-    "XDG_CURRENT_DESKTOP",
-    "XDG_SESSION_DESKTOP",
-    "DESKTOP_SESSION",
-    "XDG_DATA_DIRS",
-    "XDG_CONFIG_DIRS",
-    "XDG_CONFIG_HOME",
-    "XDG_DATA_HOME",
-    "XDG_CACHE_HOME",
-    "XDG_STATE_HOME",
-    "LANGUAGE",
-    "GTK_IM_MODULE",
-    "QT_IM_MODULE",
-    "XMODIFIERS",
-    "BROWSER",
-    // xdg-open on Plasma picks kde-open by these; without them it falls back to Konqueror's tool.
-    "KDE_SESSION_VERSION",
-    "KDE_FULL_SESSION",
-];
-
-#[cfg(not(target_os = "linux"))]
-const DESKTOP: &[&str] = &[];
-
-#[cfg(not(windows))]
 const KEEP: &[&str] = &[
     "HOME",
     "USER",
@@ -96,31 +29,6 @@ const KEEP: &[&str] = &[
     "SSH_AUTH_SOCK",
     "LANG",
     "LC_ALL",
-];
-
-/// Nothing starts without SystemRoot, and COMSPEC is the shell. There's no login shell to
-/// rebuild PATH on Windows, so the user's own is kept.
-#[cfg(windows)]
-const KEEP: &[&str] = &[
-    "SystemRoot",
-    "SystemDrive",
-    "windir",
-    "COMSPEC",
-    "PATHEXT",
-    "PATH",
-    "USERNAME",
-    "USERPROFILE",
-    "HOMEDRIVE",
-    "HOMEPATH",
-    "APPDATA",
-    "LOCALAPPDATA",
-    "ProgramData",
-    "ProgramFiles",
-    "ProgramFiles(x86)",
-    "TEMP",
-    "TMP",
-    "SSH_AUTH_SOCK",
-    "LANG",
 ];
 
 /// Shells that print a banner or run a slow plugin manager still answer well within this.
@@ -163,10 +71,6 @@ pub fn generation() -> u64 {
 /// Commands that run before it answers use the fallback PATH. A failed probe (a slow
 /// login, say) is tried once more a little later.
 pub fn resolve_in_background() {
-    if cfg!(windows) {
-        probe().answered = true;
-        return;
-    }
     std::thread::spawn(|| {
         if run(TIMEOUT).is_err() {
             std::thread::sleep(RETRY_AFTER);
@@ -178,9 +82,7 @@ pub fn resolve_in_background() {
 /// Probes again now (or joins a probe already running), for "Check again" after the user
 /// installed something into a folder only the shell's PATH has.
 pub fn reprobe() {
-    if !cfg!(windows) {
-        let _ = run(TIMEOUT);
-    }
+    let _ = run(TIMEOUT);
 }
 
 /// Waits for the first probe to finish, for a caller that found nothing on the fallback PATH.
@@ -213,19 +115,12 @@ pub fn login_shell() -> OsString {
         .unwrap_or_else(|| "/bin/sh".into())
 }
 
-#[cfg(unix)]
 fn runnable(path: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     path.metadata()
         .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
 }
 
-#[cfg(not(unix))]
-fn runnable(path: &Path) -> bool {
-    path.is_file()
-}
-
-#[cfg(unix)]
 fn passwd_shell() -> Option<OsString> {
     use std::os::unix::ffi::OsStrExt;
     let mut buf = vec![0 as libc::c_char; 4096];
@@ -247,11 +142,6 @@ fn passwd_shell() -> Option<OsString> {
     let shell = unsafe { std::ffi::CStr::from_ptr(pwd.pw_shell) }.to_bytes();
     // An empty field means /bin/sh, which the caller falls back to.
     (!shell.is_empty()).then(|| std::ffi::OsStr::from_bytes(shell).to_os_string())
-}
-
-#[cfg(not(unix))]
-fn passwd_shell() -> Option<OsString> {
-    None
 }
 
 fn record(found: &Result<OsString, String>) {
@@ -314,7 +204,6 @@ pub fn probe_path(shell: &Path, timeout: Duration) -> Result<OsString, String> {
 
 /// A new session with no controlling terminal, like VS Code's `detached`. An interactive
 /// shell started from a terminal (`pnpm tauri dev`) would otherwise take it over, or stop.
-#[cfg(unix)]
 fn detach(cmd: &mut Command) {
     use std::os::unix::process::CommandExt;
     extern "C" {
@@ -329,9 +218,6 @@ fn detach(cmd: &mut Command) {
     }
 }
 
-#[cfg(not(unix))]
-fn detach(_cmd: &mut Command) {}
-
 fn between_marks(text: &str, mark: &str) -> Option<String> {
     let (_, rest) = text.split_once(mark)?;
     let (inner, _) = rest.split_once(mark)?;
@@ -342,26 +228,10 @@ fn between_marks(text: &str, mark: &str) -> Option<String> {
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn passwd_names_a_shell_that_exists() {
         let shell = passwd_shell().expect("the user has a passwd entry");
         assert!(Path::new(&shell).is_file(), "{shell:?}");
-    }
-
-    #[test]
-    fn appimage_data_dirs_are_dropped() {
-        let dirs = OsString::from("/tmp/.mount_GitVib/usr/share:/usr/share:/usr/local/share");
-        let app = Some(OsString::from("/tmp/.mount_GitVib"));
-        assert_eq!(
-            without_appimage(&dirs, app.clone()),
-            Some("/usr/share:/usr/local/share".into())
-        );
-        assert_eq!(without_appimage(&dirs, None), Some(dirs));
-        assert_eq!(
-            without_appimage(&"/tmp/.mount_GitVib/usr/share".into(), app),
-            None
-        );
     }
 
     #[test]

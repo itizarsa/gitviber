@@ -31,7 +31,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg"],
     "publisher": "Emircan Sahin",
     "copyright": "© 2026 Emircan Sahin. GPL-3.0 License.",
     "category": "DeveloperTool",
@@ -43,8 +43,7 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/Assets.car",
-      "icons/icon.ico"
+      "icons/Assets.car"
     ],
     "macOS": {
       "minimumSystemVersion": "13.0"

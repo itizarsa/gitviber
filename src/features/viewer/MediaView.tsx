@@ -9,7 +9,6 @@ import { Copy } from "lucide-react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { copyFiles } from "@/lib/app/clipboard";
 import { failed } from "@/lib/app/toast";
-import { IS_MAC } from "@/lib/platform";
 import { releaseIfButtonLost } from "@/lib/ui/held";
 
 type MediaKind = "image" | "video" | "audio" | "pdf";
@@ -140,7 +139,6 @@ export const isImageChange = (src: { path: string; oldPath: string | null }) => 
  * Both versions laid over each other (`original` "both") offer each.
  */
 export function ImageMenu({ src, original, children }: { src: MediaSource; original: boolean | "both"; children: ReactNode }) {
-  if (!IS_MAC) return children;
   const copy = (before: boolean) => () =>
     api
       .mediaFile(src.kind, src.path, src.oldPath, src.sha, src.base, before)

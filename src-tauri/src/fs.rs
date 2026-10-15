@@ -350,7 +350,6 @@ pub fn rename_entry(root: &Path, from: &str, to: &str) -> Result<(), String> {
 
 /// `dst` is `src` spelled differently (APFS ignores case and Unicode normalization): same
 /// inode, and no entry with exactly `dst`'s name exists, so it isn't a hard link.
-#[cfg(unix)]
 fn same_entry(src: &Path, dst: &Path) -> bool {
     use std::os::unix::fs::MetadataExt;
     let same_inode = match (src.symlink_metadata(), dst.symlink_metadata()) {
@@ -365,14 +364,8 @@ fn same_entry(src: &Path, dst: &Path) -> bool {
             .is_ok_and(|mut entries| !entries.any(|e| e.is_ok_and(|e| e.file_name() == name)))
 }
 
-#[cfg(not(unix))]
-fn same_entry(_: &Path, _: &Path) -> bool {
-    false
-}
-
 /// fs::rename silently replaces an existing file; RENAME_EXCL makes the kernel refuse
 /// instead, with no window between checking and renaming.
-#[cfg(target_os = "macos")]
 fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
     use std::ffi::{c_char, c_int, c_uint, CString};
     use std::os::unix::ffi::OsStrExt;
@@ -386,15 +379,6 @@ fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
         0 => Ok(()),
         _ => Err(std::io::Error::last_os_error()),
     }
-}
-
-/// Elsewhere a file created between this check and the rename is still replaced.
-#[cfg(not(target_os = "macos"))]
-fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
-    if dst.symlink_metadata().is_ok() {
-        return Err(std::io::ErrorKind::AlreadyExists.into());
-    }
-    std::fs::rename(src, dst)
 }
 
 pub fn trash(root: &Path, rel: &str) -> Result<(), String> {
@@ -448,7 +432,6 @@ fn is_link(p: &Path) -> bool {
 }
 
 pub(crate) fn copy_entry(src: &Path, dst: &Path) -> Result<(), String> {
-    #[cfg(unix)]
     if is_link(src) {
         let target = std::fs::read_link(src).map_err(|e| e.to_string())?;
         return std::os::unix::fs::symlink(target, dst).map_err(|e| e.to_string());
@@ -499,7 +482,6 @@ pub fn copy_into(from: &Path, to: &Path, rels: &[String]) {
 /// NSFileManager rather than `osascript` + Finder: no Automation permission prompt, no
 /// Finder sound, and "Put Back" still works. Foundation is already loaded by the webview.
 /// Returns where the item ended up in the Trash.
-#[cfg(target_os = "macos")]
 fn move_to_trash(path: &Path) -> Result<PathBuf, String> {
     use objc2::msg_send;
     use objc2::runtime::{AnyClass, AnyObject, Bool};
@@ -549,16 +531,6 @@ fn move_to_trash(path: &Path) -> Result<PathBuf, String> {
         }
         Err(CStr::from_ptr(utf8).to_string_lossy().into_owned())
     })
-}
-
-#[cfg(target_os = "linux")]
-fn move_to_trash(path: &Path) -> Result<PathBuf, String> {
-    crate::trash::move_to_trash(path)
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn move_to_trash(_: &Path) -> Result<PathBuf, String> {
-    Err("Moving to Trash is not supported on this platform yet".into())
 }
 
 /// Selects the entry in the file manager. `rel` may be empty for the repo root.
@@ -656,7 +628,6 @@ mod tests {
     }
 
     /// git prints an ignored link to a folder as a file; the filter shows it as the tree does.
-    #[cfg(unix)]
     #[test]
     fn list_ignored_shows_a_linked_folder_as_a_folder() {
         use std::os::unix::fs::symlink;
@@ -744,7 +715,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)]
     fn entry_ops_do_not_follow_a_link_out_of_the_repo() {
         let sb = Sandbox::new("link");
         let outside = Sandbox::new("link-outside");
@@ -759,7 +729,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)]
     fn a_link_to_the_git_dir_is_off_limits() {
         let sb = Sandbox::new("gitlink");
         let root = &sb.0;
@@ -815,7 +784,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)]
     fn rename_onto_a_hard_link_is_refused() {
         let sb = Sandbox::new("hardlink");
         let root = &sb.0;

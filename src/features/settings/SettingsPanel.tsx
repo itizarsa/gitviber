@@ -1,6 +1,5 @@
 import { ask } from "@/lib/app/ask";
 import { Code2, GitBranch, GitCompareArrows, Keyboard, Palette, RotateCcw, ScanSearch, Sparkles, SquareArrowOutUpRight, SquareTerminal } from "lucide-react";
-import { IS_MAC } from "@/lib/platform";
 import { resetSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { GroupLabel } from "./controls";
@@ -63,7 +62,7 @@ export function SettingsPanel({
   return (
     <>
       {/* At the smallest window the sections and Reset all only just fit: past that, the list scrolls. */}
-      <nav data-tauri-drag-region={titleBar || undefined} className={cn("flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-sidebar p-2", titleBar && IS_MAC && "pt-8")}>
+      <nav data-tauri-drag-region={titleBar || undefined} className={cn("flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-sidebar p-2", titleBar && "pt-8")}>
         <Title className="px-2 pt-1.5 pb-2.5">Settings</Title>
         {GROUPS.map((group) => (
           <div key={group} className="flex flex-col gap-0.5 not-first-of-type:mt-3">

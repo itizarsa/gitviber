@@ -92,15 +92,9 @@ pub fn with_live_locks(mut list: Vec<Worktree>) -> Vec<Worktree> {
 }
 
 /// `kill -0` without spawning `kill`: true when the process exists and is ours to signal.
-#[cfg(unix)]
 pub(crate) fn process_alive(pid: u32) -> bool {
     // 0 and anything past pid_t would name a whole process group, or every process.
     libc::pid_t::try_from(pid).is_ok_and(|pid| pid > 0 && unsafe { libc::kill(pid, 0) } == 0)
-}
-
-#[cfg(not(unix))]
-pub(crate) fn process_alive(_pid: u32) -> bool {
-    false
 }
 
 /// What the projects list keys this repo by: its main worktree, unless that is bare or gone.
@@ -180,16 +174,9 @@ pub(crate) fn worktree_target(
 
 /// Two paths name one folder: on a case-insensitive disk "Feat" and "feat" do.
 fn same_folder(a: &Path, b: &Path) -> bool {
-    #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
         matches!((a.metadata(), b.metadata()), (Ok(x), Ok(y)) if x.dev() == y.dev() && x.ino() == y.ino())
-    }
-    #[cfg(not(unix))]
-    {
-        b.exists()
-            && a.to_string_lossy()
-                .eq_ignore_ascii_case(&b.to_string_lossy())
     }
 }
 
@@ -467,15 +454,9 @@ fn reflog_time(dir: &Path) -> Option<u64> {
     t.strip_suffix('}')?.parse().ok()
 }
 
-#[cfg(unix)]
 fn os_path(p: &[u8]) -> PathBuf {
     use std::os::unix::ffi::OsStrExt;
     std::ffi::OsStr::from_bytes(p).into()
-}
-
-#[cfg(not(unix))]
-fn os_path(p: &[u8]) -> PathBuf {
-    String::from_utf8_lossy(p).into_owned().into()
 }
 
 /// A porcelain v2 status record's path: the field after `n` space-separated ones.
@@ -650,21 +631,14 @@ impl Walk {
         (bytes, files)
     }
 
-    #[cfg(unix)]
     fn first_link(&mut self, meta: &std::fs::Metadata) -> bool {
         use std::os::unix::fs::MetadataExt;
         meta.nlink() < 2 || self.linked.insert((meta.dev(), meta.ino()))
-    }
-
-    #[cfg(not(unix))]
-    fn first_link(&mut self, _meta: &std::fs::Metadata) -> bool {
-        true
     }
 }
 
 /// Whether this user can empty folder `dir` and so delete it: list and enter it, and write in
 /// it unless it's empty (an empty read-only folder goes with its parent's write alone).
-#[cfg(unix)]
 fn deletable(dir: &Path) -> bool {
     use std::os::unix::ffi::OsStrExt;
     let Ok(c) = std::ffi::CString::new(dir.as_os_str().as_bytes()) else {
@@ -673,11 +647,6 @@ fn deletable(dir: &Path) -> bool {
     let can = |mode| unsafe { libc::access(c.as_ptr(), mode) == 0 };
     can(libc::R_OK | libc::X_OK)
         && (can(libc::W_OK) || std::fs::read_dir(dir).is_ok_and(|mut r| r.next().is_none()))
-}
-
-#[cfg(not(unix))]
-fn deletable(_dir: &Path) -> bool {
-    true
 }
 
 /// Why a look through a worktree's folders came back short.
@@ -869,7 +838,7 @@ fn clean_up(repo: &Path, item: &CleanUp) -> Result<Option<(String, Option<String
     Ok(w.branch.clone().map(|b| (b, tip)))
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;

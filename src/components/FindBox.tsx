@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowUp, CaseSensitive, Regex, WholeWord, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { IS_MAC } from "@/lib/platform";
 import { useFind } from "@/lib/ui/find";
 import { findMatches, type FindOptions, NO_OPTIONS, optionKey } from "@/lib/ui/findQuery";
 import type { Panel } from "@/lib/ui/panels";
@@ -103,7 +102,7 @@ export function BoxButton({ label, disabled, pressed, onClick, children }: { lab
   );
 }
 
-const OPTION_KEY = IS_MAC ? "⌥⌘" : "Alt+";
+const OPTION_KEY = "⌥⌘";
 
 /** Match Case, Whole Word and Regex, as Monaco's find box has them. */
 export function FindToggles({ options, onOptions }: { options: FindOptions; onOptions: (o: FindOptions) => void }) {
@@ -125,7 +124,7 @@ export function FindToggles({ options, onOptions }: { options: FindOptions; onOp
 
 /** Flips an option on its key, Monaco's (see optionKey); true when the key was one. */
 export function flipOnKey(e: React.KeyboardEvent, options: FindOptions, onOptions: (o: FindOptions) => void) {
-  const k = optionKey(e.nativeEvent, IS_MAC);
+  const k = optionKey(e.nativeEvent);
   if (!k) return false;
   e.preventDefault();
   onOptions({ ...options, [k]: !options[k] });

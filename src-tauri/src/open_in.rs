@@ -191,18 +191,7 @@ fn bundle_path(app: &App) -> Option<PathBuf> {
     app.bundle_ids.iter().find_map(|id| app_path(id))
 }
 
-#[cfg(target_os = "macos")]
 use mac::{app_icon, app_path};
-
-#[cfg(not(target_os = "macos"))]
-fn app_path(_bundle_id: &str) -> Option<PathBuf> {
-    None
-}
-
-#[cfg(not(target_os = "macos"))]
-fn app_icon(_bundle: &Path, _px: u32) -> Option<Vec<u8>> {
-    None
-}
 
 /// The app's icon as a 32 px PNG (the menu shows it at 16, on a Retina screen), drawn once per
 /// build of the app: an update that brings a new icon changes the bundle's modification time.
@@ -406,7 +395,6 @@ fn launch(argv: &[String], dir: &Path) -> Result<(), String> {
 }
 
 /// LaunchServices and AppKit, through raw objc2 messages (objc.rs).
-#[cfg(target_os = "macos")]
 mod mac {
     use crate::objc::{bytes, c_string, ns_string, rust_string};
     use objc2::encode::{Encode, Encoding};
@@ -676,7 +664,6 @@ mod tests {
     }
 
     /// Terminal ships with every Mac, so LaunchServices must find it.
-    #[cfg(target_os = "macos")]
     #[test]
     fn finds_installed_apps() {
         let found = installed();

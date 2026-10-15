@@ -13,49 +13,17 @@ const FLAGS: StateFlags = StateFlags::SIZE
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     let builder = tauri_plugin_window_state::Builder::new().with_state_flags(FLAGS);
     // Windows' maximize (SW_MAXIMIZE) shows the window, unstyled: restored() and shown() do it in two.
-    #[cfg(windows)]
-    let builder = builder
-        .skip_initial_state("main")
-        .skip_initial_state(crate::settings_window::LABEL);
     builder.build()
 }
 
 /// A window just built, still hidden.
 pub fn restored<R: Runtime>(window: &WebviewWindow<R>) {
-    #[cfg(windows)]
-    {
-        use tauri_plugin_window_state::WindowExt;
-        let _ = window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
-        maximize_pending()
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(window.label().to_string());
-    }
     let _ = fit(window);
 }
 
 /// Its page showed it: on Windows, it's maximized now if it was left so.
 pub fn shown<R: Runtime>(window: &WebviewWindow<R>) {
-    #[cfg(windows)]
-    {
-        use tauri_plugin_window_state::WindowExt;
-        let pending = maximize_pending()
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .remove(window.label());
-        if pending {
-            let _ = window.restore_state(StateFlags::MAXIMIZED);
-        }
-    }
-    #[cfg(not(windows))]
     let _ = window;
-}
-
-#[cfg(windows)]
-fn maximize_pending() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
-    static PENDING: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> =
-        std::sync::OnceLock::new();
-    PENDING.get_or_init(Default::default)
 }
 
 /// Shrinks a window left on a bigger monitor (a 5K display, then the laptop) to its monitor's work area.

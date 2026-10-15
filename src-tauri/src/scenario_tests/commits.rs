@@ -12,7 +12,6 @@ fn executable(path: &Path, script: &str) {
 
 /// Launched from Finder the app has a bare PATH; a hook calling a tool only the login shell
 /// adds (node from nvm, say) failed with 127. The "login shell" here prepends one folder.
-#[cfg(unix)]
 #[test]
 fn hooks_find_tools_on_the_login_shell_path() {
     use crate::process::{exec, merge_paths};
@@ -223,7 +222,6 @@ fn a_repository_of_its_own_identity_and_back_to_global() {
 /// Stages b.txt in `r` and runs `commit` while its `hook` runs `script`, then a 30 s child it
 /// waits on, and cancels once that child runs. Returns the result, the progress reported, and
 /// whether the child was stopped with it.
-#[cfg(unix)]
 fn cancel_in_hook(
     sb: &Sandbox,
     r: &Path,
@@ -277,7 +275,6 @@ fn cancel_in_hook(
 
 /// A hook's output is the commit's progress, and Cancel stops git with the hook and whatever it
 /// started: nothing is committed, index.lock is gone and the next commit goes through.
-#[cfg(unix)]
 #[test]
 fn a_commit_hook_shows_progress_and_can_be_cancelled() {
     use crate::network::CANCELLED;
@@ -324,7 +321,6 @@ fn a_commit_hook_shows_progress_and_can_be_cancelled() {
 
 /// lint-staged stashes from inside the hook, which writes HEAD's reflog: that's no sign the
 /// commit was made, and Cancel still stops it with nothing committed.
-#[cfg(unix)]
 #[test]
 fn a_hook_that_stashes_can_still_be_cancelled() {
     let sb = Sandbox::new("hook-stash");
@@ -349,7 +345,6 @@ fn a_hook_that_stashes_can_still_be_cancelled() {
 
 /// Stopped in a post-commit hook, the commit was already made: it stands, and isn't reported
 /// as cancelled. An amend's too, which sits where the commit it replaced did.
-#[cfg(unix)]
 #[test]
 fn a_cancel_after_the_commit_was_made_keeps_it() {
     let sb = Sandbox::new("hook-post");
@@ -386,7 +381,6 @@ fn a_cancel_after_the_commit_was_made_keeps_it() {
 
 /// An agent committing in a terminal while our hooks run moves HEAD too: that isn't our commit
 /// made, so Cancel still says cancelled, and the agent's commit isn't journaled as ours to undo.
-#[cfg(unix)]
 #[test]
 fn a_cancel_while_an_agent_commits_is_still_cancelled() {
     use crate::network::CANCELLED;
@@ -413,7 +407,6 @@ fn a_cancel_while_an_agent_commits_is_still_cancelled() {
 /// git prints nothing of its own when a hook fails, so the error says which hooks are set up,
 /// for the page to offer committing without them; not the ones `--no-verify` skipped, nor when
 /// there are none.
-#[cfg(unix)]
 #[test]
 fn a_failed_commit_names_the_hooks_that_could_have_stopped_it() {
     let sb = Sandbox::new("hook-fail");

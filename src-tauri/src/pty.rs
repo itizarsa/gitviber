@@ -26,8 +26,7 @@ pub fn write(writer: &Writer, data: &[u8]) -> Result<(), String> {
 /// The bytes typed: text as UTF-8, or `binary`, xterm.js's char-per-byte string (mouse reports in
 /// the default encoding, where a coordinate past 95 is a byte past 127).
 pub fn input_bytes(data: &str, binary: bool) -> Cow<'_, [u8]> {
-    // ConPTY reads its input as UTF-8: a lone byte past 127 isn't one.
-    if binary && !cfg!(windows) {
+    if binary {
         Cow::Owned(data.chars().map(|c| c as u8).collect())
     } else {
         Cow::Borrowed(data.as_bytes())
@@ -125,14 +124,8 @@ struct Session {
 }
 
 impl Session {
-    #[cfg(unix)]
     fn job_leader(&self) -> Option<u32> {
         crate::procinfo::job_leader(self.master.process_group_leader(), self.shell)
-    }
-
-    #[cfg(not(unix))]
-    fn job_leader(&self) -> Option<u32> {
-        None
     }
 
     fn kill(mut self) {
@@ -196,12 +189,9 @@ impl Ptys {
         // Like a pipe's, the pty's fds are marked close-on-exec a step after they're made.
         let pair = crate::process::spawning(|| native_pty_system().openpty(size(cols, rows)))
             .map_err(|e| e.to_string())?;
-        #[cfg(unix)]
         let inject = integration.and_then(|dir| {
             crate::shell_integration::injection(Path::new(&crate::shell::login_shell()), dir)
         });
-        #[cfg(not(unix))]
-        let inject: Option<crate::shell_integration::Injection> = None;
         // The user's login shell, like Terminal.app: a Finder-launched app has a bare PATH.
         let mut cmd = match &inject {
             Some(i) if !i.args.is_empty() => CommandBuilder::from_argv(i.args.clone()),
@@ -214,7 +204,6 @@ impl Ptys {
             cmd.env(key, value);
         }
         // Else portable-pty takes passwd's shell while the PATH probe took $SHELL (shell.rs).
-        #[cfg(unix)]
         cmd.env("SHELL", crate::shell::login_shell());
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
@@ -311,18 +300,12 @@ impl Ptys {
     }
 
     /// Sessions (of `ids`, or all) whose foreground job isn't the shell itself: a command is running there.
-    #[cfg(unix)]
     pub fn busy(&self, ids: Option<&[u32]>) -> usize {
         let sessions = self.sessions.lock().unwrap();
         let running = |(id, s): &(&u32, &Session)| {
             ids.is_none_or(|ids| ids.contains(id)) && s.job_leader().is_some()
         };
         sessions.iter().filter(running).count()
-    }
-
-    #[cfg(not(unix))]
-    pub fn busy(&self, _ids: Option<&[u32]>) -> usize {
-        0
     }
 
     /// The folder a session's shell is in now, asked of the process as VS Code does for a split
@@ -406,7 +389,6 @@ mod tests {
 
     /// On a pty as the panes' shells are, but `sh -i` with no rc files: a login shell's took
     /// over 15 s under load.
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn the_job_leader_is_the_command_running_and_none_at_the_prompt() {
         use portable_pty::{native_pty_system, CommandBuilder};
@@ -443,7 +425,6 @@ mod tests {
     #[test]
     fn binary_input_is_a_byte_a_char_and_text_is_utf8() {
         // A click at column 200, row 1, in X10's encoding: 32 + 200 is past 127.
-        #[cfg(not(windows))]
         assert_eq!(&*input_bytes("\x1b[M \u{e8}!", true), b"\x1b[M \xe8!");
         assert_eq!(&*input_bytes("é", false), "é".as_bytes());
     }

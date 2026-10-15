@@ -1,6 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "../api";
-import { IS_MAC } from "../platform";
 import { getSettings, type Settings, subscribeSettings, type Theme, WINDOW_OPACITY } from "../settings";
 import { cssVar } from "../ui/color";
 import { opacityFloor } from "./opacityFloor";
@@ -83,7 +82,7 @@ let floor: { key: string; value: number } | null = null;
 // Never below the floor; the setting keeps what was chosen, for themes that allow it.
 const opacity = () => {
   const { windowOpacity } = live();
-  return IS_MAC && !reduce && !fullscreen && windowOpacity < 100 ? Math.max(windowOpacity, appearanceFloor()) : 100;
+  return !reduce && !fullscreen && windowOpacity < 100 ? Math.max(windowOpacity, appearanceFloor()) : 100;
 };
 
 function apply() {
@@ -97,7 +96,6 @@ function apply() {
     root.style.setProperty("--glass-step", levels.step);
     root.dataset.translucency = "";
   } else delete root.dataset.translucency;
-  if (!IS_MAC) return;
   if (on === clear) {
     if (on && ready) sendBlur();
     return;
@@ -159,7 +157,7 @@ function check() {
 }
 
 function changed(was: number) {
-  if (IS_MAC && was === 100 && live().windowOpacity < 100) check();
+  if (was === 100 && live().windowOpacity < 100) check();
   else apply();
 }
 
@@ -179,36 +177,34 @@ export function previewTranslucency(next: typeof preview) {
 }
 
 const stopSettings = subscribeSettings(settingsChanged);
-if (IS_MAC && setting.windowOpacity < 100) check();
+if (setting.windowOpacity < 100) check();
 let stops: Promise<() => void>[] = [];
-if (IS_MAC) {
-  try {
-    const win = getCurrentWindow();
-    stops = [
-      win.onFocusChanged(({ payload }) => {
-        if (payload && setting.windowOpacity < 100) check();
-      }),
-      // Switched in System Settings while this window is in front (translucency.rs).
-      win.listen("reduce-transparency", () => {
-        if (setting.windowOpacity < 100) check();
-      }),
-      // titlebar.rs, as each transition starts; the main window's only.
-      win.listen<boolean>("fullscreen", ({ payload }) => {
-        fullscreen = payload;
-        apply();
-      }),
-    ];
-    // A reload while in full screen gets no event.
-    win.isFullscreen().then((now) => {
-      if (now && !fullscreen) {
-        fullscreen = true;
-        apply();
-      }
-    }, () => {});
-    stops.forEach((stop) => stop.catch(() => {}));
-  } catch {
-    // Not in a Tauri window (the browser-only dev fixture).
-  }
+try {
+  const win = getCurrentWindow();
+  stops = [
+    win.onFocusChanged(({ payload }) => {
+      if (payload && setting.windowOpacity < 100) check();
+    }),
+    // Switched in System Settings while this window is in front (translucency.rs).
+    win.listen("reduce-transparency", () => {
+      if (setting.windowOpacity < 100) check();
+    }),
+    // titlebar.rs, as each transition starts; the main window's only.
+    win.listen<boolean>("fullscreen", ({ payload }) => {
+      fullscreen = payload;
+      apply();
+    }),
+  ];
+  // A reload while in full screen gets no event.
+  win.isFullscreen().then((now) => {
+    if (now && !fullscreen) {
+      fullscreen = true;
+      apply();
+    }
+  }, () => {});
+  stops.forEach((stop) => stop.catch(() => {}));
+} catch {
+  // Not in a Tauri window (the browser-only dev fixture).
 }
 // A hot reload re-runs this module: the old listeners go, or each change would be applied twice.
 import.meta.hot?.dispose(() => {

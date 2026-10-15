@@ -22,7 +22,6 @@ fn paste_dir() -> Result<PathBuf, String> {
     let mut builder = std::fs::DirBuilder::new();
     builder.recursive(true);
     // A screenshot can hold anything: only its owner reads it.
-    #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
     builder.create(&dir).map_err(|e| e.to_string())?;
     // A day is long past any CLI reading its attachment.
@@ -47,16 +46,6 @@ fn paste_dir() -> Result<PathBuf, String> {
 /// macOS's temp dir is the user's own; Linux's /tmp is everyone's, and the first user to paste
 /// would own the folder, so there it's the session's runtime dir (or ~/.cache).
 fn user_temp() -> PathBuf {
-    #[cfg(target_os = "linux")]
-    {
-        let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from);
-        if let Some(dir) = runtime.filter(|d| d.is_absolute() && d.is_dir()) {
-            return dir;
-        }
-        if let Some(home) = std::env::var_os("HOME") {
-            return Path::new(&home).join(".cache");
-        }
-    }
     std::env::temp_dir()
 }
 
@@ -95,36 +84,14 @@ pub fn save_named(name: &str, bytes: &[u8]) -> Result<String, String> {
 /// Files onto the pasteboard as Finder's ⌘C puts them, so they paste as files into Finder, Slack
 /// or a terminal (which pastes their paths); an image also carries its picture for apps that
 /// only take one.
-#[cfg(target_os = "macos")]
 pub fn copy_files(paths: Vec<String>) -> Result<(), String> {
     objc2::rc::autoreleasepool(|_| unsafe { pasteboard::write_files(&paths) })
 }
 
-#[cfg(not(target_os = "macos"))]
-pub fn copy_files(_paths: Vec<String>) -> Result<(), String> {
-    Err("Copying files is only supported on macOS".into())
-}
-
 /// Text a program in the terminal copies with OSC 52 (terminals.ts), or a patch git wrote: the
 /// webview writes the clipboard only during a key or a click, and these arrive later.
-#[cfg(target_os = "macos")]
 pub fn write_text(text: &str) -> Result<(), String> {
     objc2::rc::autoreleasepool(|_| unsafe { pasteboard::write_text(text) })
-}
-
-#[cfg(target_os = "linux")]
-pub fn write_text(text: &str) -> Result<(), String> {
-    // GTK panics off its thread (see `contents`).
-    if !gtk::is_initialized_main_thread() {
-        return Err("The clipboard is unavailable".into());
-    }
-    gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).set_text(text);
-    Ok(())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-pub fn write_text(_text: &str) -> Result<(), String> {
-    Err("Copying is only supported on macOS and Linux".into())
 }
 
 /// Dropped files, with the ones macOS takes back once the drag ends (a screenshot's floating
@@ -174,55 +141,10 @@ pub fn read() -> Result<Paste, String> {
     })
 }
 
-#[cfg(target_os = "macos")]
 fn contents() -> (Vec<String>, Option<String>, Option<Vec<u8>>) {
     objc2::rc::autoreleasepool(|_| unsafe { pasteboard::read() })
 }
 
-/// GTK's clipboard, read as the pasteboard is: a file manager's copied files arrive as URIs.
-/// Asks once what's offered, then only for the first kind `read` takes: each request can wait
-/// GTK's 30 s on an owner that has hung.
-#[cfg(target_os = "linux")]
-fn contents() -> (Vec<String>, Option<String>, Option<Vec<u8>>) {
-    // GTK panics off its thread; terminal_paste is sync so it runs there, but never crash on it.
-    if !gtk::is_initialized_main_thread() {
-        return (vec![], None, None);
-    }
-    let clipboard = gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD);
-    let Some(targets) = clipboard.wait_for_targets() else {
-        return (vec![], None, None);
-    };
-    if gtk::targets_include_uri(&targets) {
-        let files: Vec<String> = clipboard
-            .wait_for_uris()
-            .iter()
-            .filter_map(|uri| gtk::glib::filename_from_uri(uri.as_str()).ok())
-            .map(|(path, _)| path.to_string_lossy().into_owned())
-            .collect();
-        if !files.is_empty() {
-            return (files, None, None);
-        }
-    }
-    if gtk::targets_include_text(&targets) {
-        let text = clipboard.wait_for_text().map(String::from);
-        if text.as_deref().is_some_and(|t| !t.is_empty()) {
-            return (vec![], text, None);
-        }
-    }
-    let png = gtk::targets_include_image(&targets, false)
-        .then(|| clipboard.wait_for_image())
-        .flatten()
-        .and_then(|image| image.save_to_bufferv("png", &[]).ok());
-    (vec![], None, png)
-}
-
-/// Elsewhere the terminal keeps the webview's own paste (terminals.ts), so this isn't called.
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn contents() -> (Vec<String>, Option<String>, Option<Vec<u8>>) {
-    (vec![], None, None)
-}
-
-#[cfg(target_os = "macos")]
 mod pasteboard {
     use crate::objc::{bytes, ns_string, rust_string};
     use objc2::msg_send;
@@ -440,7 +362,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(Path::new(&path).parent().unwrap());
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     #[ignore = "replaces the clipboard"]
     fn copied_text_pastes_back() {
@@ -451,7 +372,6 @@ mod tests {
         write_text("a\0b").unwrap();
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     #[ignore = "replaces the clipboard"]
     fn copied_files_paste_back_as_files_with_their_picture() {
