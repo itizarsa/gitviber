@@ -1,14 +1,11 @@
-import { Download, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { api, type GitInfo } from "@/lib/api";
-import { IS_MAC } from "@/lib/platform";
-import { failed, toast } from "@/lib/app/toast";
+import type { GitInfo } from "@/lib/api";
 
 /** Takes the welcome screen's place while git can't run: nothing else works without it. */
 export function NeedsGit({ info, onRecheck }: { info: GitInfo; onRecheck: () => Promise<void> }) {
   const [checking, setChecking] = useState(false);
-  const mac = info.state === "tools" || IS_MAC;
   const recheck = async () => {
     setChecking(true);
     try {
@@ -17,11 +14,6 @@ export function NeedsGit({ info, onRecheck }: { info: GitInfo; onRecheck: () => 
       setChecking(false);
     }
   };
-  const install = () =>
-    api.installGit().then(
-      () => toast("info", "Follow the installer macOS opened", "Then come back and click Check again."),
-      failed("Could not start the installer"),
-    );
   return (
     <div data-tauri-drag-region className="flex h-full items-center justify-center bg-background glass-background">
       <div className="w-[400px]">
@@ -34,19 +26,9 @@ export function NeedsGit({ info, onRecheck }: { info: GitInfo; onRecheck: () => 
             </p>
           </div>
         </div>
-        {mac && (
-          <Button size="lg" className="mt-6 w-full justify-start" onClick={install}>
-            <Download /> Install Command Line Tools
-          </Button>
-        )}
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          {mac ? (
-            <>
-              Or with Homebrew: <code className="rounded-sm bg-panel px-1 py-0.5 font-mono text-[11.5px] text-foreground select-text">brew install git</code>
-            </>
-          ) : (
-            "Install git with your package manager or from git-scm.com."
-          )}
+        <p className="mt-6 text-[12px] text-muted-foreground">
+          Install it with <code className="rounded-sm bg-panel px-1 py-0.5 font-mono text-[11.5px] text-foreground select-text">xcode-select --install</code> or{" "}
+          <code className="rounded-sm bg-panel px-1 py-0.5 font-mono text-[11.5px] text-foreground select-text">brew install git</code>, then check again.
         </p>
         <Button variant="secondary" size="lg" className="mt-4 w-full justify-start" disabled={checking} onClick={recheck}>
           {checking ? <Loader2 className="animate-spin" /> : <RefreshCw />} Check again

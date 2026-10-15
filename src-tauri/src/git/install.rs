@@ -1,10 +1,9 @@
-//! Whether a usable git is installed, and installing Apple's command line tools when not.
+//! Whether a usable git is installed.
 
 use super::in_english;
-use crate::process::{exec, search_path, spawn};
+use crate::process::{search_path, spawn};
 use serde::Serialize;
 use std::process::{Command, Stdio};
-use std::time::Duration;
 
 /// The oldest git that works: `worktree list --porcelain -z`, which every repo open runs
 /// (main_worktree), arrived in 2.36. switch/restore need 2.23.
@@ -81,27 +80,6 @@ pub fn version_at_least(repo: &std::path::Path, min: (u32, u32)) -> bool {
 fn parse_version(v: &str) -> Option<(u32, u32)> {
     let mut parts = v.split(|c: char| !c.is_ascii_digit());
     Some((parts.next()?.parse().ok()?, parts.next()?.parse().ok()?))
-}
-
-/// Opens macOS's installer for the Command Line Tools, which bring git.
-pub fn install_tools() -> Result<(), String> {
-    if !cfg!(target_os = "macos") {
-        return Err("Install git with your system's package manager.".into());
-    }
-    let mut cmd = Command::new("xcode-select");
-    cmd.arg("--install")
-        .env("PATH", search_path())
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    exec(
-        cmd,
-        "xcode-select",
-        &[],
-        None,
-        Some(Duration::from_secs(30)),
-    )
-    .map(|_| ())
 }
 
 #[cfg(test)]

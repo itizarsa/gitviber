@@ -12,7 +12,6 @@ export const api = {
   /** Checked once per launch; `recheck` runs `git --version` again. */
   gitInfo: (recheck = false) => invoke<GitInfo>("git_info", { recheck }),
   /** Opens macOS's Command Line Tools installer. */
-  installGit: () => invoke<void>("install_git"),
   /** The open repo's user.name/email; `suggested` comes from a GitHub account already signed in. */
   gitIdentity: () => invoke<{ current: GitIdentity; suggested: GitIdentity | null }>("git_identity"),
   /** Sets the given parts in the global git config. */
@@ -228,12 +227,6 @@ export const api = {
   resolveSide: (path: string, side: "ours" | "theirs") => invoke<void>("resolve_side", { path, side }),
   /** A conflicted file's sides: `merged` again in diff3 style (null for a binary or huge side), and whether each ends with a newline. Null when a side deleted it. */
   conflictBase: (path: string) => invoke<{ merged: string | null; oursNewline: boolean; theirsNewline: boolean } | null>("conflict_base", { path }),
-  /** The merge and diff tools git's config names (as `--gui` reads it); null where none a window can run. */
-  externalTools: () => invoke<{ merge: string | null; diff: string | null }>("external_tools"),
-  /** `git mergetool` on the path, settling once the tool is closed. */
-  openMergeTool: (path: string) => invoke<void>("open_merge_tool", { path }),
-  /** `git difftool` on the path's unstaged changes, or `staged` ones; settles once the tool is closed. */
-  openDiffTool: (path: string, staged: boolean) => invoke<void>("open_diff_tool", { path, staged }),
   writeFile: (path: string, content: string) => invoke<void>("write_file", { path, content }),
   createFile: (path: string) => invoke<void>("create_file", { path }),
   createDir: (path: string) => invoke<void>("create_dir", { path }),

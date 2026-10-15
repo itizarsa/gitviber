@@ -9,7 +9,6 @@ import { languageFor } from "@/lib/editor/language";
 import { basesFor, type Block, endsWithNewline, mergingWhat, oursText, parseConflicts, resolvePrompt, type Segment } from "@/lib/git/conflicts";
 import { startAgentWith } from "@/lib/terminal/handoff";
 import { failed, toast } from "@/lib/app/toast";
-import { mergeInTool, toolCanOpen, toolName, useExternalTools, useMergingInTool } from "@/lib/git/externalTools";
 import { cn } from "@/lib/utils";
 import { FileIcon } from "@/components/FileIcon";
 import { PathLabel } from "@/components/StatusBadge";
@@ -150,11 +149,6 @@ export function ConflictView({ file, root, branch, conflicted, operation, revisi
     }
   };
 
-  // mergetool merges text both sides changed; for a deleted side it asks on the terminal.
-  const tools = useExternalTools(root);
-  const mergeTool = (code === "UU" || code === "AA") && toolCanOpen(file.path) ? tools.merge : null;
-  const inTool = useMergingInTool(file.path);
-
   // A new session of the review agent (Settings → Agent) in a terminal here, the prompt in its box.
   const askAgent = () => {
     const files = conflicted.length ? conflicted : [file.path];
@@ -177,16 +171,11 @@ export function ConflictView({ file, root, branch, conflicted, operation, revisi
           </span>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <Tip label="Pastes a prompt into the terminal an agent runs in, here">
+          <Tip label="Starts your agent in a new terminal here, with a prompt to resolve the conflicts">
             <Button variant="secondary" size="sm" onClick={askAgent}>
               <Bot /> Ask agent to resolve
             </Button>
           </Tip>
-          {mergeTool && (
-            <Button variant="secondary" size="sm" disabled={busy || inTool} onClick={() => void mergeInTool(mergeTool, file.path)}>
-              <GitMerge /> {inTool ? `Waiting for ${toolName(mergeTool)}…` : `Open in ${toolName(mergeTool)}`}
-            </Button>
-          )}
           {blocks.length > 0 && (
             <>
               <Button variant={preview ? "default" : "secondary"} size="sm" aria-pressed={preview} onClick={() => setPreview((p) => !p)}>

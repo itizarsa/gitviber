@@ -164,21 +164,3 @@ pub async fn conflict_base(
 ) -> Res<Option<git::ConflictSides>> {
     read_repo(&state, move |r| git::conflict_sides(r, &path)).await
 }
-
-/// The merge and diff tools git's config names, for "Open in <tool>"; read when a menu or a
-/// conflict asks.
-#[tauri::command]
-pub async fn external_tools(state: State<'_, AppState>) -> Res<git::ExternalTools> {
-    read_repo(&state, |r| Ok(git::external_tools(r))).await
-}
-
-/// Returns once the tool is closed, so the page reads the file and the index again.
-#[tauri::command]
-pub async fn open_merge_tool(state: State<'_, AppState>, path: String) -> Res<()> {
-    in_repo(&state, move |r| git::open_merge_tool(r, &path)).await
-}
-
-#[tauri::command]
-pub async fn open_diff_tool(state: State<'_, AppState>, path: String, staged: bool) -> Res<()> {
-    in_repo(&state, move |r| git::open_diff_tool(r, &path, staged)).await
-}

@@ -66,11 +66,6 @@ pub async fn git_info(app: AppHandle, recheck: bool) -> Res<git::GitInfo> {
     .await
 }
 
-#[tauri::command]
-pub async fn install_git() -> Res<()> {
-    blocking(git::install_tools).await
-}
-
 #[derive(serde::Serialize)]
 pub struct IdentityCheck {
     current: git::Identity,
