@@ -434,8 +434,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
           onLocateRepo={onLocateRepo}
         />
         <div className="relative min-w-0 flex-1">
-        {/* The library finds a divider by where the pointer is: under the maximized terminal, the hidden ones would still drag. */}
-        <ResizablePanelGroup {...sidebars.group} disabled={terminalMaximized}>
+        <ResizablePanelGroup {...sidebars.group}>
           {/* Keyed, so docking the sidebar on the other side moves the panels instead of remounting them. */}
           {[
             <ResizablePanel key="side" id="side" {...sidebars.panel("side")} onResize={(size) => setSidebarOpen(size.inPixels > 0)}>
@@ -573,6 +572,8 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
             </ResizablePanel>,
             <ResizableHandle key="handle" className="bg-border" disableDoubleClick onDoubleClick={fit} />,
             <ResizablePanel key="viewer" id="viewer" {...sidebars.flex}>
+              {/* Positioned, so the maximized terminal fills this column only: the rail and sidebar stay. */}
+              <div className="relative h-full">
               <ResizablePanelGroup {...bottom.group} disabled={terminalMaximized}>
                 <ResizablePanel id="editor" {...bottom.flex}>
                   {/* Esc from the view itself (a PR, an image) or the code, when Monaco had no use for it. */}
@@ -615,7 +616,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
                   <>
                     <ResizableHandle className="bg-border" disableDoubleClick onDoubleClick={() => bottom.resize("terminal", BOTTOM.terminal.base)} />
                     <ResizablePanel id="terminal" {...bottom.panel("terminal")}>
-                      {/* Maximized, it covers the workspace, which stays mounted beneath: nothing reloads on the way back. */}
+                      {/* Maximized, it covers the code view, which stays mounted beneath: nothing reloads on the way back. */}
                       <div data-panel="terminal" className={cn("group/panel h-full", terminalMaximized ? "absolute inset-0 z-40" : "relative")}>
                         <FocusLine />
                         <TerminalPanel root={root} worktrees={repo.worktrees} projects={projects} />
@@ -624,6 +625,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
                   </>
                 )}
               </ResizablePanelGroup>
+              </div>
             </ResizablePanel>,
           ][s.sidebarSide === "left" ? "slice" : "reverse"]()}
         </ResizablePanelGroup>

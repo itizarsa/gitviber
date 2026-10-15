@@ -25,6 +25,5 @@ export function tileStyle(name: string, strong = false) {
   return {
     background: `hsl(${h} 70% 55% / ${strong ? 0.26 : 0.15})`,
     color: `color-mix(in oklab, hsl(${h} 75% 62%) 70%, var(--foreground))`,
-    "--tile": `hsl(${h} 75% 60%)`,
   } as CSSProperties;
 }

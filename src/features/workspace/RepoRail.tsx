@@ -62,8 +62,8 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
                       aria-current={current}
                       onClick={() => (missing ? onLocateRepo(p) : !(current && root === main) && void onOpenRepo(p))}
                       className={cn(
-                        "relative flex size-8 shrink-0 items-center justify-center rounded-lg font-mono text-[12px] font-bold tracking-tight outline-none transition-[filter,box-shadow] hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring",
-                        current && "shadow-[inset_0_0_0_1.5px_var(--tile)]",
+                        "relative flex size-8 shrink-0 items-center justify-center rounded-md font-mono text-[12px] font-bold tracking-tight outline-none transition-[filter,box-shadow] hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring",
+                        current && "shadow-[inset_0_0_0_1.5px_var(--primary)]",
                         missing && "opacity-40",
                       )}
                       style={tileStyle(name, current)}
@@ -98,7 +98,7 @@ export function RepoRail({ repo, root, main, recent, side, sidebarOpen, onToggle
           );
         })}
         <Tip label="Open repository…" shortcut={openKey} side={side === "left" ? "right" : "left"}>
-          <button aria-label="Open repository" onClick={() => void onOpenRepo()} className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-subtle hover:text-foreground">
+          <button aria-label="Open repository" onClick={() => void onOpenRepo()} className="flex size-8 shrink-0 items-center justify-center rounded-md border border-dashed border-border-strong text-subtle hover:text-foreground">
             <Plus className="size-4" />
           </button>
         </Tip>
