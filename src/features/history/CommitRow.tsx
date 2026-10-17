@@ -13,7 +13,6 @@ import { TimeText, useRelativeTimes } from "@/components/RelativeTime";
 import { FileIcon } from "@/components/FileIcon";
 import { LineCounts, PathLabel, StatusLetter } from "@/components/StatusBadge";
 import { sumLines } from "@/features/changes/changeList";
-import { SectionBtn } from "@/features/changes/ChangeRows";
 import type { DropAt } from "./edits";
 import { groupRefs } from "./groupRefs";
 
@@ -84,9 +83,10 @@ export function CommitRow({
         setFiles(f);
         // A blame click waiting on these files opens its own file (below).
         if (reveal && revealed.current !== reveal.id) return;
-        // Jump straight into the file (a file's history: that one) so one click shows code.
-        const file = f.find((x) => x.path === commit.file) ?? f[0];
+        // One click shows the code: a file's history opens that file, any other commit all its changes.
+        const file = commit.file ? f.find((x) => x.path === commit.file) : undefined;
         if (file) onOpen({ kind: "commit", commit, file });
+        else if (f.length) onOpen({ kind: "changes", list: "commit", commit });
       })
       .catch((e) => alive && toast("error", "Could not load commit", errorMessage(e)));
     // Collapsing (or opening another commit) cancels the auto-open of a late reply.
@@ -181,7 +181,6 @@ export function CommitRow({
             <div className="flex h-6 items-center gap-2 pr-2 pl-8 text-[10.5px] text-subtle">
               <span className="font-semibold tracking-[0.08em] uppercase">Changed files</span>
               <span className="font-mono text-muted-foreground">{files.length}</span>
-              {files.length > 0 && <SectionBtn onClick={() => onOpen({ kind: "changes", list: "commit", commit }, true)}>Open All</SectionBtn>}
               <span className="ml-auto font-mono">
                 <span className="text-added">+{add}</span> <span className="text-removed">-{del}</span>
               </span>
