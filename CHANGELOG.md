@@ -6,6 +6,12 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-17
+
+### Changed
+
+- **Clicking a commit in History** opens all its changes as one scroll of diffs, in the preview tab, instead of its first file; the Open All button by its file list goes. In a file's history a commit still opens that file.
+
 ## [0.3.1] - 2026-10-15
 
 ### Changed
@@ -616,7 +622,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/itizarsa/gitviber/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/itizarsa/gitviber/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/itizarsa/gitviber/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/itizarsa/gitviber/compare/v0.1.13...v0.2.0
