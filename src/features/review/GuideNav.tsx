@@ -7,10 +7,12 @@ interface Item {
   n: number;
   section: GuideSection;
   done: boolean;
+  /** Its files' tree, under it on a wide tab. */
+  files?: React.ReactNode;
 }
 
 /** One section in the navigator: its category, number, title and importance, checked once reviewed. */
-function NavItem({ n, section: s, done, chip, onGo }: Item & { chip: boolean; onGo: (n: number) => void }) {
+function NavItem({ n, section: s, done, chip, onGo }: Omit<Item, "files"> & { chip: boolean; onGo: (n: number) => void }) {
   return (
     <button
       onClick={() => onGo(n)}
@@ -22,7 +24,7 @@ function NavItem({ n, section: s, done, chip, onGo }: Item & { chip: boolean; on
       )}
     >
       <CategoryIcon category={s.category} />
-      <span className="shrink-0 font-mono text-[11px] text-subtle">{sectionBadge(n)}</span>
+      {n > 0 && <span className="shrink-0 font-mono text-[11px] text-subtle">{sectionBadge(n)}</span>}
       <span className={cn("min-w-0 truncate", chip && "max-w-40")}>{s.title || "Untitled"}</span>
       <span className="sr-only">, {CATEGORY_UI[s.category].label}</span>
       <ImportanceTag importance={s.importance} short />
@@ -37,27 +39,25 @@ function NavItem({ n, section: s, done, chip, onGo }: Item & { chip: boolean; on
 }
 
 /**
- * The sections shown, to jump to, and `files` (the changed files' tree) under them: a rail beside
- * them on a wide tab. On a narrow one the sections are a row of chips pinned over them (as high as
- * the view's --stick, which keeps the files' headers below it), and there's no room for the tree.
+ * The sections shown, to jump to: a rail beside them on a wide tab, each with its files' tree
+ * under it. On a narrow one, when there are several, a row of chips pinned over them (as high as
+ * the view's --stick, which keeps the files' headers below it), with no room for the trees.
  */
-export function GuideNav({ items, onGo, files }: { items: Item[]; onGo: (n: number) => void; files?: React.ReactNode }) {
+export function GuideNav({ items, onGo }: { items: Item[]; onGo: (n: number) => void }) {
   const sections = items.length > 1;
   return (
     <>
-      <div className="sticky top-0 hidden max-h-[calc(100vh-7rem)] self-start overflow-y-auto py-1 @6xl:block">
-        {sections && (
-          <nav aria-label="Sections">
-            {items.map((i) => (
-              <NavItem key={i.n} {...i} chip={false} onGo={onGo} />
-            ))}
-          </nav>
-        )}
-        {files}
-      </div>
+      <nav aria-label="Sections" className="sticky top-0 hidden max-h-[calc(100vh-7rem)] self-start overflow-y-auto py-1 @6xl:block">
+        {items.map(({ files, ...i }) => (
+          <div key={i.n}>
+            <NavItem {...i} chip={false} onGo={onGo} />
+            {files}
+          </div>
+        ))}
+      </nav>
       {sections && (
         <nav aria-label="Sections" className="glass-header sticky top-0 z-20 -mx-6 flex h-[var(--stick)] items-center gap-1.5 overflow-x-auto border-b border-border bg-background px-6 @6xl:hidden">
-          {items.map((i) => (
+          {items.map(({ files: _, ...i }) => (
             <NavItem key={i.n} {...i} chip onGo={onGo} />
           ))}
         </nav>

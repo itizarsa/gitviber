@@ -6,6 +6,10 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+### Changed
+
+- **Guided reviews' file tree** is now one per section, under it in the left column, instead of one for the whole change; files no section placed are under Other changes.
+
 ## [0.3.5] - 2026-10-18
 
 ### Added

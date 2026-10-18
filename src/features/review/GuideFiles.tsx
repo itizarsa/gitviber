@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import type { ListFile } from "@/features/viewer/StackedFiles";
 
 /**
- * The guide's changed files as a folder tree, under its sections: a click goes to the file's
- * diff. Viewed ones are ticked, as in Changes. Folders fold for the tab's life.
+ * A section's changed files as a folder tree, under it in the guide's navigator: a click goes to
+ * the file's diff. Viewed ones are ticked, as in Changes. Folders fold for the tab's life.
  */
 export function GuideFiles({ files, viewed, onGo }: { files: ListFile[]; viewed: (f: ListFile) => boolean; onGo: (f: ListFile) => void }) {
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
@@ -21,11 +21,7 @@ export function GuideFiles({ files, viewed, onGo }: { files: ListFile[]; viewed:
     });
   const indent = (depth: number) => ({ paddingLeft: 6 + depth * 12 });
   return (
-    <section aria-label="Files" className="mt-3 border-t border-border pt-2">
-      <h2 className="mb-1 flex items-center gap-1.5 px-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase">
-        Files <span className="font-mono text-muted-foreground">{files.length}</span>
-      </h2>
-      <div role="tree" aria-label="Changed files">
+    <div role="tree" aria-label="Files" className="mb-1 ml-[13px] border-l border-border pl-1">
         {rows.map((r) =>
           r.kind === "folder" ? (
             <button
@@ -66,7 +62,6 @@ export function GuideFiles({ files, viewed, onGo }: { files: ListFile[]; viewed:
             </button>
           ),
         )}
-      </div>
-    </section>
+    </div>
   );
 }

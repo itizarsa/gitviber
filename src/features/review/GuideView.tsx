@@ -222,7 +222,13 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const drawn = !!guide && (guide.models.length > 0 || guide.flows.length > 0 || !!guide.diagram);
   const shown = (guide?.sections ?? []).flatMap((section, i) => (fits(section) ? [{ n: i + 1, section, done: !!saved?.done.includes(i) }] : []));
   const nav = shown.length > 1;
-  // The left column: the sections when there are several, and the files' tree.
+  // The left column: the sections, each with its files' tree; files no section placed under Other changes.
+  const tree = (paths: string[] | undefined) =>
+    paths?.length ? <GuideFiles files={paths.flatMap((p) => byPath.get(p) ?? [])} viewed={isViewed} onGo={goToFile} /> : undefined;
+  const navItems = [
+    ...shown.map((i) => ({ ...i, files: tree(placed?.shown[i.n - 1]) })),
+    ...(placed?.rest.length && !filtered ? [{ n: 0, section: OTHER, done: false, files: tree(placed.rest) }] : []),
+  ];
   const side = nav || byPath.size > 0;
 
   return (
@@ -346,7 +352,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
           </>
         ) : (
           <div className={cn(side && "@6xl:grid @6xl:grid-cols-[240px_minmax(0,1fr)] @6xl:gap-6")}>
-            {side && <GuideNav items={shown} onGo={goTo} files={byPath.size > 0 && <GuideFiles files={[...byPath.values()]} viewed={isViewed} onGo={goToFile} />} />}
+            {side && <GuideNav items={navItems} onGo={goTo} />}
             <div className="min-w-0">
               <div className={cn("mb-6 grid gap-5", nav && "mt-4 @6xl:mt-0", drawn && "@4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
                 {(guide.summary || guide.sketch || guide.danger) && (
