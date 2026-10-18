@@ -6,6 +6,12 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-18
+
+### Added
+
+- **Explain from History.** An open commit's file list has an Explain button for its guided review. Pick several commits and Explain (the bar under them, or their right-click menu) writes one guided review of their span, oldest through newest, every message included; commits between the picks come along, and it says so.
+
 ## [0.3.3] - 2026-10-18
 
 ### Added
@@ -628,7 +634,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/itizarsa/gitviber/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/itizarsa/gitviber/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/itizarsa/gitviber/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/itizarsa/gitviber/compare/v0.3.0...v0.3.1
