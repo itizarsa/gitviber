@@ -6,9 +6,18 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
-### Changed
+## [0.3.6] - 2026-10-18
 
-- **Guided reviews' file tree** is now one per section, under it in the left column, instead of one for the whole change; files no section placed are under Other changes.
+The Homebrew cask goes from 0.3.4 straight to this one.
+
+### Added
+
+- **A file tree under each section of a guided review.** In the left column, each section lists its files as folders under it (in Explain on commits too); files no section placed are under Other changes. A click goes to the file's diff, viewed files are ticked, folders fold.
+- **A sketch and the merge danger in guided reviews**, as in 0.3.5.
+
+### Fixed
+
+- **Open All in Changes** follows the list's sort and tree order, as in 0.3.5.
 
 ## [0.3.5] - 2026-10-18
 
@@ -649,7 +658,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/itizarsa/gitviber/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/itizarsa/gitviber/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/itizarsa/gitviber/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/itizarsa/gitviber/compare/v0.3.2...v0.3.3
