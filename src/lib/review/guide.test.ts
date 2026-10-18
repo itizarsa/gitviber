@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CATEGORIES, describeFlow, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
+import { CATEGORIES, describeFlow, DOORS, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
 
 // What a section from before categories and notes reads as.
 const PLAIN: Pick<GuideSection, "category" | "check" | "importance" | "fileNotes" | "lineNotes"> = { category: "other", check: "", importance: "medium", fileNotes: [], lineNotes: [] };
@@ -18,6 +18,8 @@ const answer = {
 };
 const guide = {
   ...answer,
+  sketch: null,
+  danger: null,
   models: [],
   flows: [],
   sections: [
@@ -42,11 +44,11 @@ test("wrappers models add", () => {
 });
 
 test("missing or mistyped fields read as empty", () => {
-  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", models: [], flows: [], sections: [] });
+  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] });
   assert.deepEqual(parseGuide('{"title": 3, "summary": "S", "sections": [null, "x", {"files": "a.ts"}, {"title": "T", "files": ["a.ts"]}]}'), {
     title: "",
     summary: "S",
-    diagram: "",
+    diagram: "", sketch: null, danger: null,
     models: [],
     flows: [],
     sections: [{ title: "T", summary: "", files: ["a.ts"], risk: "", ...PLAIN }],
@@ -91,8 +93,8 @@ test("huge answers parse quickly, and brace soup isn't a guide", () => {
 test("empty and misnamed parts", () => {
   // A section with only a risk is dropped, as is one with blank files.
   const g = parseGuide(JSON.stringify({ title: "T", sections: [{ risk: "R" }, { files: ["", "  ", "./"] }] }));
-  assert.deepEqual(g, { title: "T", summary: "", diagram: "", models: [], flows: [], sections: [] });
-  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
+  assert.deepEqual(g, { title: "T", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] });
+  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
   // Paths with spaces and non-ASCII match as written.
   const named = parseGuide(JSON.stringify({ sections: [{ title: "x", files: ["docs/my notes/über.md"] }] }))!;
   assert.deepEqual(unplaced(named, ["docs/my notes/über.md"]), []);
@@ -420,7 +422,7 @@ test("a guide from before importance: critical reads as high, the rest as medium
 
 test("the language line ends the prompt, one line of the user's text", () => {
   assert.ok(guidePrompt("Turkish").startsWith(`${GUIDE_PROMPT}\n\n`));
-  assert.match(guidePrompt("Turkish"), /\n\nWrite all prose \(the title, overview, summaries, checks, risks and notes\) in Turkish; keep the JSON keys .*code, identifiers, paths and quoted strings as they are\.$/);
+  assert.match(guidePrompt("Turkish"), /\n\nWrite all prose \(the title, overview, summaries, checks, risks, notes and the danger.s sentences\) in Turkish; keep the JSON keys .*code, identifiers, paths and quoted strings as they are\.$/);
   for (const blank of ["", "  \n "]) assert.ok(guidePrompt(blank).includes(" in English; "));
   const odd = guidePrompt(" Brazilian\n\nPortuguese ").slice(GUIDE_PROMPT.length);
   assert.ok(odd.includes(" in Brazilian Portuguese; "));
@@ -505,4 +507,29 @@ test("a category named like an Object property reads as other", () => {
   const sections = ["constructor", "__proto__", "toString", "hasOwnProperty"].map((category) => ({ title: category, category, files: [] }));
   const g = parseGuide(JSON.stringify({ title: "T", sections }))!;
   assert.deepEqual(g.sections.map((s) => s.category), ["other", "other", "other", "other"]);
+});
+
+test("a sketch keeps its lines and indentation, unfenced and cut at its limit", () => {
+  const sketch = (v: unknown) => parseGuide(JSON.stringify({ title: "T", sketch: v }))!.sketch;
+  assert.deepEqual(sketch({ kind: "calls", text: "\nsubmitForm\n  createSession\n    persistPrompt\n" }), { kind: "calls", text: "submitForm\n  createSession\n    persistPrompt" });
+  assert.deepEqual(sketch({ kind: "DIFF", text: "```diff\n on(save)\n-  write\n+  skip\n```" }), { kind: "diff", text: " on(save)\n-  write\n+  skip" });
+  assert.deepEqual(sketch({ kind: "mermaid", text: "a\r\nb" }), { kind: "pseudocode", text: "a\nb" }, "an unknown kind is pseudocode");
+  const long = sketch({ kind: "files", text: Array.from({ length: 100 }, (_, i) => `f${i}`).join("\n") })!;
+  assert.equal(long.text.split("\n").length, LIMITS.sketch);
+  assert.ok(long.text.endsWith("\n…"));
+  for (const none of [undefined, "a string", { kind: "calls" }, { kind: "calls", text: " \n " }]) assert.equal(sketch(none), null);
+});
+
+test("a danger needs a door; why is only for a one-way one", () => {
+  const danger = (v: unknown) => parseGuide(JSON.stringify({ title: "T", danger: v }))!.danger;
+  assert.deepEqual(danger({ door: "One Way", why: "Drops a column.", blast: "data", reach: "Every saved review." }), { door: "one-way", why: "Drops a column.", blast: "data", reach: "Every saved review." });
+  assert.deepEqual(danger({ door: "two-way", why: "Ignored.", blast: "contained\nfor now" }), { door: "two-way", why: "", blast: "contained for now", reach: "" });
+  for (const none of [undefined, "two-way", { blast: "app" }, { door: "revolving" }]) assert.equal(danger(none), null);
+});
+
+test("the prompt asks for a sketch of a listed kind and a door", () => {
+  for (const k of Object.keys(SKETCHES)) assert.ok(GUIDE_PROMPT.includes(`${k} (`), k);
+  for (const d of DOORS) assert.ok(GUIDE_PROMPT.includes(d), d);
+  assert.ok(GUIDE_PROMPT.includes('"sketch": {"kind": "one of the sketches below"'));
+  assert.ok(GUIDE_PROMPT.includes('"danger": {"door": "one-way when'));
 });

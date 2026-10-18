@@ -138,6 +138,7 @@ export function handoffContext(i: HandoffInput): string {
       reading(i, filesOf(i)),
       guide?.title && `The review's title: ${quote(guide.title)}`,
       guide?.summary && `Its overview: ${clip(guide.summary, MAX_PART)}`,
+      guide?.danger && `Its merge danger: a ${guide.danger.door} door${guide.danger.why ? ` (${guide.danger.why})` : ""}${guide.danger.blast ? `, blast radius ${guide.danger.blast}` : ""}${guide.danger.reach ? `: ${guide.danger.reach}` : ""}.`,
       ...part,
       `Reply in ${languageName(i.language)}.`,
     ]

@@ -28,7 +28,7 @@ const section: GuideSection = {
   fileNotes: [{ path: "src/retry.ts", text: "New file.", critical: false }],
   lineNotes: [{ path: "src/upload.ts", side: "old", line: 9, text: "Was the only try.", critical: true }],
 };
-const guide: Guide = { title: "Retry uploads", summary: "Uploads failed on a flaky network.", diagram: "", models: [], flows: [], sections: [section, { ...section, title: "Docs", files: ["README.md"] }] };
+const guide: Guide = { title: "Retry uploads", summary: "Uploads failed on a flaky network.", sketch: null, danger: null, diagram: "", models: [], flows: [], sections: [section, { ...section, title: "Docs", files: ["README.md"] }] };
 const risk: Risk = { title: "Retries forever", severity: "high", path: "src/retry.ts", line: 12, side: "new", why: "No cap on attempts.", check: "" };
 
 const input = (over: Partial<HandoffInput>): HandoffInput => ({ sel: SELS.branch, branch: "retry", base: BASE, head: HEAD, guide, about: null, checkedOut: true, moved: false, language: "Türkçe", ...over });

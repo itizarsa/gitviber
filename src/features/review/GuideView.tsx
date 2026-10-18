@@ -25,6 +25,8 @@ import { GuideRisks, RisksRun } from "./GuideRisks";
 import { GuideDiagram } from "./GuideDiagram";
 import { CATEGORY_UI } from "./categories";
 import { CategoryFilter, GuideNav } from "./GuideNav";
+import { GuideFiles } from "./GuideFiles";
+import { GuideDanger, GuideSketch } from "./GuideSketch";
 import { GuideMarkdown, Notice, SectionRow } from "./GuideSection";
 
 // No files to read before a branch's guide says which range it read: a list useFixedFiles leaves be.
@@ -193,7 +195,10 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const goToRisk = (r: Risk) => {
     const path = matchPath(r.path, new Set(byPath.keys()));
     const f = path ? byPath.get(path) : undefined;
-    if (!f) return;
+    if (f) goToFile(f);
+  };
+  // A file's diff in the guide, shown first if the filter hides its section; else its own tab.
+  const goToFile = (f: ListFile) => {
     if (filtered) flushSync(() => setFilter(ALL));
     const block = scroller.current?.querySelector(`[data-file="${CSS.escape(selectionKey(f))}"]`);
     if (block) block.scrollIntoView({ block: "start" });
@@ -217,6 +222,8 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const drawn = !!guide && (guide.models.length > 0 || guide.flows.length > 0 || !!guide.diagram);
   const shown = (guide?.sections ?? []).flatMap((section, i) => (fits(section) ? [{ n: i + 1, section, done: !!saved?.done.includes(i) }] : []));
   const nav = shown.length > 1;
+  // The left column: the sections when there are several, and the files' tree.
+  const side = nav || byPath.size > 0;
 
   return (
     // Focusable so the keyboard can scroll it (focusPanel("code") lands here); diffs load as they near its view.
@@ -328,7 +335,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
           <>
             {!running && (
               <p className="text-[13px] text-muted-foreground">
-                {program} reads {copy.reads} and explains it as sections in the order to review them, by category, with a diagram when a flow or data model changes.
+                {program} reads {copy.reads} and explains it as sections in the order to review them, by category, with a sketch or diagram when one helps and how risky merging it is.
               </p>
             )}
           </>
@@ -338,14 +345,16 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
             <GuideMarkdown text={saved.text} />
           </>
         ) : (
-          <div className={cn(nav && "@6xl:grid @6xl:grid-cols-[220px_minmax(0,1fr)] @6xl:gap-6")}>
-            {nav && <GuideNav items={shown} onGo={goTo} />}
+          <div className={cn(side && "@6xl:grid @6xl:grid-cols-[240px_minmax(0,1fr)] @6xl:gap-6")}>
+            {side && <GuideNav items={shown} onGo={goTo} files={byPath.size > 0 && <GuideFiles files={[...byPath.values()]} viewed={isViewed} onGo={goToFile} />} />}
             <div className="min-w-0">
               <div className={cn("mb-6 grid gap-5", nav && "mt-4 @6xl:mt-0", drawn && "@4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
-                {guide.summary && (
+                {(guide.summary || guide.sketch || guide.danger) && (
                   <div className="min-w-0">
                     <h2 className="mb-2 text-[13px] font-semibold">Overview</h2>
-                    <GuideMarkdown text={guide.summary} />
+                    {guide.summary && <GuideMarkdown text={guide.summary} />}
+                    {guide.sketch && <GuideSketch sketch={guide.sketch} />}
+                    {guide.danger && <GuideDanger danger={guide.danger} />}
                   </div>
                 )}
                 {drawn && (

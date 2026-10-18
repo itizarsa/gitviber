@@ -23,7 +23,7 @@
   revert, cherry-pick, reflog and bisect.
 - **Branches, worktrees, stashes, compare, fetch, pull and push.**
 - **Review**: notes on lines sent to the terminal or copied as a prompt, viewed files, and a
-  guided review written by your agent CLI (Settings → Agent).
+  guided review written by your agent CLI (Settings → Agent): sections in reading order, a file tree, a sketch of the change and its merge danger (one- or two-way door, blast radius).
 - **A terminal** with tabs and splits under the code.
 
 What this fork removed, and why, is in [FORK_PLAN.md](FORK_PLAN.md) and the [changelog](CHANGELOG.md).

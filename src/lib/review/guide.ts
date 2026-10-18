@@ -29,6 +29,20 @@ export const CATEGORIES = {
 
 export type Category = keyof typeof CATEGORIES;
 
+/** What a guide's sketch draws: the smallest view that makes the change's point. */
+export const SKETCHES = {
+  pseudocode: "logic or an algorithm, as indented pseudocode",
+  calls: "runtime control flow, as an indented call tree",
+  components: "UI structure, as a component tree with the state and modules that matter",
+  files: "which file does what, as a shallow file tree with a short comment a line",
+  diff: "what changes in a shape that already exists (a call tree, component tree, file tree or control flow), as that shape with + and - before the lines added and removed",
+} as const;
+export type SketchKind = keyof typeof SKETCHES;
+
+/** Whether a merge can be walked back. */
+export const DOORS = ["two-way", "one-way"] as const;
+export type Door = (typeof DOORS)[number];
+
 /** How carefully a section wants reading, most first. */
 export const IMPORTANCE = ["high", "medium", "low"] as const;
 export type Importance = (typeof IMPORTANCE)[number];
@@ -57,6 +71,26 @@ export const GUIDE_SCHEMA = {
   properties: {
     title: str("what the change does, under 72 characters"),
     overview: str("why the change was made, in 1-2 sentences of Markdown; a numbered list of its parts after them only when it has 3 or more separate ones"),
+    sketch: {
+      type: "object",
+      description: "the smallest view that makes the change's point; left out when the overview says it all",
+      required: ["kind", "text"],
+      properties: {
+        kind: { type: "string", enum: Object.keys(SKETCHES), description: "one of the sketches below" },
+        text: str("the sketch, at most 20 lines, without a code fence; only the calls, files, props, states and boundaries that make the point"),
+      },
+    },
+    danger: {
+      type: "object",
+      description: "what merging risks",
+      required: ["door", "blast"],
+      properties: {
+        door: { type: "string", enum: [...DOORS], description: "one-way when merging can't be cheaply walked back (destructive, migrations, published formats or APIs), else two-way" },
+        why: str("a sentence on what makes it so, only for a one-way door"),
+        blast: str("the blast radius in one word, such as contained, module, app, users or data"),
+        reach: str("a sentence on what it could affect, such as layout, consumers or stored data; left out when nothing past the change"),
+      },
+    },
     diagram: {
       type: "object",
       description: "only for a change to a real flow or data model; left out for style, text, config or docs changes",
@@ -130,6 +164,10 @@ export const GUIDE_PROMPT = [
   `Explain this change to a reviewer so they can read it quickly. Answer with only a JSON object, with no code fences or other text, shaped like this: ${exampleOf(GUIDE_SCHEMA)}.`,
   "Size the guide to the change: one section for a small change (1-3 files, or under about 150 changed lines) unless it has truly separate concerns, and more only for separate concerns. Put mechanical edits (docs, changelog, formatting, renames) together in the last section, never in one of their own for a line. Order the sections the way a reviewer should read them, and put every path of the list of changed files in exactly one section.",
   "Write for a developer who scans: never restate what the diff shows (values, strings, numbers, styles); say why, and point at what isn't obvious. Most sections have no check or risk. Give importance sparingly, most sections medium or low: high only for security, data loss, or a change that breaks things, is hard to revert or is easy to get wrong; medium for a change in behavior worth a careful read; low for mechanical edits, docs or style. A note's critical is true only for security, data loss or a change that's hard to revert. Add a fileNote or lineNote only where it saves the reviewer real time, a few in the whole guide at most; a lineNote's side is new for an added or unchanged line and old for a removed one, and its line is the line's number on that side.",
+  "Give a sketch only when a picture says it faster than words, picking the smallest kind that makes the point; most small changes need none. Rate every change's danger: a two-way door can be walked back by reverting it, a one-way door can't (data deleted or migrated, a format, API or setting others rely on published); the blast radius is how far a mistake would reach.",
+  `Sketches: ${Object.entries(SKETCHES)
+    .map(([k, v]) => `${k} (${v})`)
+    .join(", ")}.`,
   "Draw the diagram only when the change alters a real flow or data model, and leave it out for style, text, config or docs changes. Each of its parts' \"section\" is the number of the section that covers it, 1 for the first. Keep it small: at most 6 models of at most 12 fields, and at most 2 flows of at most 12 steps; leave out models or flows the change has none of.",
   `Categories: ${Object.entries(CATEGORIES)
     .map(([k, v]) => `${k} (${v})`)
@@ -139,7 +177,7 @@ export const GUIDE_PROMPT = [
 /** GUIDE_PROMPT with the language the guide's prose is written in. */
 export function guidePrompt(language: string) {
   const lang = languageName(language);
-  return `${GUIDE_PROMPT}\n\nWrite all prose (the title, overview, summaries, checks, risks and notes) in ${lang}; keep the JSON keys and the values picked from a list (category, importance, side, status, kind), code, identifiers, paths and quoted strings as they are.`;
+  return `${GUIDE_PROMPT}\n\nWrite all prose (the title, overview, summaries, checks, risks, notes and the danger's sentences) in ${lang}; keep the JSON keys and the values picked from a list (category, importance, side, status, kind, door), the blast radius' word in English, sketches, code, identifiers, paths and quoted strings as they are.`;
 }
 
 export interface FileNote {
@@ -208,10 +246,30 @@ export interface Flow {
   edges: { from: string; to: string; label: string }[];
 }
 
+export interface Sketch {
+  kind: SketchKind;
+  /** Its lines, as written, without a fence. */
+  text: string;
+}
+
+export interface Danger {
+  door: Door;
+  /** Why it's one-way; "" for none. */
+  why: string;
+  /** The blast radius, a word. */
+  blast: string;
+  /** What it could affect; "" for nothing past the change. */
+  reach: string;
+}
+
 export interface Guide {
   title: string;
   /** The overview: a paragraph and the change's parts, in Markdown. */
   summary: string;
+  /** null for none, as for a guide from before sketches. */
+  sketch: Sketch | null;
+  /** null when the model gave none, as for a guide from before it was asked. */
+  danger: Danger | null;
   /** A guide written before diagrams were structured: its Mermaid source; "" for none. */
   diagram: string;
   models: Model[];
@@ -220,7 +278,7 @@ export interface Guide {
 }
 
 /** How much of a diagram is drawn, as the prompt asks (past this it stops explaining), how many sections, and their notes. */
-export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500 };
+export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500, sketch: 40 };
 
 /** The changed file (of `paths`) a model's path names: as written, or without git's a/ or b/. */
 export function matchPath(path: string, paths: Set<string>) {
@@ -290,6 +348,29 @@ function parseFlows(v: unknown, count: number): Flow[] {
     .slice(0, LIMITS.flows);
 }
 
+/** A sketch with lines, at most LIMITS.sketch of them, unwrapped if the model fenced it anyway; an unknown kind reads as pseudocode. */
+function parseSketch(v: unknown): Sketch | null {
+  if (!isRecord(v)) return null;
+  const lines = (typeof v.text === "string" ? v.text : "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/^\s*\n|\s+$/g, "")
+    .replace(/^(`{3,}|~{3,})[^\n]*\n/, "")
+    .replace(/\n(`{3,}|~{3,})$/, "")
+    .split("\n");
+  if (!lines.some((l) => l.trim())) return null;
+  const kind = text(v.kind).toLowerCase();
+  const cut = lines.length > LIMITS.sketch ? [...lines.slice(0, LIMITS.sketch - 1), "…"] : lines;
+  return { kind: Object.hasOwn(SKETCHES, kind) ? (kind as SketchKind) : "pseudocode", text: cut.join("\n") };
+}
+
+/** The danger, when the model named a door; an unknown blast radius reads as "". */
+function parseDanger(v: unknown): Danger | null {
+  if (!isRecord(v)) return null;
+  const door = text(v.door).toLowerCase().replace(/\s+/g, "-");
+  if (!(DOORS as readonly string[]).includes(door)) return null;
+  return { door: door as Door, why: door === "one-way" ? line(v.why, LIMITS.note) : "", blast: line(v.blast, 24), reach: line(v.reach, LIMITS.note) };
+}
+
 const flag = (v: unknown) => v === true || text(v).toLowerCase() === "true";
 /** As the model gave it; a guide from before importance was asked: high when it was critical, else medium, the neutral one. */
 const importance = (v: unknown, critical: unknown): Importance => {
@@ -334,6 +415,8 @@ export function parseGuide(output: string): Guide | null {
   const guide = {
     title: text(v.title),
     summary: text(v.overview) || text(v.summary),
+    sketch: parseSketch(v.sketch),
+    danger: parseDanger(v.danger),
     diagram: text(v.diagram)
       .replace(/^(`{3,}|~{3,})\s*(mermaid)?\s*\n/i, "")
       .replace(/\n(`{3,}|~{3,})$/, "")
