@@ -6,6 +6,12 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-18
+
+### Added
+
+- **Reopens after an upgrade.** When `brew upgrade` installs a newer GitViber over the running one, it quits as ⌘Q does (saving its terminals, asking first while a command runs) and opens the new version. Homebrew can't do this itself: its install steps run sandboxed. From this version on; the upgrade to it still needs opening by hand.
+
 ## [0.3.2] - 2026-10-17
 
 ### Changed
@@ -622,7 +628,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/itizarsa/gitviber/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/itizarsa/gitviber/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/itizarsa/gitviber/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/itizarsa/gitviber/compare/v0.2.0...v0.3.0
