@@ -89,6 +89,37 @@ fn pinned_diff(repo: &Path, args: &[&str]) -> Result<String, String> {
     git::run_text(repo, &[&git::PINS[..], &diff, &DIFF_OPTS, args].concat())
 }
 
+/// The messages of `oldest` through `newest`, oldest first, under a heading: every commit the diff
+/// spans, the ones between two picked commits too.
+fn run_messages(repo: &Path, oldest: &str, newest: &str) -> Result<String, String> {
+    let parent = format!("{oldest}^");
+    let range = if git::run(repo, &["rev-parse", "--verify", "-q", &parent]).is_ok() {
+        format!("{parent}..{newest}")
+    } else {
+        // A root commit: everything up to `newest`.
+        newest.to_string()
+    };
+    let n = format!("-n{}", MAX_SUBJECTS + 1);
+    let log = git::run_text(
+        repo,
+        &[
+            "log",
+            "--reverse",
+            &n,
+            "--format=- %h %s%n%w(0,2,2)%b",
+            &range,
+            "--",
+        ],
+    )?;
+    let count = log.lines().filter(|l| l.starts_with("- ")).count();
+    let heading = if count > MAX_SUBJECTS {
+        format!("The newest {MAX_SUBJECTS} of these commits, oldest first, with their messages:")
+    } else {
+        format!("These {count} commits, oldest first, with their messages:")
+    };
+    Ok(format!("{heading}\n{}", log.trim_end()))
+}
+
 /// The subjects of the commits `to` has over `from`, oldest first, under a heading.
 fn subjects(repo: &Path, from: &str, to: &str) -> Result<String, String> {
     let range = format!("{from}..{to}");
@@ -111,13 +142,15 @@ fn subjects(repo: &Path, from: &str, to: &str) -> Result<String, String> {
     Ok(format!("{heading}\n{}", subjects.join("\n")))
 }
 
-/// What a guided review is of: a commit, HEAD's branch since it left `base` (a full ref), or the
-/// worktree's uncommitted changes.
+/// What a guided review is of: a commit, a run of commits (`oldest` through `newest`, one an
+/// ancestor of the other), HEAD's branch since it left `base` (a full ref), or the worktree's
+/// uncommitted changes.
 #[derive(Deserialize)]
 #[serde(tag = "of", rename_all = "lowercase")]
 pub enum Target {
     Changes,
     Commit { sha: String },
+    Commits { oldest: String, newest: String },
     Branch { base: String },
 }
 
@@ -208,6 +241,25 @@ fn guide_range(repo: &Path, target: &Target) -> Result<Range, String> {
                 stamp: None,
             })
         }
+        Target::Commits { oldest, newest } => {
+            git::validate_rev(oldest)?;
+            git::validate_rev(newest)?;
+            let (first, last) = (oid(oldest)?, oid(newest)?);
+            if git::run(repo, &["merge-base", "--is-ancestor", &first, &last]).is_err() {
+                return Err("These commits aren't one run of history: each has to lead to the newest one. Pick commits along one branch.".into());
+            }
+            let base = git::parent_or_empty(repo, &first)?;
+            let header = run_messages(repo, &first, &last)?;
+            let from = oid(&base)?;
+            Ok(Range {
+                base,
+                head: last.clone(),
+                header,
+                from,
+                to: last,
+                stamp: None,
+            })
+        }
         Target::Branch { base } => {
             let head = oid("HEAD").map_err(|_| "There are no commits yet.".to_string())?;
             let from = git::parted(repo, &head, base)?;
@@ -277,7 +329,7 @@ struct GuideInput {
 }
 
 /// What the prompt says of a guide's input, ahead of what its diffs are (one of the next three).
-const LIST_NOTE: &str = "Below is what the change is (a commit's message, the branch's or pull request's commits, or the uncommitted changes), then a list of every changed file, a line each: its status letter, lines added and removed, its path (after \"←\", the path it was renamed from), tags, and after \"@@\" the functions or sections its changes are in";
+const LIST_NOTE: &str = "Below is what the change is (a commit's message, several commits' messages, the branch's commits, or the uncommitted changes), then a list of every changed file, a line each: its status letter, lines added and removed, its path (after \"←\", the path it was renamed from), tags, and after \"@@\" the functions or sections its changes are in";
 const PREFIX_NOTE: &str = "; then the start of the patch, cut at a line's end.";
 const SOME_NOTE: &str = "; then the whole diffs of the files not tagged [file only], [generated] or [binary] (binary files have none).";
 const ALL_NOTE: &str = "; then every file's whole diff, except for [generated] and [binary] files.";

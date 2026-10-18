@@ -1,4 +1,4 @@
-import { Cloud, Tag } from "lucide-react";
+import { Cloud, Sparkles, Tag } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -13,6 +13,7 @@ import { TimeText, useRelativeTimes } from "@/components/RelativeTime";
 import { FileIcon } from "@/components/FileIcon";
 import { LineCounts, PathLabel, StatusLetter } from "@/components/StatusBadge";
 import { sumLines } from "@/features/changes/changeList";
+import { SectionBtn } from "@/features/changes/ChangeRows";
 import type { DropAt } from "./edits";
 import { groupRefs } from "./groupRefs";
 
@@ -44,6 +45,7 @@ export function CommitRow({
   onHover,
   menu,
   fileMenu,
+  onExplain,
 }: {
   commit: Commit;
   remotes: Set<string>;
@@ -68,6 +70,8 @@ export function CommitRow({
   menu: React.ReactNode;
   /** A changed file's right-click menu. */
   fileMenu: (file: FileChange, sel: Selection) => React.ReactNode;
+  /** The agent's guided review of the commit. */
+  onExplain: () => void;
 }) {
   const [files, setFiles] = useState<FileChange[] | null>(null);
   const drag = useDraggable({ id: commit.sha, disabled: !draggable });
@@ -181,6 +185,13 @@ export function CommitRow({
             <div className="flex h-6 items-center gap-2 pr-2 pl-8 text-[10.5px] text-subtle">
               <span className="font-semibold tracking-[0.08em] uppercase">Changed files</span>
               <span className="font-mono text-muted-foreground">{files.length}</span>
+              {files.length > 0 && (
+                <SectionBtn onClick={onExplain}>
+                  <span className="inline-flex items-center gap-1">
+                    <Sparkles className="size-3" /> Explain
+                  </span>
+                </SectionBtn>
+              )}
               <span className="ml-auto font-mono">
                 <span className="text-added">+{add}</span> <span className="text-removed">-{del}</span>
               </span>

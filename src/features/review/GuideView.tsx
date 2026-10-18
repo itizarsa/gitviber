@@ -84,10 +84,12 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
         ? NO_FILES
         : sel.of === "commit"
           ? { kind: "changes", list: "commit", commit: sel.commit }
-          : sel.of === "changes"
-            ? // `head` is a snapshot's tree, which reads back as a commit's would.
-              { kind: "changes", list: "range", range: { base, head, label: "Uncommitted" } }
-            : { kind: "changes", list: "range", range: { base, head, label: `${sel.label}...${head.slice(0, 7)}` } },
+          : sel.of === "commits"
+            ? { kind: "changes", list: "range", range: { base, head, label: `${sel.oldest.shortSha}^..${sel.newest.shortSha}` } }
+            : sel.of === "changes"
+              ? // `head` is a snapshot's tree, which reads back as a commit's would.
+                { kind: "changes", list: "range", range: { base, head, label: "Uncommitted" } }
+              : { kind: "changes", list: "range", range: { base, head, label: `${sel.label}...${head.slice(0, 7)}` } },
     [sel, base, head],
   );
   const fixed = useFixedFiles(changes);
@@ -246,6 +248,10 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
             {sel.of === "commit" ? (
               <span>
                 <span className="font-mono">{sel.commit.shortSha}</span> by {sel.commit.authorName}, {relativeTime(sel.commit.timestamp)}
+              </span>
+            ) : sel.of === "commits" ? (
+              <span>
+                {sel.count} commits, <span className="font-mono">{sel.oldest.shortSha}</span> to <span className="font-mono">{sel.newest.shortSha}</span>
               </span>
             ) : sel.of === "changes" ? (
               <span>

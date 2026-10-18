@@ -33,9 +33,10 @@ const isRun = (v: unknown): v is SavedRun =>
   (v.stamp === undefined || typeof v.stamp === "string") &&
   (v.details === undefined || (Array.isArray(v.details) && v.details.every((d) => typeof d === "string")));
 
-/** Where a guide, and its risks, are kept: per worktree, then per commit, its uncommitted changes, or per branch (`branch`: HEAD's, null detached) and base. */
+/** Where a guide, and its risks, are kept: per worktree, then per commit or run of commits, its uncommitted changes, or per branch (`branch`: HEAD's, null detached) and base. */
 export function guideId(root: string, sel: GuideSelection, branch: string | null) {
   if (sel.of === "commit") return `${root}\0${sel.commit.sha}`;
+  if (sel.of === "commits") return `${root}\0${sel.oldest.sha}..${sel.newest.sha}`;
   if (sel.of === "changes") return `${root}\0changes`;
   return `${root}\0${branch ?? "HEAD"}\0${sel.base}`;
 }
@@ -54,6 +55,7 @@ function guideAgent(command: string, lean: boolean, schema: object): GuideAgent 
 
 function guideTarget(sel: GuideSelection): GuideTarget {
   if (sel.of === "commit") return { of: "commit", sha: sel.commit.sha };
+  if (sel.of === "commits") return { of: "commits", oldest: sel.oldest.sha, newest: sel.newest.sha };
   if (sel.of === "branch") return { of: "branch", base: sel.base };
   return { of: "changes" };
 }

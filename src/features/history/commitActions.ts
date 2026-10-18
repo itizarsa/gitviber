@@ -39,6 +39,8 @@ export interface Actions {
   openAll: (commit: Commit) => void;
   /** Opens the agent CLI's guided review of the commit, asking for one if there's none. */
   explain: (commit: Commit) => void;
+  /** The same for commits picked together (newest first, as listed): one review of their span. */
+  explainMany: (commits: Commit[]) => void;
   /** Lists that can show a comparison in their place. */
   comparePoints?: (points: Points) => void;
   filterAuthor?: AuthorFilter;

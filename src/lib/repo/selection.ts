@@ -37,6 +37,8 @@ export type Selection =
   // An agent's guided review (features/review/GuideView) of a commit, of HEAD's branch since
   // `base` (a full ref, `label` its short name), or of the worktree's uncommitted changes.
   | { kind: "guide"; of: "commit"; commit: Commit }
+  /** A run of commits, `oldest` through `newest` on one line of history; `count` of them in all. */
+  | { kind: "guide"; of: "commits"; oldest: Commit; newest: Commit; count: number }
   | { kind: "guide"; of: "branch"; base: string; label: string }
   | { kind: "guide"; of: "changes" };
 
@@ -70,7 +72,7 @@ export function selectionPath(s: Selection) {
   if (s.kind === "file") return s.path;
   if (s.kind === "changes") return s.list === "commit" ? `Commit ${s.commit.shortSha}` : s.list === "range" ? `All Changes · ${rangeLabel(s.range)}` : LIST_TITLES[s.list];
   if (s.kind === "compare") return "Compare";
-  if (s.kind === "guide") return s.of === "commit" ? `Explain ${s.commit.shortSha}` : `Guided Review · ${s.of === "changes" ? "Uncommitted" : s.label}`;
+  if (s.kind === "guide") return s.of === "commit" ? `Explain ${s.commit.shortSha}` : s.of === "commits" ? `Explain ${s.count} Commits` : `Guided Review · ${s.of === "changes" ? "Uncommitted" : s.label}`;
   return s.file.path;
 }
 
@@ -110,7 +112,9 @@ export function selectionKey(s: Selection) {
               : s.kind === "guide"
                 ? s.of === "commit"
                   ? s.commit.sha
-                  : s.of === "changes"
+                  : s.of === "commits"
+                    ? `${s.oldest.sha}..${s.newest.sha}`
+                    : s.of === "changes"
                     ? "changes"
                     : s.base
                 : "";

@@ -285,6 +285,10 @@ export function PickedMenu({ commits, all, actions }: { commits: Commit[]; all: 
   return (
     <ContextMenuContent>
       <ContextMenuLabel className="normal-case">{n} commits</ContextMenuLabel>
+      <ContextMenuItem onSelect={() => actions.explainMany(commits)}>
+        <Sparkles /> Explain {n} Commits
+      </ContextMenuItem>
+      <ContextMenuSeparator />
       {missing.length > 0 && (
         <>
           <ContextMenuItem disabled={actions.locked} onSelect={() => void actions.pickMany(missing)}>

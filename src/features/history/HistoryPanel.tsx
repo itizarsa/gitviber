@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api, type Commit, errorMessage, type GraphRefs, type RepoStatus, type Worktree } from "@/lib/api";
@@ -100,6 +101,22 @@ export function HistoryPanel({ commits, status, remotes, hasMore, loadMore, refr
   const { selection, many, pickedSet, click, onMove, onEscape, clear } = usePickedCommits(commits, open);
   const { rewrite, squash, reword, messaging, closeMessage, submit } = useHistoryEdits({ commits, head, graph, run });
 
+  // Picked commits explained together: their span, oldest through newest, so any commits between
+  // them come along (the diff can't leave them out). Counted along first parents where loaded.
+  const explainSpan = (cs: Commit[]) => {
+    const [newest, oldest] = [cs[0], cs[cs.length - 1]];
+    if (!newest || !oldest) return;
+    let at: Commit | undefined = newest;
+    let count = 1;
+    while (at && at.sha !== oldest.sha) {
+      at = bySha(at.parents[0]);
+      count++;
+    }
+    const spanned = at ? count : cs.length;
+    if (spanned > cs.length) toast("info", `Explaining ${spanned} commits`, `${oldest.shortSha} to ${newest.shortSha} takes in the ${spanned - cs.length} between them too.`);
+    openGuide({ kind: "guide", of: "commits", oldest, newest, count: spanned }, status, onOpen);
+  };
+
   const actions: Actions = {
     status,
     headSha: head,
@@ -113,6 +130,7 @@ export function HistoryPanel({ commits, status, remotes, hasMore, loadMore, refr
     refresh,
     openAll: (c) => onOpen({ kind: "changes", list: "commit", commit: c }, true),
     explain: (c) => openGuide({ kind: "guide", of: "commit", commit: c }, status, onOpen),
+    explainMany: (cs) => explainSpan(cs),
     pickTargets: worktrees.filter((w) => !w.current && !w.bare && !w.prunable && w.branch),
     pickInto,
     pickMany: (cs) => {
@@ -242,6 +260,7 @@ export function HistoryPanel({ commits, status, remotes, hasMore, loadMore, refr
                 activeKey={activeKey}
                 onOpen={onOpen}
                 onHover={onHover}
+                onExplain={() => actions.explain(c)}
                 fileMenu={(f, sel) => <CommitFileMenu commit={c} file={f} sel={sel} refresh={refresh} onOpen={onOpen} />}
                 menu={many && pickedSet.has(c.sha) ? <PickedMenu commits={selection} all={!hasMore && selection.length === commits.length} actions={actions} /> : <CommitMenu commit={c} head={c.sha === head} actions={actions} />}
               />
@@ -249,6 +268,18 @@ export function HistoryPanel({ commits, status, remotes, hasMore, loadMore, refr
           </div>
         )}
       </CommitDrag>
+      {many && (
+        // Picked commits' own bar: what they can do together that a click can't show.
+        <div className="sticky bottom-0 z-20 flex items-center gap-2 border-t border-border bg-sidebar px-3 py-1.5 text-[11.5px] glass-sidebar">
+          <span className="text-muted-foreground">{selection.length} commits picked</span>
+          <Button size="sm" variant="secondary" className="ml-auto h-6 gap-1 px-2 text-[11.5px]" onClick={() => explainSpan(selection)}>
+            <Sparkles className="size-3.5" /> Explain
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11.5px]" onClick={clear} aria-label="Unpick the commits">
+            Clear
+          </Button>
+        </div>
+      )}
       {hasMore && (
         <div className="p-2">
           <Button variant="secondary" size="sm" className="w-full" onClick={more}>

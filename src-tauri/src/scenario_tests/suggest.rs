@@ -69,3 +69,66 @@ fn guide_gets_a_commit_or_the_branch_and_names_the_range() {
     .unwrap_err();
     assert!(err.contains("no commits"), "{err}");
 }
+
+#[test]
+fn guide_explains_a_run_of_commits_with_every_message_it_spans() {
+    use crate::suggest::{self, Agent, Target};
+    use std::sync::atomic::AtomicBool;
+    let sb = Sandbox::new("suggest-commits");
+    let r = sb.path("r");
+    init(&r);
+    let go = |oldest: &str, newest: &str| {
+        let none = Agent::default();
+        let target = Target::Commits {
+            oldest: oldest.into(),
+            newest: newest.into(),
+        };
+        suggest::run_guide(&r, "cat", "PROMPT", &target, &none, &AtomicBool::new(false))
+    };
+    let sha = |rev: &str| {
+        run_text(&r, &["rev-parse", rev])
+            .unwrap()
+            .trim()
+            .to_string()
+    };
+    write_commit(&r, "a.txt", "one\n", "Add a");
+    let first = sha("HEAD");
+    write_commit(&r, "b.txt", "bee\n", "Add b\n\nFor the tests.");
+    let middle = sha("HEAD");
+    write_commit(&r, "c.txt", "sea\n", "Add c");
+    let last = sha("HEAD");
+
+    // Two picked commits with one between: the diff and the messages span all three after `first`.
+    let g = go(&middle, &last).unwrap();
+    assert!(
+        g.text
+            .contains("These 2 commits, oldest first, with their messages:\n- ")
+            && g.text.contains(" Add b\n  For the tests.")
+            && g.text.contains(" Add c"),
+        "{}",
+        g.text
+    );
+    assert!(
+        g.text.contains("+bee") && g.text.contains("+sea") && !g.text.contains("+one"),
+        "{}",
+        g.text
+    );
+    assert_eq!(
+        (g.base.as_str(), g.head.as_str()),
+        (format!("{middle}^").as_str(), last.as_str())
+    );
+
+    // From the root commit: everything, against the empty tree.
+    let g = go(&first, &last).unwrap();
+    assert!(
+        g.text.contains("These 3 commits") && g.text.contains("+one"),
+        "{}",
+        g.text
+    );
+
+    // Not one run: a newer commit on another branch doesn't descend from `last`.
+    run(&r, &["switch", "-q", "-c", "side", &middle]).unwrap();
+    write_commit(&r, "d.txt", "dee\n", "Add d");
+    let err = go(&last, &sha("HEAD")).unwrap_err();
+    assert!(err.contains("one run of history"), "{err}");
+}
