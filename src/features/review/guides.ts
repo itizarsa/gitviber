@@ -5,7 +5,7 @@ import { presetOf, programOf, reviewAgent, runDetails, withLeanFallback } from "
 import { type GuideSelection, type Selection, selectionPath } from "@/lib/repo/selection";
 import { GUIDE_SCHEMA, guidePrompt } from "@/lib/review/guide";
 import { RISKS_SCHEMA, risksPrompt } from "@/lib/review/risks";
-import { getSettings } from "@/lib/settings";
+import { getSettings, type ReviewStyle } from "@/lib/settings";
 import { isRecord, putRecent, readJson } from "@/lib/storage";
 import { createStore } from "@/lib/store";
 import { toReviewSettings, warnOldClaude } from "@/features/settings/SettingsDialog";
@@ -73,7 +73,7 @@ interface RunKind<T extends SavedRun> {
   /** What it's called in toasts. */
   noun: string;
   schema: object;
-  prompt: (language: string) => string;
+  prompt: (language: string, style: ReviewStyle) => string;
   isSaved: (v: unknown) => v is T;
   /** A new answer as kept. */
   kept: (run: SavedRun) => T;
@@ -127,7 +127,7 @@ function keptRuns<T extends SavedRun>(k: RunKind<T>) {
   const generate = async (id: string, sel: GuideSelection) => {
     const settings = getSettings();
     const { command, models, efforts } = reviewAgent(settings);
-    const prompt = k.prompt(settings.reviewLanguage);
+    const prompt = k.prompt(settings.reviewLanguage, settings.reviewStyle);
     const program = programOf(command);
     // The line that answered, for the model and effort it names.
     let ran = "";

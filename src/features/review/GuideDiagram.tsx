@@ -39,6 +39,7 @@ export function GuideDiagram({ models, flows, ...links }: { models: Model[]; flo
 const MARKS: Record<PartStatus, { sign: string; className: string }> = {
   new: { sign: "+", className: "text-added" },
   changed: { sign: "~", className: "text-modified" },
+  removed: { sign: "−", className: "text-removed" },
   same: { sign: "", className: "" },
 };
 
@@ -70,10 +71,10 @@ function Badge({ n, titles, onSection }: { n: number | null } & Links) {
 
 function ModelCard({ model: m, ...links }: { model: Model } & Links) {
   return (
-    <div className={cn("min-w-0 rounded-md border bg-panel text-[12px]", m.status === "new" ? "border-added/50" : "border-border")}>
+    <div className={cn("min-w-0 rounded-md border bg-panel text-[12px]", m.status === "new" ? "border-added/50" : m.status === "removed" ? "border-dashed border-removed/60 opacity-80" : "border-border")}>
       <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
         <Mark status={m.status} />
-        <span className="min-w-0 truncate font-mono font-semibold">{m.name}</span>
+        <span className={cn("min-w-0 truncate font-mono font-semibold", m.status === "removed" && "text-removed line-through")}>{m.name}</span>
         {m.file && (
           <span className="min-w-0 truncate text-[11px] text-subtle" title={m.file}>
             {m.file.slice(m.file.lastIndexOf("/") + 1)}
@@ -85,9 +86,9 @@ function ModelCard({ model: m, ...links }: { model: Model } & Links) {
       {m.fields.length > 0 && (
         <ul className="py-1">
           {m.fields.map((f, i) => (
-            <li key={i} className={cn("flex min-w-0 items-baseline gap-1.5 px-2 py-0.5", f.status === "new" && "bg-add-bg")}>
+            <li key={i} className={cn("flex min-w-0 items-baseline gap-1.5 px-2 py-0.5", f.status === "new" && "bg-add-bg", f.status === "removed" && "bg-del-bg")}>
               <Mark status={f.status} />
-              <span className="shrink-0 font-mono">{f.name}</span>
+              <span className={cn("shrink-0 font-mono", f.status === "removed" && "text-removed line-through")}>{f.name}</span>
               {f.note && (
                 <span className="min-w-0 truncate text-[11.5px] text-subtle" title={f.note}>
                   {f.note}

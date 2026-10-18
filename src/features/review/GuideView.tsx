@@ -7,7 +7,7 @@ import { api, type RepoStatus } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { programOf, reviewAgent } from "@/lib/git/suggest";
 import { type ChangesSelection, type GuideSelection, type Selection, selectionKey } from "@/lib/repo/selection";
-import { type Category, type GuideSection, matchPath, parseGuide, placeFiles } from "@/lib/review/guide";
+import { type Category, type GuideSection, matchPath, parseGuide, partCounts, placeFiles } from "@/lib/review/guide";
 import { EMPTY_TREE } from "@/lib/git/refs";
 import { type HandoffAbout, isCheckedOut } from "@/lib/review/handoff";
 import { parseRisks, type Risk } from "@/lib/review/risks";
@@ -26,7 +26,7 @@ import { GuideDiagram } from "./GuideDiagram";
 import { CATEGORY_UI } from "./categories";
 import { CategoryFilter, GuideNav } from "./GuideNav";
 import { GuideFiles } from "./GuideFiles";
-import { GuideDanger, GuideSketch } from "./GuideSketch";
+import { GuideDanger, GuideSketch, GuideStats } from "./GuideSketch";
 import { GuideMarkdown, Notice, SectionRow } from "./GuideSection";
 
 // No files to read before a branch's guide says which range it read: a list useFixedFiles leaves be.
@@ -304,6 +304,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
               </span>
             )}
           </div>
+          {guide && <GuideStats counts={partCounts(guide)} stats={guide.stats} />}
         </header>
 
         {running && (

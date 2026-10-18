@@ -865,6 +865,16 @@
 .guide-flow .gChanged .label-container path {
   stroke: var(--modified) !important;
 }
+.guide-flow .gRemoved .label-container,
+.guide-flow .gRemoved .label-container path {
+  fill: var(--del-bg) !important;
+  stroke: var(--removed) !important;
+  stroke-dasharray: 5 3;
+}
+.guide-flow .gRemoved .gf-code {
+  text-decoration: line-through;
+  color: var(--removed);
+}
 .guide-flow :is(.nodeLabel, .edgeLabel) {
   color: var(--foreground) !important;
 }
@@ -877,6 +887,11 @@
 .guide-flow marker path {
   fill: var(--subtle) !important;
   stroke: var(--subtle) !important;
+}
+/* The main path (==>): thick, in the accent color. */
+.guide-flow .flowchart-link.edge-thickness-thick {
+  stroke: var(--primary) !important;
+  stroke-width: 2.5px !important;
 }
 .guide-flow .node[data-section] {
   cursor: pointer;

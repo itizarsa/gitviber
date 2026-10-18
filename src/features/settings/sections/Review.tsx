@@ -99,6 +99,9 @@ export function ReviewSection() {
         )}
       </Group>
       <Group title="Writing">
+        <Field label="Style" hint="Plain words explain the change to someone new to the code: no jargon, a one-sentence answer first, a smaller diagram.">
+          <OptionSelect className="w-80" value={s.reviewStyle} options={{ technical: "Technical", plain: "Plain words" }} onChange={(v) => updateSettings({ reviewStyle: v as typeof s.reviewStyle })} />
+        </Field>
         <Field label="Language" hint="Guides and risks are written in it, and Ask Agent asks for replies in it; code, paths and names stay as they are.">
           <OptionSelect
             className="w-80"
@@ -120,7 +123,7 @@ export function ReviewSection() {
         <div className="py-3.5">
           <div className="text-[11.5px] leading-relaxed text-muted-foreground">Only when you click Explain Commit, Guided Review or Find Risks, and nothing else from the app:</div>
           <pre className="mt-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
-            {guidePrompt(s.reviewLanguage)}
+            {guidePrompt(s.reviewLanguage, s.reviewStyle)}
             {"\n\n"}
             <span className="text-subtle">
               [a commit's message, the subjects of the branch's commits since it left the base, or for uncommitted changes what they're against (staged, unstaged and

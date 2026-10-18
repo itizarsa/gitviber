@@ -159,6 +159,8 @@ export type TerminalCursor = keyof typeof TERMINAL_CURSORS;
 export const SCROLLBACK_LINES = [1_000, 10_000, 50_000, 100_000];
 export const TERMINAL_LINE_HEIGHTS = [1, 1.1, 1.2, 1.3];
 
+export type ReviewStyle = "technical" | "plain";
+
 export interface Settings {
   codeFont: CodeFont;
   customCodeFont: string;
@@ -239,6 +241,8 @@ export interface Settings {
   reviewEfforts: Partial<Record<SuggestPreset, string>>;
   /** The language guided reviews are written in, by name. */
   reviewLanguage: string;
+  /** How guides are written: for a developer who knows the code, or in plain words for one who doesn't. */
+  reviewStyle: ReviewStyle;
   /** The app "Open in" runs on a click: a built-in id or a CustomApp's; "" until one is picked. */
   openInApp: string;
   openInCustom: CustomApp[];
@@ -312,6 +316,7 @@ const DEFAULTS: Settings = {
   reviewModels: {},
   reviewEfforts: {},
   reviewLanguage: "English",
+  reviewStyle: "technical",
   openInApp: "",
   openInCustom: [],
   openInHideBuiltins: false,
@@ -393,6 +398,7 @@ function load(): Settings {
     s.reviewModels = validModels(s.reviewModels);
     s.reviewEfforts = validEfforts(s.reviewEfforts);
     if (typeof s.reviewLanguage !== "string") s.reviewLanguage = DEFAULTS.reviewLanguage;
+    if (s.reviewStyle !== "plain") s.reviewStyle = DEFAULTS.reviewStyle;
     s.signOffRepos = Array.isArray(s.signOffRepos) ? s.signOffRepos.filter((p: unknown) => typeof p === "string") : DEFAULTS.signOffRepos;
     if (!FETCH_INTERVALS.includes(s.backgroundFetch)) s.backgroundFetch = DEFAULTS.backgroundFetch;
     if (typeof s.worktreeRoot !== "string") s.worktreeRoot = null;

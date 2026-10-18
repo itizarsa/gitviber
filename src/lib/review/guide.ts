@@ -48,7 +48,7 @@ export const IMPORTANCE = ["high", "medium", "low"] as const;
 export type Importance = (typeof IMPORTANCE)[number];
 
 const str = (description: string) => ({ type: "string", description });
-const STATUS = { type: "string", enum: ["new", "changed", "same"] };
+const STATUS = { type: "string", enum: ["new", "changed", "removed", "same"] };
 const SECTION = { type: "integer", description: "the number of the section that covers it, 1 for the first", examples: [1] };
 const CRITICAL = { type: "boolean", description: "true only for security, data loss or a change that's hard to revert", examples: [false] };
 const note = (extra: Record<string, object>, required: string[]) => ({
@@ -71,6 +71,15 @@ export const GUIDE_SCHEMA = {
   properties: {
     title: str("what the change does, under 72 characters"),
     overview: str("why the change was made, in 1-2 sentences of Markdown; a numbered list of its parts after them only when it has 3 or more separate ones"),
+    stats: {
+      type: "array",
+      description: "at most 3 numbers that sum up the change's effect, only when it has a measurable one",
+      items: {
+        type: "object",
+        required: ["label", "value"],
+        properties: { label: str("what is counted, in 1-4 words"), value: str("the number or before → after, such as 2 → 1 or 500× fewer"), tone: { type: "string", enum: ["good", "bad", "neutral"] } },
+      },
+    },
     sketch: {
       type: "object",
       description: "the smallest view that makes the change's point; left out when the overview says it all",
@@ -132,7 +141,7 @@ export const GUIDE_SCHEMA = {
                   },
                 },
               },
-              edges: { type: "array", items: { type: "object", required: ["from", "to"], properties: { from: str("a step id"), to: str("a step id"), label: str("yes or no after a decision; left out otherwise") } } },
+              edges: { type: "array", items: { type: "object", required: ["from", "to"], properties: { from: str("a step id"), to: str("a step id"), label: str("yes or no after a decision; left out otherwise"), main: { type: "boolean", description: "true on the edges of the path the change is about, in one flow only", examples: [false] } } } },
             },
           },
         },
@@ -164,6 +173,7 @@ export const GUIDE_PROMPT = [
   `Explain this change to a reviewer so they can read it quickly. Answer with only a JSON object, with no code fences or other text, shaped like this: ${exampleOf(GUIDE_SCHEMA)}.`,
   "Size the guide to the change: one section for a small change (1-3 files, or under about 150 changed lines) unless it has truly separate concerns, and more only for separate concerns. Put mechanical edits (docs, changelog, formatting, renames) together in the last section, never in one of their own for a line. Order the sections the way a reviewer should read them, and put every path of the list of changed files in exactly one section.",
   "Write for a developer who scans: never restate what the diff shows (values, strings, numbers, styles); say why, and point at what isn't obvious. Most sections have no check or risk. Give importance sparingly, most sections medium or low: high only for security, data loss, or a change that breaks things, is hard to revert or is easy to get wrong; medium for a change in behavior worth a careful read; low for mechanical edits, docs or style. A note's critical is true only for security, data loss or a change that's hard to revert. Add a fileNote or lineNote only where it saves the reviewer real time, a few in the whole guide at most; a lineNote's side is new for an added or unchanged line and old for a removed one, and its line is the line's number on that side.",
+  "A diagram part's status is new, changed, removed (deleted by the change: draw what a refactor takes away) or same (context the reader needs). Mark main on the edges of the path the change is really about, in one flow only. Give stats only for a measurable effect (calls, queries, steps, sizes), never counts of files or lines, which the view shows itself.",
   "Give a sketch only when a picture says it faster than words, picking the smallest kind that makes the point; most small changes need none. Rate every change's danger: a two-way door can be walked back by reverting it, a one-way door can't (data deleted or migrated, a format, API or setting others rely on published); the blast radius is how far a mistake would reach.",
   `Sketches: ${Object.entries(SKETCHES)
     .map(([k, v]) => `${k} (${v})`)
@@ -174,10 +184,14 @@ export const GUIDE_PROMPT = [
     .join(", ")}.`,
 ].join("\n\n");
 
-/** GUIDE_PROMPT with the language the guide's prose is written in. */
-export function guidePrompt(language: string) {
+/** What the plain-words style adds to GUIDE_PROMPT (Settings → Guided Review → Style). */
+export const PLAIN_NOTE =
+  "Write for someone new to this code, in plain words: no jargon, and a few words on what any name or term you can't avoid is. Start the overview with one sentence that says what changed and why, as you'd say it to a newcomer. Keep the diagram to the few parts that make the point, and a sketch to its simplest kind. Sections' summaries say what each part is for before what changed in it.";
+
+/** GUIDE_PROMPT with the language the guide's prose is written in, and the plain-words note for that style. */
+export function guidePrompt(language: string, style: "technical" | "plain" = "technical") {
   const lang = languageName(language);
-  return `${GUIDE_PROMPT}\n\nWrite all prose (the title, overview, summaries, checks, risks, notes and the danger's sentences) in ${lang}; keep the JSON keys and the values picked from a list (category, importance, side, status, kind, door), the blast radius' word in English, sketches, code, identifiers, paths and quoted strings as they are.`;
+  return `${GUIDE_PROMPT}${style === "plain" ? `\n\n${PLAIN_NOTE}` : ""}\n\nWrite all prose (the title, overview, summaries, checks, risks, notes and the danger's sentences) in ${lang}; keep the JSON keys and the values picked from a list (category, importance, side, status, kind, door), the blast radius' word in English, sketches, code, identifiers, paths and quoted strings as they are.`;
 }
 
 export interface FileNote {
@@ -208,7 +222,7 @@ export interface GuideSection {
   lineNotes: LineNote[];
 }
 
-export type PartStatus = "new" | "changed" | "same";
+export type PartStatus = "new" | "changed" | "removed" | "same";
 
 /** Where a diagram's part is explained: a section's number, from 1; null for none. */
 type SectionRef = number | null;
@@ -243,7 +257,8 @@ export interface FlowStep {
 export interface Flow {
   title: string;
   steps: FlowStep[];
-  edges: { from: string; to: string; label: string }[];
+  /** `main`: on the path the change is about. */
+  edges: { from: string; to: string; label: string; main: boolean }[];
 }
 
 export interface Sketch {
@@ -262,6 +277,12 @@ export interface Danger {
   reach: string;
 }
 
+export interface Stat {
+  label: string;
+  value: string;
+  tone: "good" | "bad" | "neutral";
+}
+
 export interface Guide {
   title: string;
   /** The overview: a paragraph and the change's parts, in Markdown. */
@@ -270,6 +291,8 @@ export interface Guide {
   sketch: Sketch | null;
   /** null when the model gave none, as for a guide from before it was asked. */
   danger: Danger | null;
+  /** The agent's numbers for the change's effect, at most LIMITS.stats. */
+  stats: Stat[];
   /** A guide written before diagrams were structured: its Mermaid source; "" for none. */
   diagram: string;
   models: Model[];
@@ -278,7 +301,7 @@ export interface Guide {
 }
 
 /** How much of a diagram is drawn, as the prompt asks (past this it stops explaining), how many sections, and their notes. */
-export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500, sketch: 40 };
+export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500, sketch: 40, stats: 3 };
 
 /** The changed file (of `paths`) a model's path names: as written, or without git's a/ or b/. */
 export function matchPath(path: string, paths: Set<string>) {
@@ -292,7 +315,7 @@ const line = (v: unknown, max: number) => clip(text(v).replace(/\s+/g, " "), max
 
 function partStatus(v: unknown): PartStatus {
   const s = text(v).toLowerCase();
-  return s === "new" || s === "added" ? "new" : s === "changed" || s === "modified" ? "changed" : "same";
+  return s === "new" || s === "added" ? "new" : s === "changed" || s === "modified" ? "changed" : s === "removed" || s === "deleted" ? "removed" : "same";
 }
 
 
@@ -334,7 +357,7 @@ function parseFlows(v: unknown, count: number): Flow[] {
       }
       const seen = new Set<string>();
       const edges = records(f.edges)
-        .map((e) => ({ from: line(e.from, 80), to: line(e.to, 80), label: line(e.label, 40) }))
+        .map((e) => ({ from: line(e.from, 80), to: line(e.to, 80), label: line(e.label, 40), main: flag(e.main) }))
         .filter((e) => {
           const key = `${e.from}\0${e.to}\0${e.label}`;
           if (!ids.has(e.from) || !ids.has(e.to) || seen.has(key)) return false;
@@ -417,15 +440,33 @@ export function parseGuide(output: string): Guide | null {
     summary: text(v.overview) || text(v.summary),
     sketch: parseSketch(v.sketch),
     danger: parseDanger(v.danger),
+    stats: records(v.stats)
+      .map((s) => ({ label: line(s.label, 40), value: line(s.value, 40), tone: (["good", "bad"].includes(text(s.tone).toLowerCase()) ? text(s.tone).toLowerCase() : "neutral") as Stat["tone"] }))
+      .filter((s) => s.label && s.value)
+      .slice(0, LIMITS.stats),
     diagram: text(v.diagram)
       .replace(/^(`{3,}|~{3,})\s*(mermaid)?\s*\n/i, "")
       .replace(/\n(`{3,}|~{3,})$/, "")
       .trim(),
     models: parseModels(diagram.models, sections.length),
-    flows: parseFlows(diagram.flows, sections.length),
+    flows: oneMainPath(parseFlows(diagram.flows, sections.length)),
     sections,
   };
   return guide.title || guide.summary || guide.sections.length ? guide : null;
+}
+
+/** The main path stays in the first flow that marks one; the others' edges are plain. */
+function oneMainPath(flows: Flow[]): Flow[] {
+  const first = flows.findIndex((f) => f.edges.some((e) => e.main));
+  return flows.map((f, i) => (i === first || !f.edges.some((e) => e.main) ? f : { ...f, edges: f.edges.map((e) => ({ ...e, main: false })) }));
+}
+
+/** How many of the diagram's parts (models, their fields, flow steps) the change adds, alters and removes. */
+export function partCounts(guide: Pick<Guide, "models" | "flows">) {
+  const counts: Record<Exclude<PartStatus, "same">, number> = { new: 0, changed: 0, removed: 0 };
+  const parts = [...guide.models, ...guide.models.flatMap((m) => m.fields), ...guide.flows.flatMap((f) => f.steps)];
+  for (const { status } of parts) if (status !== "same") counts[status]++;
+  return counts;
 }
 
 /**
@@ -454,8 +495,8 @@ export function placeFiles(guide: Guide, paths: string[]) {
   return { shown, named, rest: paths.filter((p) => !at.has(p)) };
 }
 
-const STATUS_WORDS: Record<PartStatus, string> = { new: "New", changed: "Changed", same: "Unchanged" };
-const CLASSES: Record<PartStatus, string> = { new: "gNew", changed: "gChanged", same: "gSame" };
+const STATUS_WORDS: Record<PartStatus, string> = { new: "New", changed: "Changed", removed: "Removed", same: "Unchanged" };
+const CLASSES: Record<PartStatus, string> = { new: "gNew", changed: "gChanged", removed: "gRemoved", same: "gSame" };
 export const statusWord = (s: PartStatus) => STATUS_WORDS[s];
 export const sectionBadge = (n: number) => String(n).padStart(2, "0");
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
@@ -490,7 +531,8 @@ export function flowSource(flow: Flow) {
     const label = `<span class='gf-meta'>${badge}${mermaidText(meta)}</span><br/><span class='${decision ? "gf-ask" : "gf-code"}'>${mermaidText(s.label)}</span>`;
     out.push(`  s${i}${decision ? `{{"${label}"}}` : `["${label}"]`}:::${CLASSES[s.status]}`);
   });
-  for (const e of flow.edges) out.push(`  ${ids.get(e.from)} -->${e.label ? `|"${mermaidText(e.label)}"|` : ""} ${ids.get(e.to)}`);
+  // The main path's edges thick (==>), which the view colors.
+  for (const e of flow.edges) out.push(`  ${ids.get(e.from)} ${e.main ? "==>" : "-->"}${e.label ? `|"${mermaidText(e.label)}"|` : ""} ${ids.get(e.to)}`);
   return out.join("\n");
 }
 

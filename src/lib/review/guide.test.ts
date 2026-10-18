@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CATEGORIES, describeFlow, DOORS, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
+import { CATEGORIES, describeFlow, DOORS, partCounts, PLAIN_NOTE, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
 
 // What a section from before categories and notes reads as.
 const PLAIN: Pick<GuideSection, "category" | "check" | "importance" | "fileNotes" | "lineNotes"> = { category: "other", check: "", importance: "medium", fileNotes: [], lineNotes: [] };
@@ -20,6 +20,7 @@ const guide = {
   ...answer,
   sketch: null,
   danger: null,
+  stats: [],
   models: [],
   flows: [],
   sections: [
@@ -44,11 +45,11 @@ test("wrappers models add", () => {
 });
 
 test("missing or mistyped fields read as empty", () => {
-  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] });
+  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] });
   assert.deepEqual(parseGuide('{"title": 3, "summary": "S", "sections": [null, "x", {"files": "a.ts"}, {"title": "T", "files": ["a.ts"]}]}'), {
     title: "",
     summary: "S",
-    diagram: "", sketch: null, danger: null,
+    diagram: "", sketch: null, danger: null, stats: [],
     models: [],
     flows: [],
     sections: [{ title: "T", summary: "", files: ["a.ts"], risk: "", ...PLAIN }],
@@ -93,8 +94,8 @@ test("huge answers parse quickly, and brace soup isn't a guide", () => {
 test("empty and misnamed parts", () => {
   // A section with only a risk is dropped, as is one with blank files.
   const g = parseGuide(JSON.stringify({ title: "T", sections: [{ risk: "R" }, { files: ["", "  ", "./"] }] }));
-  assert.deepEqual(g, { title: "T", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] });
-  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", sketch: null, danger: null, models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
+  assert.deepEqual(g, { title: "T", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] });
+  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
   // Paths with spaces and non-ASCII match as written.
   const named = parseGuide(JSON.stringify({ sections: [{ title: "x", files: ["docs/my notes/über.md"] }] }))!;
   assert.deepEqual(unplaced(named, ["docs/my notes/über.md"]), []);
@@ -192,8 +193,8 @@ test("a structured diagram", () => {
     ],
   );
   assert.deepEqual(flow.edges, [
-    { from: "a", to: "b", label: "" },
-    { from: "b", to: "c", label: "yes" },
+    { from: "a", to: "b", label: "", main: false },
+    { from: "b", to: "c", label: "yes", main: false },
   ]);
 });
 
@@ -275,7 +276,7 @@ test("hostile labels stay text", () => {
       label.replace(/\s+/g, " "),
     );
   }
-  const flow = { title: "", steps: hostile.map((label, i) => ({ id: `${i}`, label, file: label, status: "new" as const, kind: "step" as const, section: null })), edges: [{ from: "0", to: "1", label: hostile[1] }] };
+  const flow = { title: "", steps: hostile.map((label, i) => ({ id: `${i}`, label, file: label, status: "new" as const, kind: "step" as const, section: null })), edges: [{ from: "0", to: "1", label: hostile[1], main: false }] };
   const src = flowSource(flow);
   // One statement a step and one for the edge, with every quote the source's own: a "click" is a label's word.
   assert.equal(src.split("\n").length, 1 + hostile.length + 1);
@@ -532,4 +533,44 @@ test("the prompt asks for a sketch of a listed kind and a door", () => {
   for (const d of DOORS) assert.ok(GUIDE_PROMPT.includes(d), d);
   assert.ok(GUIDE_PROMPT.includes('"sketch": {"kind": "one of the sketches below"'));
   assert.ok(GUIDE_PROMPT.includes('"danger": {"door": "one-way when'));
+});
+
+test("removed parts read as removed, and are counted with the rest", () => {
+  const g = parseGuide(
+    JSON.stringify({
+      title: "T",
+      diagram: {
+        models: [{ name: "Old", status: "deleted", fields: [{ name: "a", status: "removed" }, { name: "b", status: "added" }] }],
+        flows: [{ steps: [{ id: "x", label: "f()", status: "changed" }, { id: "y", label: "g()", status: "removed" }] }],
+      },
+    }),
+  )!;
+  assert.equal(g.models[0].status, "removed");
+  assert.deepEqual(g.models[0].fields.map((f) => f.status), ["removed", "new"]);
+  assert.deepEqual(partCounts(g), { new: 1, changed: 1, removed: 3 });
+  assert.match(flowSource(g.flows[0]), /s1\[.*\]:::gRemoved/);
+  assert.match(describeFlow(g.flows[0])[1], /^g\(\) \(removed\)/);
+});
+
+test("the main path is drawn thick, in the first flow that marks one only", () => {
+  const flow = (main: unknown) => ({ steps: [{ id: "a", label: "a()" }, { id: "b", label: "b()" }], edges: [{ from: "a", to: "b", main }, { from: "b", to: "a" }] });
+  const g = parseGuide(JSON.stringify({ title: "T", diagram: { flows: [flow("true"), flow(true)] } }))!;
+  assert.deepEqual(g.flows.map((f) => f.edges.map((e) => e.main)), [[true, false], [false, false]]);
+  assert.match(flowSource(g.flows[0]), /s0 ==> s1\n {2}s1 --> s0$/);
+});
+
+test("stats keep a label and a value, at most three, with a known tone", () => {
+  const stats = (v: unknown) => parseGuide(JSON.stringify({ title: "T", stats: v }))!.stats;
+  assert.deepEqual(stats([{ label: "git calls", value: "2 → 1", tone: "GOOD" }, { label: "no value" }, { label: "Size", value: "+4 KB", tone: "awful" }]), [
+    { label: "git calls", value: "2 → 1", tone: "good" },
+    { label: "Size", value: "+4 KB", tone: "neutral" },
+  ]);
+  assert.equal(stats(Array.from({ length: 9 }, (_, i) => ({ label: `L${i}`, value: "1" }))).length, LIMITS.stats);
+  assert.deepEqual(stats("3 files"), []);
+});
+
+test("the plain-words style adds its note before the language line", () => {
+  assert.ok(!guidePrompt("English").includes(PLAIN_NOTE));
+  const plain = guidePrompt("English", "plain");
+  assert.ok(plain.startsWith(`${GUIDE_PROMPT}\n\n${PLAIN_NOTE}\n\nWrite all prose`));
 });

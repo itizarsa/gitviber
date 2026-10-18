@@ -1,5 +1,5 @@
 import { DoorClosedLocked, DoorOpen, Radar } from "lucide-react";
-import type { Danger, Sketch, SketchKind } from "@/lib/review/guide";
+import type { Danger, Sketch, SketchKind, Stat } from "@/lib/review/guide";
 import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<SketchKind, string> = {
@@ -56,5 +56,41 @@ export function GuideDanger({ danger }: { danger: Danger }) {
         <p className="mt-1 text-muted-foreground select-text">{[danger.why, danger.reach].filter(Boolean).join(" ")}</p>
       )}
     </section>
+  );
+}
+
+const TONE: Record<Stat["tone"], string> = { good: "text-added", bad: "text-removed", neutral: "text-foreground" };
+
+/**
+ * The change at a glance, under the guide's title: how many of the diagram's parts it adds, alters
+ * and removes (counted here, never asked for), then the agent's numbers for its effect.
+ */
+export function GuideStats({ counts, stats }: { counts: { new: number; changed: number; removed: number }; stats: Stat[] }) {
+  const parts = [
+    { n: counts.new, sign: "+", word: "new", tone: "text-added" },
+    { n: counts.changed, sign: "~", word: "changed", tone: "text-modified" },
+    { n: counts.removed, sign: "−", word: "removed", tone: "text-removed" },
+  ].filter((p) => p.n > 0);
+  if (!parts.length && !stats.length) return null;
+  const chip = "inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-panel px-2.5 text-[11.5px]";
+  return (
+    <ul aria-label="The change at a glance" className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      {parts.length > 0 && (
+        <li className={chip} title="Parts of the diagram the change adds, alters and removes">
+          {parts.map((p) => (
+            <span key={p.word} className={cn("font-mono font-semibold", p.tone)}>
+              {p.sign}
+              {p.n} <span className="font-sans font-normal text-muted-foreground">{p.word}</span>
+            </span>
+          ))}
+        </li>
+      )}
+      {stats.map((s, i) => (
+        <li key={i} className={chip}>
+          <span className="text-muted-foreground">{s.label}</span>
+          <span className={cn("font-mono font-semibold", TONE[s.tone])}>{s.value}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
