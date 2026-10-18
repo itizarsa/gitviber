@@ -124,6 +124,9 @@ pub fn request(app: &AppHandle) {
 
 /// The page's answer (commands::app::quit_answer).
 pub fn answer(app: &AppHandle, answer: Answer) {
+    if answer == Answer::Stay {
+        crate::relaunch::stayed();
+    }
     match step(|p, _| on_answer(p, answer)).0 {
         // The ask shows on the main window: with Settings in front it went unseen.
         Then::Raise => crate::opened::raise(app),

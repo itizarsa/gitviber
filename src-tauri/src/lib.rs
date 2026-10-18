@@ -33,6 +33,7 @@ mod process;
 mod procinfo;
 mod pty;
 mod quit;
+mod relaunch;
 mod revert;
 mod rewrite;
 #[cfg(test)]
@@ -137,6 +138,7 @@ pub fn run() {
             askpass::serve(app.handle().clone());
             menu::keep_typed_key_equivalents();
             translucency::watch_reduce_transparency(app.handle());
+            relaunch::watch(app.handle().clone());
             #[cfg(debug_assertions)]
             dev_bridge::start(app.handle().clone());
             if let Some(webview) = app.get_webview_window("main") {
@@ -319,13 +321,14 @@ pub fn run() {
         ])
         .build(context)
         .expect("error while building GitViber")
-        .run(|app, event| {
+        .run(|app, event| match event {
             // A folder dropped on the Dock icon, opened with Finder's Open With or `open -a`.
-            if let tauri::RunEvent::Opened { urls } = event {
-                opened::push(
-                    app,
-                    urls.iter().filter_map(|u| u.to_file_path().ok()).collect(),
-                );
-            }
+            tauri::RunEvent::Opened { urls } => opened::push(
+                app,
+                urls.iter().filter_map(|u| u.to_file_path().ok()).collect(),
+            ),
+            // Quitting for a newer version installed over this one: it opens once this is gone.
+            tauri::RunEvent::Exit => relaunch::on_exit(),
+            _ => {}
         });
 }
