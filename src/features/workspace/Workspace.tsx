@@ -204,7 +204,9 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
 
   const changeView = changesView.use();
   const mtimes = useMtimes(status);
-  const uncommitted = useMemo(() => (status ? changeList(ordered(status, changeView, mtimes)) : []), [status, changeView, mtimes]);
+  // The status with its lists as Changes shows them (sorted, or in tree order): J/K and Open All follow it.
+  const shownStatus = useMemo(() => status && ordered(status, changeView, mtimes), [status, changeView, mtimes]);
+  const uncommitted = useMemo(() => (shownStatus ? changeList(shownStatus) : []), [shownStatus]);
   // What J/K walk: the list Changes shows.
   const changes: Selection[] = review === null ? uncommitted : branchReview.rows;
   const startReview = () => {
@@ -591,7 +593,7 @@ export function Workspace({ root, main, recent, onOpenRepo, onForgetRepo, onLoca
                       root={root}
                       tabs={tabs}
                       active={active}
-                      status={status}
+                      status={shownStatus}
                       branchRows={branchReview.review && branchReview.rows}
                       branches={repo.branches}
                       revision={repo.revision}
