@@ -6,6 +6,17 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-18
+
+### Added
+
+- **A file tree in guided reviews.** The left column lists the changed files as folders under the sections, in Explain on commits too: a click goes to the file's diff, viewed files are ticked, folders fold.
+- **A sketch and the merge danger in guided reviews.** Under the overview, the agent can draw the smallest picture of the change (pseudocode, a call, component or file tree, or one of those as a diff) and rates merging it: a two-way door (a revert undoes it) or a one-way one, and its blast radius. Regenerate a guide to get them.
+
+### Fixed
+
+- **Open All in Changes** follows the list's sort (newest first) and tree order, as J/K do.
+
 ## [0.3.4] - 2026-10-18
 
 ### Added
@@ -634,7 +645,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/itizarsa/gitviber/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/itizarsa/gitviber/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/itizarsa/gitviber/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/itizarsa/gitviber/compare/v0.3.1...v0.3.2
