@@ -3,6 +3,12 @@ import { type Category, type GuideSection, sectionBadge } from "@/lib/review/gui
 import { cn } from "@/lib/utils";
 import { CATEGORY_UI, CategoryIcon, IMPORTANCE_UI, ImportanceTag } from "./categories";
 
+/** The section in focus (hovered here or in the diagram), whose parts the diagram lights up. */
+export interface Focus {
+  n: number | null;
+  set: (n: number | null) => void;
+}
+
 interface Item {
   n: number;
   section: GuideSection;
@@ -12,15 +18,18 @@ interface Item {
 }
 
 /** One section in the navigator: its category, number, title and importance, checked once reviewed. */
-function NavItem({ n, section: s, done, chip, onGo }: Omit<Item, "files"> & { chip: boolean; onGo: (n: number) => void }) {
+function NavItem({ n, section: s, done, chip, onGo, focus }: Omit<Item, "files"> & { chip: boolean; onGo: (n: number) => void; focus?: Focus }) {
+  const on = focus && n > 0 ? { onMouseEnter: () => focus.set(n), onMouseLeave: () => focus.set(null), onFocus: () => focus.set(n), onBlur: () => focus.set(null) } : {};
   return (
     <button
+      {...on}
       onClick={() => onGo(n)}
       title={`${CATEGORY_UI[s.category].label}: ${s.title || "Untitled"}. ${IMPORTANCE_UI[s.importance].label} importance${done ? " (reviewed)" : ""}`}
       className={cn(
         "flex min-w-0 items-center gap-1.5 text-left text-[12px] outline-none hover:bg-hover focus-visible:ring-1 focus-visible:ring-ring",
         chip ? "h-6 shrink-0 rounded-full border border-border px-2" : "w-full rounded-sm px-1.5 py-1",
         done && "text-muted-foreground",
+        focus?.n === n && "bg-hover",
       )}
     >
       <CategoryIcon category={s.category} />
@@ -43,14 +52,14 @@ function NavItem({ n, section: s, done, chip, onGo }: Omit<Item, "files"> & { ch
  * under it. On a narrow one, when there are several, a row of chips pinned over them (as high as
  * the view's --stick, which keeps the files' headers below it), with no room for the trees.
  */
-export function GuideNav({ items, onGo }: { items: Item[]; onGo: (n: number) => void }) {
+export function GuideNav({ items, onGo, focus }: { items: Item[]; onGo: (n: number) => void; focus?: Focus }) {
   const sections = items.length > 1;
   return (
     <>
       <nav aria-label="Sections" className="sticky top-0 hidden max-h-[calc(100vh-7rem)] self-start overflow-y-auto py-1 @6xl:block">
         {items.map(({ files, ...i }) => (
           <div key={i.n}>
-            <NavItem {...i} chip={false} onGo={onGo} />
+            <NavItem {...i} chip={false} onGo={onGo} focus={focus} />
             {files}
           </div>
         ))}

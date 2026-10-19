@@ -888,6 +888,16 @@
   fill: var(--subtle) !important;
   stroke: var(--subtle) !important;
 }
+/* A section in focus (GuideDiagram): its steps stay lit, the rest and the edges dim. */
+.guide-flow .node {
+  transition: opacity 120ms;
+}
+.guide-flow .node[data-dim] {
+  opacity: 0.25;
+}
+.guide-flow svg[data-focusing] :is(.flowchart-link, .edgeLabel, marker) {
+  opacity: 0.35;
+}
 /* The main path (==>): thick, in the accent color. */
 .guide-flow .flowchart-link.edge-thickness-thick {
   stroke: var(--primary) !important;

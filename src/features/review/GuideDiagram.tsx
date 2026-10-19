@@ -4,6 +4,7 @@ import { errorMessage } from "@/lib/api";
 import { describeFlow, type Flow, flowSource, type Model, type PartStatus, sectionBadge, statusWord } from "@/lib/review/guide";
 import { useSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
+import type { Focus } from "./GuideNav";
 import { draw, drawnSvg } from "@/features/viewer/markdown/Mermaid";
 
 interface Links {
@@ -11,7 +12,15 @@ interface Links {
   titles: string[];
   /** Scrolls to section `n` (from 1). */
   onSection: (n: number) => void;
+  /** The section in focus: its parts stay lit and the rest dim. Hovering a part focuses its section. */
+  focus?: Focus;
 }
+
+/** Dimmed while another section is in focus. */
+const dim = (focus: Focus | undefined, ...sections: (number | null)[]) => !!focus?.n && !sections.includes(focus.n);
+/** Hovering a part focuses its section. */
+const hover = (focus: Focus | undefined, n: number | null) =>
+  focus && n ? { onMouseEnter: () => focus.set(n), onMouseLeave: () => focus.set(null) } : {};
 
 const sectionName = (n: number, titles: string[]) => `Section ${n}: ${titles[n - 1] || "Untitled"}`;
 
@@ -70,8 +79,9 @@ function Badge({ n, titles, onSection }: { n: number | null } & Links) {
 }
 
 function ModelCard({ model: m, ...links }: { model: Model } & Links) {
+  const { focus } = links;
   return (
-    <div className={cn("min-w-0 rounded-md border bg-panel text-[12px]", m.status === "new" ? "border-added/50" : m.status === "removed" ? "border-dashed border-removed/60 opacity-80" : "border-border")}>
+    <div {...hover(focus, m.section)} className={cn("min-w-0 rounded-md border bg-panel text-[12px] transition-opacity", dim(focus, m.section, ...m.fields.map((f) => f.section)) && "opacity-30", m.status === "new" ? "border-added/50" : m.status === "removed" ? "border-dashed border-removed/60 opacity-80" : "border-border")}>
       <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
         <Mark status={m.status} />
         <span className={cn("min-w-0 truncate font-mono font-semibold", m.status === "removed" && "text-removed line-through")}>{m.name}</span>
@@ -86,7 +96,7 @@ function ModelCard({ model: m, ...links }: { model: Model } & Links) {
       {m.fields.length > 0 && (
         <ul className="py-1">
           {m.fields.map((f, i) => (
-            <li key={i} className={cn("flex min-w-0 items-baseline gap-1.5 px-2 py-0.5", f.status === "new" && "bg-add-bg", f.status === "removed" && "bg-del-bg")}>
+            <li key={i} {...hover(focus, f.section)} className={cn("flex min-w-0 items-baseline gap-1.5 px-2 py-0.5 transition-opacity", dim(focus, f.section ?? m.section) && "opacity-40", f.status === "new" && "bg-add-bg", f.status === "removed" && "bg-del-bg")}>
               <Mark status={f.status} />
               <span className={cn("shrink-0 font-mono", f.status === "removed" && "text-removed line-through")}>{f.name}</span>
               {f.note && (
@@ -108,7 +118,7 @@ function ModelCard({ model: m, ...links }: { model: Model } & Links) {
  * become buttons to it once drawn; the steps in words are there for screen readers, and shown
  * instead when Mermaid can't draw it.
  */
-function FlowDiagram({ flow, titles, onSection }: { flow: Flow } & Links) {
+function FlowDiagram({ flow, titles, onSection, focus }: { flow: Flow } & Links) {
   const { dark } = useSettings();
   const code = useMemo(() => flowSource(flow), [flow]);
   const key = `${dark}\0${code}`;
@@ -148,6 +158,19 @@ function FlowDiagram({ flow, titles, onSection }: { flow: Flow } & Links) {
     }
   }, [svg, flow, titles]);
 
+  // The focused section's steps stay lit; the rest, and the edges, dim.
+  const focused = focus?.n ?? null;
+  useLayoutEffect(() => {
+    const el = box.current?.querySelector("svg");
+    if (!el) return;
+    el.toggleAttribute("data-focusing", !!focused);
+    for (const g of el.querySelectorAll<SVGGElement>("g.node")) g.toggleAttribute("data-dim", !!focused && g.dataset.section !== String(focused));
+  }, [svg, focused]);
+  const over = (e: SyntheticEvent) => {
+    const n = Number((e.target as Element).closest<SVGElement>("[data-section]")?.dataset.section);
+    focus?.set(n || null);
+  };
+
   const go = (e: SyntheticEvent) => {
     const n = Number((e.target as Element).closest<SVGElement>("[data-section]")?.dataset.section);
     if (!n) return;
@@ -182,6 +205,8 @@ function FlowDiagram({ flow, titles, onSection }: { flow: Flow } & Links) {
               aria-label={`${flow.title || "Flow"}: its steps link to their sections`}
               className="guide-flow overflow-x-auto rounded-md border border-border p-3"
               onClick={go}
+              onMouseOver={over}
+              onMouseLeave={() => focus?.set(null)}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && go(e)}
               // Mermaid's output under securityLevel "strict", from labels flowSource escaped.
               dangerouslySetInnerHTML={{ __html: svg }}

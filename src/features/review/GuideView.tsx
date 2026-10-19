@@ -225,6 +225,9 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const drawn = !!guide && (guide.models.length > 0 || guide.flows.length > 0 || !!guide.diagram);
   const shown = (guide?.sections ?? []).flatMap((section, i) => (fits(section) ? [{ n: i + 1, section, done: !!saved?.done.includes(i) }] : []));
   const nav = shown.length > 1;
+  // The section hovered in the navigator or the diagram, which the diagram lights up.
+  const [focused, setFocused] = useState<number | null>(null);
+  const focus = { n: drawn ? focused : null, set: setFocused };
   // The left column: the sections, each with its files' tree; files no section placed under Other changes.
   const tree = (paths: string[] | undefined) =>
     paths?.length ? <GuideFiles files={paths.flatMap((p) => byPath.get(p) ?? [])} viewed={isViewed} onGo={goToFile} /> : undefined;
@@ -364,7 +367,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
           </>
         ) : (
           <div className={cn(side && "@6xl:grid @6xl:grid-cols-[240px_minmax(0,1fr)] @6xl:gap-6")}>
-            {side && <GuideNav items={navItems} onGo={goTo} />}
+            {side && <GuideNav items={navItems} onGo={goTo} focus={focus} />}
             <div className="min-w-0">
               <div className={cn("mb-6 grid gap-5", nav && "mt-4 @6xl:mt-0", drawn && "@4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
                 {(guide.summary || guide.sketch || guide.danger) && (
@@ -378,7 +381,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
                 {drawn && (
                   <div className="min-w-0 rounded-lg border border-border p-3">
                     <h2 className="mb-3 text-[13px] font-semibold">Before / after</h2>
-                    <GuideDiagram models={guide.models} flows={guide.flows} titles={titles} onSection={goTo} />
+                    <GuideDiagram models={guide.models} flows={guide.flows} titles={titles} onSection={goTo} focus={focus} />
                     {guide.diagram && (
                       // A guide from before structured diagrams.
                       <div className="markdown">
