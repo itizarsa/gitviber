@@ -3,9 +3,9 @@ import { api, errorMessage, type GuideAgent, type Guided, type GuideTarget, type
 import { toast } from "@/lib/app/toast";
 import { presetOf, programOf, reviewAgent, runDetails, withLeanFallback } from "@/lib/git/suggest";
 import { type GuideSelection, type Selection, selectionPath } from "@/lib/repo/selection";
-import { GUIDE_SCHEMA, guidePrompt } from "@/lib/review/guide";
+import { GUIDE_SCHEMA, type GuideStyle, guidePrompt } from "@/lib/review/guide";
 import { RISKS_SCHEMA, risksPrompt } from "@/lib/review/risks";
-import { getSettings, type ReviewStyle } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { isRecord, putRecent, readJson } from "@/lib/storage";
 import { createStore } from "@/lib/store";
 import { toReviewSettings, warnOldClaude } from "@/features/settings/SettingsDialog";
@@ -16,6 +16,8 @@ interface SavedRun extends Guided {
   /** Missing on guides from before it was kept. */
   details?: string[];
   at: number;
+  /** Written in plain words (Explain Simply); missing for the usual, technical one. */
+  style?: "plain";
 }
 
 /** A guide as kept, with the sections marked done. */
@@ -73,7 +75,7 @@ interface RunKind<T extends SavedRun> {
   /** What it's called in toasts. */
   noun: string;
   schema: object;
-  prompt: (language: string, style: ReviewStyle) => string;
+  prompt: (language: string, style: GuideStyle) => string;
   isSaved: (v: unknown) => v is T;
   /** A new answer as kept. */
   kept: (run: SavedRun) => T;
@@ -123,11 +125,11 @@ function keptRuns<T extends SavedRun>(k: RunKind<T>) {
     return { saved, run: runs.use()[id] ?? null };
   };
 
-  /** Asks the Guided Review agent about `sel`, kept under `id` once it lands. */
-  const generate = async (id: string, sel: GuideSelection) => {
+  /** Asks the Guided Review agent about `sel` in `style`, kept under `id` once it lands. */
+  const generate = async (id: string, sel: GuideSelection, style: GuideStyle = "technical") => {
     const settings = getSettings();
     const { command, models, efforts } = reviewAgent(settings);
-    const prompt = k.prompt(settings.reviewLanguage, settings.reviewStyle);
+    const prompt = k.prompt(settings.reviewLanguage, style);
     const program = programOf(command);
     // The line that answered, for the model and effort it names.
     let ran = "";
@@ -154,7 +156,7 @@ function keptRuns<T extends SavedRun>(k: RunKind<T>) {
       if (old) warnOldClaude();
       if (!guided.text.trim()) fail(`No ${k.noun} written`, `${program} printed nothing.`);
       else if (latest.get(id) === token) {
-        save(id, k.kept({ ...guided, program, details: runDetails(ran), at: Date.now() }));
+        save(id, k.kept({ ...guided, program, details: runDetails(ran), at: Date.now(), ...(style === "plain" && { style }) }));
         set(null);
       }
     } catch (e) {

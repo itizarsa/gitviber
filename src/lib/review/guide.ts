@@ -184,12 +184,15 @@ export const GUIDE_PROMPT = [
     .join(", ")}.`,
 ].join("\n\n");
 
-/** What the plain-words style adds to GUIDE_PROMPT (Settings → Guided Review → Style). */
+/** How a guide is written: for a developer who knows the code, or in plain words for one who doesn't. */
+export type GuideStyle = "technical" | "plain";
+
+/** What Explain Simply adds to GUIDE_PROMPT. */
 export const PLAIN_NOTE =
   "Write for someone new to this code, in plain words: no jargon, and a few words on what any name or term you can't avoid is. Start the overview with one sentence that says what changed and why, as you'd say it to a newcomer. Keep the diagram to the few parts that make the point, and a sketch to its simplest kind. Sections' summaries say what each part is for before what changed in it.";
 
 /** GUIDE_PROMPT with the language the guide's prose is written in, and the plain-words note for that style. */
-export function guidePrompt(language: string, style: "technical" | "plain" = "technical") {
+export function guidePrompt(language: string, style: GuideStyle = "technical") {
   const lang = languageName(language);
   return `${GUIDE_PROMPT}${style === "plain" ? `\n\n${PLAIN_NOTE}` : ""}\n\nWrite all prose (the title, overview, summaries, checks, risks, notes and the danger's sentences) in ${lang}; keep the JSON keys and the values picked from a list (category, importance, side, status, kind, door), the blast radius' word in English, sketches, code, identifiers, paths and quoted strings as they are.`;
 }

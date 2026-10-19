@@ -11,7 +11,7 @@ on GitHub are its section below.
 - **Guided reviews show what a change removes.** Diagram parts can be removed: struck through, in red, with a dashed border, so a refactor's deletions show next to what replaced them.
 - **The change at a glance**, under a guide's title: how many diagram parts it adds, changes and removes, and up to three numbers for its effect the agent gives (such as git calls per refresh 2 → 1).
 - **The main path**: a flow's edges the change is really about are drawn thick, in the accent color.
-- **Plain-words guides** (Settings → Guided Review → Style): for someone new to the code, with no jargon, a one-sentence answer first and a smaller diagram.
+- **Explain Simply**, in a guided review's and Explain's header: rewrites the guide in plain words for someone new to the code, with no jargon, a one-sentence answer first and a smaller diagram. Regenerate keeps its style; Explain Technically switches back.
 
 ## [0.3.6] - 2026-10-18
 

@@ -1,4 +1,4 @@
-import { Bug, LoaderCircle, RotateCw, Sparkles, Square, TriangleAlert } from "lucide-react";
+import { Baby, Bug, CodeXml, LoaderCircle, RotateCw, Sparkles, Square, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { PageFind } from "@/components/FindBox";
@@ -7,7 +7,8 @@ import { api, type RepoStatus } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { programOf, reviewAgent } from "@/lib/git/suggest";
 import { type ChangesSelection, type GuideSelection, type Selection, selectionKey } from "@/lib/repo/selection";
-import { type Category, type GuideSection, matchPath, parseGuide, partCounts, placeFiles } from "@/lib/review/guide";
+import { type Category, type GuideSection, type GuideStyle, matchPath, parseGuide, partCounts, placeFiles } from "@/lib/review/guide";
+import { Tip } from "@/components/ui/tooltip";
 import { EMPTY_TREE } from "@/lib/git/refs";
 import { type HandoffAbout, isCheckedOut } from "@/lib/review/handoff";
 import { parseRisks, type Risk } from "@/lib/review/risks";
@@ -177,7 +178,9 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   };
 
   const running = run === "running";
-  const generate = () => void generateGuide(id, sel);
+  // Regenerating keeps the guide's style; Explain Simply (or Technically) switches it.
+  const style = saved?.style ?? "technical";
+  const generate = (as: GuideStyle = style) => void generateGuide(id, sel, as);
   const findingRisks = risksOf.run === "running";
   const find = () => void findRisks(id, sel);
   // What the agent is handed: the range a run read (the guide's, or the risks'), and the part asked about.
@@ -251,9 +254,16 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
                 <Square /> Cancel
               </Button>
             ) : (
-              <Button size="sm" variant="secondary" onClick={generate}>
-                {saved ? <RotateCw /> : <Sparkles />} {saved ? "Regenerate" : `Ask ${program}`}
-              </Button>
+              <>
+                <Tip label={style === "plain" ? "Rewrite it for a developer who knows the code" : "Rewrite it in plain words for someone new to the code: no jargon, a one-sentence answer first, a smaller diagram"}>
+                  <Button size="sm" variant="secondary" onClick={() => generate(style === "plain" ? "technical" : "plain")}>
+                    {style === "plain" ? <CodeXml /> : <Baby />} {style === "plain" ? "Explain Technically" : "Explain Simply"}
+                  </Button>
+                </Tip>
+                <Button size="sm" variant="secondary" onClick={() => generate()}>
+                  {saved ? <RotateCw /> : <Sparkles />} {saved ? "Regenerate" : `Ask ${program}`}
+                </Button>
+              </>
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
@@ -303,6 +313,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
                 · <Count n={filesViewed} of={byPath.size} /> files viewed
               </span>
             )}
+            {style === "plain" && saved && <span>· Plain words</span>}
           </div>
           {guide && <GuideStats counts={partCounts(guide)} stats={guide.stats} />}
         </header>
