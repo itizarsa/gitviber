@@ -5,6 +5,8 @@ name: Release
 # cask clears its quarantine), and publishes it as a GitHub release with its SHA-256.
 # Casks/gitviber.rb in itizarsa/homebrew-tap points at it. Run from the Actions tab it's a dry
 # run: the same build, kept as a workflow artifact, ad-hoc signed if the certificate is missing.
+# Run with `publish` on, it releases the commit it built instead, creating its v<version> tag:
+# for cutting a release where pushing a tag isn't possible.
 #
 # The certificate comes from the CODESIGN_P12_BASE64 and CODESIGN_P12_PASSWORD secrets. Every
 # release has to carry the same identity, or macOS treats an update as a different app and asks
@@ -13,6 +15,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the release, tagging this commit v<version>"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -118,12 +125,15 @@ jobs:
             ${{ steps.dmg.outputs.path }}
             SHA256SUMS
 
+      # A tag's own, or one this run creates on the commit it built (gh makes the tag; a tag made
+      # with the workflow's token doesn't start this workflow again).
       - name: Publish the release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          node scripts/release-notes.mjs "$GITHUB_REF_NAME" > notes.md 2>/dev/null || echo "GitViber fork $VERSION." > notes.md
-          gh release create "$GITHUB_REF_NAME" "${{ steps.dmg.outputs.path }}" SHA256SUMS \
-            --repo "$GITHUB_REPOSITORY" --title "GitViber $VERSION" --notes-file notes.md
+          tag="v$VERSION"
+          node scripts/release-notes.mjs "$tag" > notes.md 2>/dev/null || echo "GitViber fork $VERSION." > notes.md
+          gh release create "$tag" "${{ steps.dmg.outputs.path }}" SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "GitViber $VERSION" --notes-file notes.md
