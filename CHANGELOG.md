@@ -6,6 +6,8 @@ on GitHub are its section below.
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-10-20
+
 ### Added
 
 - **Guided reviews show what a change removes.** Diagram parts can be removed: struck through, in red, with a dashed border, so a refactor's deletions show next to what replaced them.
@@ -670,7 +672,8 @@ with `.deb`, `.rpm` and AppImage builds for Linux.
   repository from the welcome screen.
 - Help → Show Logs and Copy Diagnostics for bug reports. No telemetry.
 
-[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/itizarsa/gitviber/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/itizarsa/gitviber/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/itizarsa/gitviber/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/itizarsa/gitviber/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/itizarsa/gitviber/compare/v0.3.3...v0.3.4
