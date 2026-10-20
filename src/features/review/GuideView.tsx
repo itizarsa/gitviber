@@ -7,7 +7,7 @@ import { api, type RepoStatus } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { programOf, reviewAgent } from "@/lib/git/suggest";
 import { type ChangesSelection, type GuideSelection, type Selection, selectionKey } from "@/lib/repo/selection";
-import { type Category, type GuideSection, type GuideStyle, matchPath, parseGuide, partCounts, placeFiles } from "@/lib/review/guide";
+import { type Category, type GuideSection, type GuideStyle, matchPath, parseGuide, partCounts, placeFiles, sideOf } from "@/lib/review/guide";
 import { Tip } from "@/components/ui/tooltip";
 import { EMPTY_TREE } from "@/lib/git/refs";
 import { type HandoffAbout, isCheckedOut } from "@/lib/review/handoff";
@@ -223,6 +223,9 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const done = guide && saved ? guide.sections.filter((_, i) => saved.done.includes(i)).length : 0;
   const filesViewed = [...byPath.values()].filter(isViewed).length;
   const drawn = !!guide && (guide.models.length > 0 || guide.flows.length > 0 || !!guide.diagram);
+  // Before and after differ only when the change adds or removes a part (or a call between them).
+  const parts = guide && partCounts(guide);
+  const sides = !!guide && !!parts && (parts.new > 0 || parts.removed > 0 || guide.flows.some((f) => f.edges.some((e) => e.status !== "same")));
   const shown = (guide?.sections ?? []).flatMap((section, i) => (fits(section) ? [{ n: i + 1, section, done: !!saved?.done.includes(i) }] : []));
   const nav = shown.length > 1;
   // The section hovered in the navigator or the diagram, which the diagram lights up.
@@ -318,7 +321,7 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
             )}
             {style === "plain" && saved && <span>· Plain words</span>}
           </div>
-          {guide && <GuideStats counts={partCounts(guide)} stats={guide.stats} />}
+          {guide && parts && <GuideStats counts={parts} stats={guide.stats} />}
         </header>
 
         {running && (
@@ -369,9 +372,9 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
           <div className={cn(side && "@6xl:grid @6xl:grid-cols-[240px_minmax(0,1fr)] @6xl:gap-6")}>
             {side && <GuideNav items={navItems} onGo={goTo} focus={focus} />}
             <div className="min-w-0">
-              <div className={cn("mb-6 grid gap-5", nav && "mt-4 @6xl:mt-0", drawn && "@4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]")}>
+              <div className={cn("mb-6 flex flex-col gap-5", nav && "mt-4 @6xl:mt-0")}>
                 {(guide.summary || guide.sketch || guide.danger) && (
-                  <div className="min-w-0">
+                  <div className="max-w-[880px] min-w-0">
                     <h2 className="mb-2 text-[13px] font-semibold">Overview</h2>
                     {guide.summary && <GuideMarkdown text={guide.summary} />}
                     {guide.sketch && <GuideSketch sketch={guide.sketch} />}
@@ -380,8 +383,31 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
                 )}
                 {drawn && (
                   <div className="min-w-0 rounded-lg border border-border p-3">
-                    <h2 className="mb-3 text-[13px] font-semibold">Before / after</h2>
-                    <GuideDiagram models={guide.models} flows={guide.flows} titles={titles} onSection={goTo} focus={focus} />
+                    {/* Before and after side by side when the change adds or removes parts; else one picture of what changes. */}
+                    {sides ? (
+                      <div className="grid gap-4 @4xl:grid-cols-2">
+                        {(["before", "after"] as const).map((side) => {
+                          const part = sideOf(guide, side);
+                          return (
+                            <div key={side} className="min-w-0">
+                              <h2 className="mb-3 text-[13px] font-semibold">{side === "before" ? "Before" : "After"}</h2>
+                              {part.models.length || part.flows.length ? (
+                                <GuideDiagram models={part.models} flows={part.flows} titles={titles} onSection={goTo} focus={focus} />
+                              ) : (
+                                <p className="text-[12px] text-subtle">{side === "before" ? "None of this was here: the change adds it all." : "None of this is left: the change removes it all."}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      (guide.models.length > 0 || guide.flows.length > 0) && (
+                        <>
+                          <h2 className="mb-3 text-[13px] font-semibold">What changes</h2>
+                          <GuideDiagram models={guide.models} flows={guide.flows} titles={titles} onSection={goTo} focus={focus} />
+                        </>
+                      )
+                    )}
                     {guide.diagram && (
                       // A guide from before structured diagrams.
                       <div className="markdown">

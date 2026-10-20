@@ -35,8 +35,8 @@ test("Mermaid reads a hostile flow as its steps and edges, nothing else", { skip
     title: "",
     steps: hostile.map((label, i) => ({ id: `${i}`, label, file: label, status: "new", kind: i === 2 ? "decision" : "step", section: i ? 1 : null })),
     edges: [
-      { from: "0", to: "1", label: "yes", main: false },
-      { from: "1", to: "2", label: hostile[1], main: true },
+      { from: "0", to: "1", label: "yes", main: false, status: "same" },
+      { from: "1", to: "2", label: hostile[1], main: true, status: "removed" },
     ],
   };
   const calls = await statements(flowSource(flow));
@@ -82,7 +82,7 @@ const asDrawn = (label: string) => label.replace(/[\u202A-\u202E\u2066-\u2069]/g
 /** Each label, as a step and as an edge's label, draws as its own statement and reads back as written. */
 async function roundTrips(labels: string[], files: string[] = []) {
   const steps = labels.map((l, i) => step(l, i, files[i % (files.length || 1)] ?? ""));
-  const edges = steps.slice(1).map((s, i) => ({ from: `${i}`, to: s.id, label: labels[(i + 3) % labels.length], main: i % 2 === 0 }));
+  const edges = steps.slice(1).map((s, i) => ({ from: `${i}`, to: s.id, label: labels[(i + 3) % labels.length], main: i % 2 === 0, status: (i % 3 === 0 ? "removed" : "same") as "removed" | "same" }));
   const { calls, nodes, edges: drawn } = await drawnText(flowSource({ title: "", steps, edges }));
   assert.deepEqual([...new Set(calls.map(([name]) => name))].sort(), edges.length ? ["addLink", "addVertex", "destructLink", "setClass", "setDirection"] : ["addVertex", "setClass", "setDirection"]);
   assert.deepEqual(nodes, steps.map((s, i) => [`s${i}`, meta(s) + asDrawn(s.label)]));

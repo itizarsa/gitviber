@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CATEGORIES, describeFlow, DOORS, partCounts, PLAIN_NOTE, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
+import { CATEGORIES, describeFlow, DOORS, partCounts, sideOf, PLAIN_NOTE, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
 
 // What a section from before categories and notes reads as.
 const PLAIN: Pick<GuideSection, "category" | "check" | "importance" | "fileNotes" | "lineNotes"> = { category: "other", check: "", importance: "medium", fileNotes: [], lineNotes: [] };
@@ -193,8 +193,8 @@ test("a structured diagram", () => {
     ],
   );
   assert.deepEqual(flow.edges, [
-    { from: "a", to: "b", label: "", main: false },
-    { from: "b", to: "c", label: "yes", main: false },
+    { from: "a", to: "b", label: "", main: false, status: "same" },
+    { from: "b", to: "c", label: "yes", main: false, status: "same" },
   ]);
 });
 
@@ -276,7 +276,7 @@ test("hostile labels stay text", () => {
       label.replace(/\s+/g, " "),
     );
   }
-  const flow = { title: "", steps: hostile.map((label, i) => ({ id: `${i}`, label, file: label, status: "new" as const, kind: "step" as const, section: null })), edges: [{ from: "0", to: "1", label: hostile[1], main: false }] };
+  const flow = { title: "", steps: hostile.map((label, i) => ({ id: `${i}`, label, file: label, status: "new" as const, kind: "step" as const, section: null })), edges: [{ from: "0", to: "1", label: hostile[1], main: false, status: "same" as const }] };
   const src = flowSource(flow);
   // One statement a step and one for the edge, with every quote the source's own: a "click" is a label's word.
   assert.equal(src.split("\n").length, 1 + hostile.length + 1);
@@ -573,4 +573,29 @@ test("the plain-words style adds its note before the language line", () => {
   assert.ok(!guidePrompt("English").includes(PLAIN_NOTE));
   const plain = guidePrompt("English", "plain");
   assert.ok(plain.startsWith(`${GUIDE_PROMPT}\n\n${PLAIN_NOTE}\n\nWrite all prose`));
+});
+
+test("before leaves out what the change adds, after what it removes", () => {
+  const g = parseGuide(
+    JSON.stringify({
+      title: "T",
+      diagram: {
+        models: [{ name: "Cache", status: "new" }, { name: "Badge", status: "removed" }, { name: "Repo", status: "changed", fields: [{ name: "old", status: "removed" }, { name: "fresh", status: "new" }] }],
+        flows: [
+          {
+            steps: [{ id: "w", label: "w()" }, { id: "c", label: "c()", status: "new" }, { id: "b", label: "b()", status: "removed" }, { id: "v", label: "v()" }],
+            edges: [{ from: "w", to: "c", main: true }, { from: "c", to: "v", main: true }, { from: "w", to: "b" }, { from: "w", to: "v", status: "removed" }],
+          },
+        ],
+      },
+    }),
+  )!;
+  const before = sideOf(g, "before");
+  const after = sideOf(g, "after");
+  assert.deepEqual(before.models.map((m) => [m.name, m.fields.map((f) => f.name)]), [["Badge", []], ["Repo", ["old"]]]);
+  assert.deepEqual(after.models.map((m) => [m.name, m.fields.map((f) => f.name)]), [["Cache", []], ["Repo", ["fresh"]]]);
+  const edges = (f: { edges: { from: string; to: string; main: boolean }[] }) => f.edges.map((e) => `${e.from}${e.main ? "=>" : "->"}${e.to}`);
+  assert.deepEqual(edges(before.flows[0]), ["w->b", "w->v"]);
+  assert.deepEqual(edges(after.flows[0]), ["w=>c", "c=>v"]);
+  assert.match(flowSource(before.flows[0]), /s0 -\.-> s2$/m, "a removed call is dotted");
 });

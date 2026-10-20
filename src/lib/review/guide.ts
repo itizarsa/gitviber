@@ -141,7 +141,7 @@ export const GUIDE_SCHEMA = {
                   },
                 },
               },
-              edges: { type: "array", items: { type: "object", required: ["from", "to"], properties: { from: str("a step id"), to: str("a step id"), label: str("yes or no after a decision; left out otherwise"), main: { type: "boolean", description: "true on the edges of the path the change is about, in one flow only", examples: [false] } } } },
+              edges: { type: "array", items: { type: "object", required: ["from", "to"], properties: { from: str("a step id"), to: str("a step id"), label: str("yes or no after a decision; left out otherwise"), status: { type: "string", enum: ["new", "removed", "same"], description: "new for a call the change adds, removed for one it takes out" }, main: { type: "boolean", description: "true on the edges of the path the change is about, in one flow only", examples: [false] } } } },
             },
           },
         },
@@ -173,7 +173,7 @@ export const GUIDE_PROMPT = [
   `Explain this change to a reviewer so they can read it quickly. Answer with only a JSON object, with no code fences or other text, shaped like this: ${exampleOf(GUIDE_SCHEMA)}.`,
   "Size the guide to the change: one section for a small change (1-3 files, or under about 150 changed lines) unless it has truly separate concerns, and more only for separate concerns. Put mechanical edits (docs, changelog, formatting, renames) together in the last section, never in one of their own for a line. Order the sections the way a reviewer should read them, and put every path of the list of changed files in exactly one section.",
   "Write for a developer who scans: never restate what the diff shows (values, strings, numbers, styles); say why, and point at what isn't obvious. Most sections have no check or risk. Give importance sparingly, most sections medium or low: high only for security, data loss, or a change that breaks things, is hard to revert or is easy to get wrong; medium for a change in behavior worth a careful read; low for mechanical edits, docs or style. A note's critical is true only for security, data loss or a change that's hard to revert. Add a fileNote or lineNote only where it saves the reviewer real time, a few in the whole guide at most; a lineNote's side is new for an added or unchanged line and old for a removed one, and its line is the line's number on that side.",
-  "A diagram part's status is new, changed, removed (deleted by the change: draw what a refactor takes away) or same (context the reader needs). Mark main on the edges of the path the change is really about, in one flow only. Give stats only for a measurable effect (calls, queries, steps, sizes), never counts of files or lines, which the view shows itself.",
+  "A diagram part's status is new, changed, removed (deleted by the change: draw what a refactor takes away) or same (context the reader needs); an edge's status is new or removed for a call the change adds or takes out. The view draws the diagram twice, before (without the new parts) and after (without the removed ones), so include what was removed for the before side to make sense. Mark main on the edges of the path the change is really about, in one flow only. Give stats only for a measurable effect (calls, queries, steps, sizes), never counts of files or lines, which the view shows itself.",
   "Give a sketch only when a picture says it faster than words, picking the smallest kind that makes the point; most small changes need none. Rate every change's danger: a two-way door can be walked back by reverting it, a one-way door can't (data deleted or migrated, a format, API or setting others rely on published); the blast radius is how far a mistake would reach.",
   `Sketches: ${Object.entries(SKETCHES)
     .map(([k, v]) => `${k} (${v})`)
@@ -260,8 +260,8 @@ export interface FlowStep {
 export interface Flow {
   title: string;
   steps: FlowStep[];
-  /** `main`: on the path the change is about. */
-  edges: { from: string; to: string; label: string; main: boolean }[];
+  /** `main`: on the path the change is about. `status`: a call the change adds or takes out (never "changed"). */
+  edges: { from: string; to: string; label: string; main: boolean; status: PartStatus }[];
 }
 
 export interface Sketch {
@@ -360,7 +360,7 @@ function parseFlows(v: unknown, count: number): Flow[] {
       }
       const seen = new Set<string>();
       const edges = records(f.edges)
-        .map((e) => ({ from: line(e.from, 80), to: line(e.to, 80), label: line(e.label, 40), main: flag(e.main) }))
+        .map((e) => ({ from: line(e.from, 80), to: line(e.to, 80), label: line(e.label, 40), main: flag(e.main), status: ((s) => (s === "changed" ? "same" : s))(partStatus(e.status)) }))
         .filter((e) => {
           const key = `${e.from}\0${e.to}\0${e.label}`;
           if (!ids.has(e.from) || !ids.has(e.to) || seen.has(key)) return false;
@@ -464,6 +464,29 @@ function oneMainPath(flows: Flow[]): Flow[] {
   return flows.map((f, i) => (i === first || !f.edges.some((e) => e.main) ? f : { ...f, edges: f.edges.map((e) => ({ ...e, main: false })) }));
 }
 
+/**
+ * The diagram as it was (`before`: without what the change adds) or as it is (`after`: without what
+ * it removes). Fields go with their model's side; a flow keeps the edges between steps still on it.
+ */
+export function sideOf(guide: Pick<Guide, "models" | "flows">, side: "before" | "after"): Pick<Guide, "models" | "flows"> {
+  const gone: PartStatus = side === "before" ? "new" : "removed";
+  const keep = <T extends { status: PartStatus }>(parts: T[]) => parts.filter((p) => p.status !== gone);
+  return {
+    models: keep(guide.models).map((m) => ({ ...m, fields: keep(m.fields) })),
+    flows: guide.flows
+      .map((f) => {
+        const steps = keep(f.steps);
+        const ids = new Set(steps.map((s) => s.id));
+        // The change's main path is the new one: before, it's drawn plain.
+        const edges = keep(f.edges)
+          .filter((e) => ids.has(e.from) && ids.has(e.to))
+          .map((e) => (side === "before" ? { ...e, main: false } : e));
+        return { ...f, steps, edges };
+      })
+      .filter((f) => f.steps.length),
+  };
+}
+
 /** How many of the diagram's parts (models, their fields, flow steps) the change adds, alters and removes. */
 export function partCounts(guide: Pick<Guide, "models" | "flows">) {
   const counts: Record<Exclude<PartStatus, "same">, number> = { new: 0, changed: 0, removed: 0 };
@@ -534,8 +557,8 @@ export function flowSource(flow: Flow) {
     const label = `<span class='gf-meta'>${badge}${mermaidText(meta)}</span><br/><span class='${decision ? "gf-ask" : "gf-code"}'>${mermaidText(s.label)}</span>`;
     out.push(`  s${i}${decision ? `{{"${label}"}}` : `["${label}"]`}:::${CLASSES[s.status]}`);
   });
-  // The main path's edges thick (==>), which the view colors.
-  for (const e of flow.edges) out.push(`  ${ids.get(e.from)} ${e.main ? "==>" : "-->"}${e.label ? `|"${mermaidText(e.label)}"|` : ""} ${ids.get(e.to)}`);
+  // The main path's edges thick (==>), which the view colors; a removed call dotted (-.->).
+  for (const e of flow.edges) out.push(`  ${ids.get(e.from)} ${e.main ? "==>" : e.status === "removed" ? "-.->" : "-->"}${e.label ? `|"${mermaidText(e.label)}"|` : ""} ${ids.get(e.to)}`);
   return out.join("\n");
 }
 
