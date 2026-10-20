@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { CATEGORIES, describeFlow, DOORS, partCounts, sideOf, PLAIN_NOTE, SKETCHES, flowSource, GUIDE_PROMPT, GUIDE_SCHEMA, type GuideSection, guidePrompt, LIMITS, mermaidText, parseGuide, placeFiles } from "./guide.ts";
 
 // What a section from before categories and notes reads as.
-const PLAIN: Pick<GuideSection, "category" | "check" | "importance" | "fileNotes" | "lineNotes"> = { category: "other", check: "", importance: "medium", fileNotes: [], lineNotes: [] };
+const PLAIN: Pick<GuideSection, "category" | "check" | "importance" | "fileNotes" | "lineNotes" | "was" | "now"> = { category: "other", check: "", importance: "medium", fileNotes: [], lineNotes: [], was: "", now: "" };
 
 const unplaced = (g: Parameters<typeof placeFiles>[0], paths: string[]) => placeFiles(g, paths).rest;
 
@@ -21,6 +21,8 @@ const guide = {
   sketch: null,
   danger: null,
   stats: [],
+  unknowns: [],
+  rollout: [],
   models: [],
   flows: [],
   sections: [
@@ -45,11 +47,11 @@ test("wrappers models add", () => {
 });
 
 test("missing or mistyped fields read as empty", () => {
-  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] });
+  assert.deepEqual(parseGuide('{"title": "Only a title"}'), { title: "Only a title", summary: "", diagram: "", sketch: null, danger: null, stats: [], unknowns: [], rollout: [], models: [], flows: [], sections: [] });
   assert.deepEqual(parseGuide('{"title": 3, "summary": "S", "sections": [null, "x", {"files": "a.ts"}, {"title": "T", "files": ["a.ts"]}]}'), {
     title: "",
     summary: "S",
-    diagram: "", sketch: null, danger: null, stats: [],
+    diagram: "", sketch: null, danger: null, stats: [], unknowns: [], rollout: [],
     models: [],
     flows: [],
     sections: [{ title: "T", summary: "", files: ["a.ts"], risk: "", ...PLAIN }],
@@ -94,8 +96,8 @@ test("huge answers parse quickly, and brace soup isn't a guide", () => {
 test("empty and misnamed parts", () => {
   // A section with only a risk is dropped, as is one with blank files.
   const g = parseGuide(JSON.stringify({ title: "T", sections: [{ risk: "R" }, { files: ["", "  ", "./"] }] }));
-  assert.deepEqual(g, { title: "T", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] });
-  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", sketch: null, danger: null, stats: [], models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
+  assert.deepEqual(g, { title: "T", summary: "", diagram: "", sketch: null, danger: null, stats: [], unknowns: [], rollout: [], models: [], flows: [], sections: [] });
+  assert.deepEqual(unplaced({ title: "", summary: "", diagram: "", sketch: null, danger: null, stats: [], unknowns: [], rollout: [], models: [], flows: [], sections: [] }, ["a b/ü.ts"]), ["a b/ü.ts"]);
   // Paths with spaces and non-ASCII match as written.
   const named = parseGuide(JSON.stringify({ sections: [{ title: "x", files: ["docs/my notes/über.md"] }] }))!;
   assert.deepEqual(unplaced(named, ["docs/my notes/über.md"]), []);
@@ -598,4 +600,20 @@ test("before leaves out what the change adds, after what it removes", () => {
   assert.deepEqual(edges(before.flows[0]), ["w->b", "w->v"]);
   assert.deepEqual(edges(after.flows[0]), ["w=>c", "c=>v"]);
   assert.match(flowSource(before.flows[0]), /s0 -\.-> s2$/m, "a removed call is dotted");
+});
+
+test("a section's before and now show only as a pair", () => {
+  const sec = (s: object) => parseGuide(JSON.stringify({ title: "T", sections: [{ title: "S", files: ["a.ts"], ...s }] }))!.sections[0];
+  assert.deepEqual([sec({ was: "Retried once.", now: "Retries\nthree times." })].map((s) => [s.was, s.now]), [["Retried once.", "Retries three times."]]);
+  for (const half of [{ was: "Retried once." }, { now: "Retries." }, { was: " ", now: "x" }]) assert.deepEqual([sec(half).was, sec(half).now], ["", ""]);
+});
+
+test("unknowns and rollout steps keep their text, cut to their limits", () => {
+  const g = (v: object) => parseGuide(JSON.stringify({ title: "T", ...v }))!;
+  assert.deepEqual(g({ unknowns: ["Do old clients send it?", 3, " ", ...Array.from({ length: 9 }, (_, i) => `Q${i}`)] }).unknowns, ["Do old clients send it?", "Q0", "Q1", "Q2"]);
+  assert.deepEqual(g({ rollout: [{ step: "Run the migration.", file: "./db/m1.sql" }, { file: "x" }, { step: "Add the secret." }] }).rollout, [
+    { step: "Run the migration.", file: "db/m1.sql" },
+    { step: "Add the secret.", file: "" },
+  ]);
+  assert.deepEqual(g({ unknowns: "none", rollout: "none" }).unknowns, []);
 });

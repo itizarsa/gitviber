@@ -117,6 +117,18 @@ export function SectionRow({
         )}
         {!done && (
           <div className="mt-3 flex flex-col gap-2">
+            {s.was && (
+              <div className="grid gap-1.5 text-[12.5px] select-text">
+                <div className="rounded-md border border-removed/30 bg-del-bg px-2.5 py-1.5">
+                  <div className="text-[10.5px] font-semibold tracking-[0.06em] text-removed uppercase">Before</div>
+                  {s.was}
+                </div>
+                <div className="rounded-md border border-added/30 bg-add-bg px-2.5 py-1.5">
+                  <div className="text-[10.5px] font-semibold tracking-[0.06em] text-added uppercase">Now</div>
+                  {s.now}
+                </div>
+              </div>
+            )}
             {s.summary && <Summary text={s.summary} id={`${n ?? "other"}-`} />}
             {s.check && (
               <div className="flex items-start gap-1.5 text-[12px] text-muted-foreground">

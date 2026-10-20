@@ -27,12 +27,12 @@ import { GuideDiagram } from "./GuideDiagram";
 import { CATEGORY_UI } from "./categories";
 import { CategoryFilter, GuideNav } from "./GuideNav";
 import { GuideFiles } from "./GuideFiles";
-import { GuideDanger, GuideSketch, GuideStats } from "./GuideSketch";
+import { GuideDanger, GuideRollout, GuideSketch, GuideStats, GuideUnknowns } from "./GuideSketch";
 import { GuideMarkdown, Notice, SectionRow } from "./GuideSection";
 
 // No files to read before a branch's guide says which range it read: a list useFixedFiles leaves be.
 const NO_FILES: ChangesSelection = { kind: "changes", list: "unstaged" };
-const OTHER: GuideSection = { title: "Other changes", category: "other", summary: "In no section of the guide.", files: [], check: "", risk: "", importance: "medium", fileNotes: [], lineNotes: [] };
+const OTHER: GuideSection = { title: "Other changes", category: "other", summary: "In no section of the guide.", files: [], check: "", risk: "", was: "", now: "", importance: "medium", fileNotes: [], lineNotes: [] };
 // The category each guide shows, and whether only its high importance sections, by guide id, until GitViber quits.
 interface Filter {
   category: Category | null;
@@ -198,6 +198,12 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
   const goToRisk = (r: Risk) => {
     const path = matchPath(r.path, new Set(byPath.keys()));
     const f = path ? byPath.get(path) : undefined;
+    if (f) goToFile(f);
+  };
+  // A file the guide names by path (a rollout step's), where its diff is.
+  const goToPath = (path: string) => {
+    const at = matchPath(path, new Set(byPath.keys()));
+    const f = at ? byPath.get(at) : undefined;
     if (f) goToFile(f);
   };
   // A file's diff in the guide, shown first if the filter hides its section; else its own tab.
@@ -373,12 +379,14 @@ export function GuideView({ sel, status, branchRows, revision, viewed, toggleVie
             {side && <GuideNav items={navItems} onGo={goTo} focus={focus} />}
             <div className="min-w-0">
               <div className={cn("mb-6 flex flex-col gap-5", nav && "mt-4 @6xl:mt-0")}>
-                {(guide.summary || guide.sketch || guide.danger) && (
+                {(guide.summary || guide.sketch || guide.danger || guide.unknowns.length > 0 || guide.rollout.length > 0) && (
                   <div className="max-w-[880px] min-w-0">
                     <h2 className="mb-2 text-[13px] font-semibold">Overview</h2>
                     {guide.summary && <GuideMarkdown text={guide.summary} />}
                     {guide.sketch && <GuideSketch sketch={guide.sketch} />}
                     {guide.danger && <GuideDanger danger={guide.danger} />}
+                    {guide.rollout.length > 0 && <GuideRollout steps={guide.rollout} onFile={goToPath} />}
+                    {guide.unknowns.length > 0 && <GuideUnknowns unknowns={guide.unknowns} />}
                   </div>
                 )}
                 {drawn && (

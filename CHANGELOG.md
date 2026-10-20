@@ -11,6 +11,9 @@ on GitHub are its section below.
 - **Guided reviews show what a change removes.** Diagram parts can be removed: struck through, in red, with a dashed border, so a refactor's deletions show next to what replaced them.
 - **The change at a glance**, under a guide's title: how many diagram parts it adds, changes and removes, and up to three numbers for its effect the agent gives (such as git calls per refresh 2 → 1).
 - **Before and After, side by side.** A guide's diagram is drawn twice under the overview: before (without what the change adds) and after (without what it removes); calls between steps can be added or removed too. A change that only alters parts keeps one picture, What changes.
+- **Before and now, per section.** A section whose behavior changes opens with how it behaved before and how it behaves now, a sentence each, in red and green.
+- **Couldn't confirm**: under a guide's overview, up to four questions the code doesn't answer, for the reviewer to ask.
+- **Besides merging**: the steps a change needs outside the merge (a migration, a setting or secret, a release order), each linking to its file.
 - **Section focus**: hovering a section in a guide's left column lights up its parts of the diagram and dims the rest; hovering a part lights up its section.
 - **The main path**: a flow's edges the change is really about are drawn thick, in the accent color.
 - **Explain Simply**, in a guided review's and Explain's header: rewrites the guide in plain words for someone new to the code, with no jargon, a one-sentence answer first and a smaller diagram. Regenerate keeps its style; Explain Technically switches back.

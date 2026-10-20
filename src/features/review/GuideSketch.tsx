@@ -1,4 +1,4 @@
-import { DoorClosedLocked, DoorOpen, Radar } from "lucide-react";
+import { CircleHelp, DoorClosedLocked, DoorOpen, ListChecks, Radar } from "lucide-react";
 import type { Danger, Sketch, SketchKind, Stat } from "@/lib/review/guide";
 import { cn } from "@/lib/utils";
 
@@ -92,5 +92,48 @@ export function GuideStats({ counts, stats }: { counts: { new: number; changed: 
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Questions the code doesn't answer, for the reviewer to ask. */
+export function GuideUnknowns({ unknowns }: { unknowns: string[] }) {
+  return (
+    <section aria-label="Couldn't confirm" className="mt-3 rounded-md border border-border px-3 py-2 text-[12.5px]">
+      <div className="mb-1 text-[11px] font-medium tracking-[0.04em] text-subtle uppercase">Couldn't confirm</div>
+      <ul className="flex flex-col gap-1">
+        {unknowns.map((u, i) => (
+          <li key={i} className="flex items-start gap-1.5 select-text">
+            <CircleHelp aria-hidden className="mt-0.5 size-3.5 shrink-0 text-modified" />
+            {u}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** What has to happen besides merging, in order. */
+export function GuideRollout({ steps, onFile }: { steps: { step: string; file: string }[]; onFile?: (path: string) => void }) {
+  return (
+    <section aria-label="Besides merging" className="mt-3 rounded-md border border-border px-3 py-2 text-[12.5px]">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium tracking-[0.04em] text-subtle uppercase">
+        <ListChecks aria-hidden className="size-3.5" /> Besides merging
+      </div>
+      <ol className="flex flex-col gap-1">
+        {steps.map((r, i) => (
+          <li key={i} className="flex items-start gap-2 select-text">
+            <span className="w-4 shrink-0 text-right font-mono text-[11px] text-subtle">{i + 1}.</span>
+            <span className="min-w-0">
+              {r.step}
+              {r.file && (
+                <button className="ml-1.5 font-mono text-[11.5px] text-primary hover:underline" onClick={() => onFile?.(r.file)}>
+                  {r.file.slice(r.file.lastIndexOf("/") + 1)}
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

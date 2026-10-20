@@ -71,6 +71,12 @@ export const GUIDE_SCHEMA = {
   properties: {
     title: str("what the change does, under 72 characters"),
     overview: str("why the change was made, in 1-2 sentences of Markdown; a numbered list of its parts after them only when it has 3 or more separate ones"),
+    unknowns: { type: "array", description: "at most 4 questions the code doesn't answer and a reviewer should; left out when there are none", items: str("one question, such as whether older clients still send the old field") },
+    rollout: {
+      type: "array",
+      description: "what has to happen besides merging (a migration to run, a setting or secret to add, a backup, a release order); left out when nothing does",
+      items: { type: "object", required: ["step"], properties: { step: str("one step, in a sentence"), file: str("the changed file it comes from, if one does") } },
+    },
     stats: {
       type: "array",
       description: "at most 3 numbers that sum up the change's effect, only when it has a measurable one",
@@ -155,6 +161,8 @@ export const GUIDE_SCHEMA = {
         properties: {
           title: str("a label of at most 4 words"),
           category: { type: "string", enum: Object.keys(CATEGORIES), description: "one of the categories below" },
+          was: str("how it behaved before, in one sentence; only for a change in behavior"),
+          now: str("how it behaves now, in one sentence; with was only"),
           summary: str("1-3 sentences of Markdown: why, and what isn't obvious from the diff"),
           files: { type: "array", items: str("a path, as the list of changed files names it") },
           check: str("one line on how to verify it, only when there's something specific to check"),
@@ -174,6 +182,7 @@ export const GUIDE_PROMPT = [
   "Size the guide to the change: one section for a small change (1-3 files, or under about 150 changed lines) unless it has truly separate concerns, and more only for separate concerns. Put mechanical edits (docs, changelog, formatting, renames) together in the last section, never in one of their own for a line. Order the sections the way a reviewer should read them, and put every path of the list of changed files in exactly one section.",
   "Write for a developer who scans: never restate what the diff shows (values, strings, numbers, styles); say why, and point at what isn't obvious. Most sections have no check or risk. Give importance sparingly, most sections medium or low: high only for security, data loss, or a change that breaks things, is hard to revert or is easy to get wrong; medium for a change in behavior worth a careful read; low for mechanical edits, docs or style. A note's critical is true only for security, data loss or a change that's hard to revert. Add a fileNote or lineNote only where it saves the reviewer real time, a few in the whole guide at most; a lineNote's side is new for an added or unchanged line and old for a removed one, and its line is the line's number on that side.",
   "A diagram part's status is new, changed, removed (deleted by the change: draw what a refactor takes away) or same (context the reader needs); an edge's status is new or removed for a call the change adds or takes out. The view draws the diagram twice, before (without the new parts) and after (without the removed ones), so include what was removed for the before side to make sense. Mark main on the edges of the path the change is really about, in one flow only. Give stats only for a measurable effect (calls, queries, steps, sizes), never counts of files or lines, which the view shows itself.",
+  "Give a section was and now only when its behavior changes, one plain sentence each, and leave both out for refactors, docs and style. List unknowns only for real questions the diff can't answer, never for things you could check in it. List rollout steps only when merging alone isn't enough.",
   "Give a sketch only when a picture says it faster than words, picking the smallest kind that makes the point; most small changes need none. Rate every change's danger: a two-way door can be walked back by reverting it, a one-way door can't (data deleted or migrated, a format, API or setting others rely on published); the blast radius is how far a mistake would reach.",
   `Sketches: ${Object.entries(SKETCHES)
     .map(([k, v]) => `${k} (${v})`)
@@ -219,6 +228,9 @@ export interface GuideSection {
   check: string;
   /** "" when the model saw none. */
   risk: string;
+  /** How it behaved before and how it behaves now, a sentence each; both "" for no change in behavior. */
+  was: string;
+  now: string;
   /** High: review carefully (security, data loss, hard to revert). */
   importance: Importance;
   fileNotes: FileNote[];
@@ -296,6 +308,10 @@ export interface Guide {
   danger: Danger | null;
   /** The agent's numbers for the change's effect, at most LIMITS.stats. */
   stats: Stat[];
+  /** Questions the code doesn't answer, at most LIMITS.unknowns. */
+  unknowns: string[];
+  /** What has to happen besides merging, at most LIMITS.rollout; `file` "" for none. */
+  rollout: { step: string; file: string }[];
   /** A guide written before diagrams were structured: its Mermaid source; "" for none. */
   diagram: string;
   models: Model[];
@@ -304,7 +320,7 @@ export interface Guide {
 }
 
 /** How much of a diagram is drawn, as the prompt asks (past this it stops explaining), how many sections, and their notes. */
-export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500, sketch: 40, stats: 3 };
+export const LIMITS = { models: 6, fields: 12, flows: 2, steps: 12, edges: 24, sections: 50, notes: 40, note: 500, sketch: 40, stats: 3, unknowns: 4, rollout: 6 };
 
 /** The changed file (of `paths`) a model's path names: as written, or without git's a/ or b/. */
 export function matchPath(path: string, paths: Set<string>) {
@@ -421,7 +437,10 @@ function parseSection(s: Record<string, unknown>): GuideSection {
     .map((n) => ({ ...note(n), side: text(n.side).toLowerCase() === "old" ? ("old" as const) : ("new" as const), line: whole(n.line) }))
     .filter((n) => n.path && n.text && Number.isSafeInteger(n.line) && n.line > 0)
     .slice(0, LIMITS.notes - fileNotes.length);
-  return { title: text(s.title), category: category(s.category), summary: text(s.summary), files, check: clip(text(s.check).replace(/\s+/g, " "), LIMITS.note), risk: text(s.risk), importance: importance(s.importance, s.critical), fileNotes, lineNotes };
+  // A before without an after (or the other way) tells half the story: neither shows.
+  const was = clip(text(s.was).replace(/\s+/g, " "), LIMITS.note);
+  const now = clip(text(s.now).replace(/\s+/g, " "), LIMITS.note);
+  return { title: text(s.title), category: category(s.category), summary: text(s.summary), was: was && now ? was : "", now: was && now ? now : "", files, check: clip(text(s.check).replace(/\s+/g, " "), LIMITS.note), risk: text(s.risk), importance: importance(s.importance, s.critical), fileNotes, lineNotes };
 }
 
 /**
@@ -447,6 +466,14 @@ export function parseGuide(output: string): Guide | null {
       .map((s) => ({ label: line(s.label, 40), value: line(s.value, 40), tone: (["good", "bad"].includes(text(s.tone).toLowerCase()) ? text(s.tone).toLowerCase() : "neutral") as Stat["tone"] }))
       .filter((s) => s.label && s.value)
       .slice(0, LIMITS.stats),
+    unknowns: (Array.isArray(v.unknowns) ? v.unknowns : [])
+      .map((u) => clip(text(u).replace(/\s+/g, " "), LIMITS.note))
+      .filter(Boolean)
+      .slice(0, LIMITS.unknowns),
+    rollout: records(v.rollout)
+      .map((r) => ({ step: clip(text(r.step).replace(/\s+/g, " "), LIMITS.note), file: line(r.file, 200).replace(/^\.\//, "") }))
+      .filter((r) => r.step)
+      .slice(0, LIMITS.rollout),
     diagram: text(v.diagram)
       .replace(/^(`{3,}|~{3,})\s*(mermaid)?\s*\n/i, "")
       .replace(/\n(`{3,}|~{3,})$/, "")
